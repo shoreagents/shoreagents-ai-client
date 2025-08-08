@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "concurrently \"node server.js\" \"wait-on http://localhost:3000 && electron .\"",
     "dev:web": "node server.js",
@@ -42,7 +45,7 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@react-three/drei": "^10.6.1",
-    "@react-three/fiber": "^9.0.0-alpha.8",
+    "@react-three/fiber": "^9.3.0",
     "@supabase/supabase-js": "^2.53.0",
     "@tabler/icons-react": "^3.34.1",
     "@tanstack/react-table": "^8.21.3",
