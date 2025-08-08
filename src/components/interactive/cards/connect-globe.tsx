@@ -50,15 +50,15 @@ export function GrowthRateCard({ className }: GrowthRateCardProps) {
         <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
         </CardTitle>
       </CardHeader>
-      <CardContent className="relative h-64 w-full">
+      <CardContent className="relative h-64 w-full grid place-items-center">
         <Image
           src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/global.png"
           alt="Growth Globe"
           width={350}
           height={350}
-          className="absolute -bottom-16 -right-8 object-contain"
+          className="col-start-1 row-start-1 object-contain h-full w-auto"
         />
-        <div className="h-full w-full flex items-center justify-center">
+        <div className="col-start-1 row-start-1">
           <Badge variant="outline" className="rounded-full text-sm px-3 py-1 bg-white/80 backdrop-blur-sm border-border text-black">
             {loading ? "Loading..." : (memberInfo?.country || "Unknown")}
           </Badge>
