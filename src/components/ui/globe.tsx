@@ -61,7 +61,7 @@ interface WorldProps {
   data: Position[];
 }
  
-const numbersOfRings = [0];
+// const numbersOfRings = [0]; // Unused variable
  
 export function Globe({ globeConfig, data }: WorldProps) {
   const globeRef = useRef<ThreeGlobe | null>(null);
@@ -124,7 +124,7 @@ export function Globe({ globeConfig, data }: WorldProps) {
     const points = [];
     for (let i = 0; i < arcs.length; i++) {
       const arc = arcs[i];
-      const rgb = hexToRgb(arc.color) as { r: number; g: number; b: number };
+      // const rgb = hexToRgb(arc.color) as { r: number; g: number; b: number }; // Unused variable
       points.push({
         size: defaultProps.pointSize,
         order: arc.order,
