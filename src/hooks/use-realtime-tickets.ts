@@ -1,39 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-interface TicketRecord {
-  id: number
-  ticket_id: string
-  user_id: number
-  role_id?: number
-  profile_picture?: string
-  first_name?: string
-  last_name?: string
-  employee_id?: string
-  [key: string]: unknown
-}
-
 interface TicketUpdate {
   type: 'ticket_update'
   data: {
     table: string
     action: 'INSERT' | 'UPDATE' | 'DELETE'
-    record: TicketRecord
-    old_record?: TicketRecord
+    record: any
+    old_record?: any
     timestamp: string
   }
 }
 
 interface UseRealtimeTicketsOptions {
-  onTicketCreated?: (ticket: TicketRecord) => void
-  onTicketUpdated?: (ticket: TicketRecord, oldTicket?: TicketRecord) => void
-  onTicketDeleted?: (ticket: TicketRecord) => void
+  onTicketCreated?: (ticket: any) => void
+  onTicketUpdated?: (ticket: any, oldTicket?: any) => void
+  onTicketDeleted?: (ticket: any) => void
   autoConnect?: boolean
 }
 
 // Singleton WebSocket connection
 let globalWebSocket: WebSocket | null = null
-const globalCallbacks: Set<(message: TicketUpdate) => void> = new Set()
-const globalConnectionState = { isConnected: false, error: null as string | null }
+let globalCallbacks: Set<(message: TicketUpdate) => void> = new Set()
+let globalConnectionState = { isConnected: false, error: null as string | null }
 
 // Global WebSocket management
 function getOrCreateWebSocket() {
