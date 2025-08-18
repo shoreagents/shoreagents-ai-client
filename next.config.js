@@ -4,12 +4,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  devIndicators: {
-    buildActivity: false,
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client'],
-  },
 }
 
 module.exports = nextConfig 
