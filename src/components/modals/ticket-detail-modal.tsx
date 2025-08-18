@@ -1,15 +1,15 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconCircle, IconAlertCircle, IconInfoCircle } from "@tabler/icons-react"
+
+import { IconCalendar, IconClock, IconUser, IconBuilding, IconFile, IconMessage, IconEdit, IconTag, IconBriefcase, IconCircle, IconAlertCircle, IconInfoCircle } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { getStorageUrl } from "@/lib/supabase"
 import { useTheme } from "next-themes"
@@ -75,6 +75,16 @@ interface Ticket {
 }
 
 type TicketStatus = 'For Approval' | 'On Hold' | 'In Progress' | 'New' | 'Approved' | 'Stuck' | 'Actioned' | 'Closed'
+
+interface Comment {
+  id: string
+  comment: string
+  created_at: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  profile_picture?: string
+}
 
 const getStatusColor = (status: TicketStatus) => {
   switch (status) {
@@ -173,7 +183,7 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
   const [comment, setComment] = React.useState("")
   const [currentStatus, setCurrentStatus] = React.useState<TicketStatus | null>(null)
   const [statusOptions, setStatusOptions] = React.useState<StatusOption[]>([])
-  const [comments, setComments] = React.useState<any[]>([])
+  const [comments, setComments] = React.useState<Comment[]>([])
   const [isLoadingComments, setIsLoadingComments] = React.useState(false)
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false)
 
@@ -187,15 +197,7 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
     { value: 'On Hold', label: 'On Hold', icon: 'gray', color: 'gray' }
   ]
 
-  React.useEffect(() => {
-    if (ticket) {
-      setCurrentStatus(ticket.status)
-      fetchComments()
-    }
-    setStatusOptions(getStatusOptions())
-  }, [ticket])
-
-  const fetchComments = async () => {
+  const fetchComments = React.useCallback(async () => {
     if (!ticket) return
     
     setIsLoadingComments(true)
@@ -212,18 +214,21 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
     } finally {
       setIsLoadingComments(false)
     }
-  }
+  }, [ticket])
+
+  React.useEffect(() => {
+    if (ticket) {
+      setCurrentStatus(ticket.status)
+      fetchComments()
+    }
+    setStatusOptions(getStatusOptions())
+  }, [ticket, fetchComments])
 
   if (!ticket) return null
 
   const categoryBadge = getCategoryBadge(ticket)
   const createdDate = formatDate(ticket.created_at)
-  const updatedDate = ticket.updated_at && ticket.updated_at !== ticket.created_at ? formatDate(ticket.updated_at) : null
-  const resolvedDate = ticket.resolved_at ? formatDate(ticket.resolved_at) : null
 
-  const copyTicketId = () => {
-    navigator.clipboard.writeText(ticket.ticket_id)
-  }
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -505,9 +510,10 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
                                   border: theme === 'dark' ? '1px solid #333333' : '1px solid #e5e7eb'
                                 }}
                                 onClick={() => {
-                                  if (typeof window !== 'undefined' && (window as any).electronAPI) {
-                                    (window as any).electronAPI.openFileWindow(fileUrl, fileName)
-                                      .then((result: any) => {
+                                  if (typeof window !== 'undefined' && (window as unknown as { electronAPI?: { openFileWindow: (url: string, name: string) => Promise<{ success: boolean; error?: string }> } }).electronAPI) {
+                                    const electronAPI = (window as unknown as { electronAPI: { openFileWindow: (url: string, name: string) => Promise<{ success: boolean; error?: string }> } }).electronAPI;
+                                    electronAPI.openFileWindow(fileUrl, fileName)
+                                      .then((result) => {
                                         if (result.success) {
                                           console.log('File window opened successfully')
                                         } else {
@@ -516,7 +522,7 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
                                           window.open(fileUrl, '_blank')
                                         }
                                       })
-                                      .catch((error: any) => {
+                                      .catch((error) => {
                                         console.error('Error opening file window:', error)
                                         // Fallback to browser window if Electron fails
                                         window.open(fileUrl, '_blank')

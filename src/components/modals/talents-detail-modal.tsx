@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconCircle, IconAlertCircle, IconInfoCircle, IconStar, IconCurrencyPeso, IconMapPin as IconLocation, IconAward, IconCode, IconDots } from "@tabler/icons-react"
+import { IconClock, IconFile, IconMessage, IconTrash, IconBriefcase, IconCircle, IconAlertCircle, IconInfoCircle, IconStar, IconAward, IconCode, IconDots, IconMail } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 
@@ -72,35 +71,7 @@ interface Comment {
   user_role: string
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Available":
-      return "text-green-700 dark:text-white border-green-600/20 bg-green-50 dark:bg-green-600/20"
-    case "Busy":
-      return "text-orange-700 dark:text-white border-orange-600/20 bg-orange-50 dark:bg-orange-600/20"
-    case "Unavailable":
-      return "text-red-700 dark:text-white border-red-600/20 bg-red-50 dark:bg-red-600/20"
-    case "Part-time":
-      return "text-blue-700 dark:text-white border-blue-600/20 bg-blue-50 dark:bg-blue-600/20"
-    default:
-      return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
-  }
-}
 
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case "Available":
-      return <IconCircle className="h-4 w-4" />
-    case "Busy":
-      return <IconClock className="h-4 w-4" />
-    case "Unavailable":
-      return <IconAlertCircle className="h-4 w-4" />
-    case "Part-time":
-      return <IconCalendarTime className="h-4 w-4" />
-    default:
-      return <IconInfoCircle className="h-4 w-4" />
-  }
-}
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -136,7 +107,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   React.useEffect(() => {
     // Reset comments on modal open or talent change
     setCommentsList(talent?.comments || [])
-  }, [talent?.id, isOpen])
+  }, [talent?.id, talent?.comments, isOpen])
 
   React.useEffect(() => {
     // Fetch latest comments from API when opening the modal
@@ -149,8 +120,9 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
         if (Array.isArray(data.comments)) {
           setCommentsList(data.comments)
         }
-      } catch (_) {
-        // ignore
+      } catch (error) {
+        // ignore fetch errors
+        console.log('Failed to fetch comments:', error)
       }
     }
     fetchComments()
