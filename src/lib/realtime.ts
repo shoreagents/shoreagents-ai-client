@@ -1,7 +1,5 @@
-import { Pool, Client } from 'pg'
+import { Client } from 'pg'
 import { WebSocketServer } from 'ws'
-import { NextApiRequest } from 'next'
-import { NextApiResponse } from 'next'
 
 // Create a separate client for listening to notifications
 const notificationClient = new Client({
@@ -13,7 +11,7 @@ let wss: WebSocketServer | null = null
 let isListening = false
 
 // Initialize WebSocket server
-export function initializeWebSocketServer(server: any) {
+export function initializeWebSocketServer(server: unknown) {
   if (wss) return wss
 
   wss = new WebSocketServer({ server })
@@ -44,7 +42,7 @@ export async function startListening() {
     // Listen for ticket changes
     await notificationClient.query('LISTEN ticket_changes')
     
-    notificationClient.on('notification', (msg: any) => {
+    notificationClient.on('notification', (msg: { payload: string }) => {
       try {
         const payload = JSON.parse(msg.payload)
         console.log('Received notification:', payload)

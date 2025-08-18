@@ -427,8 +427,8 @@ export async function getTicketsByStatusWithPagination(
 ): Promise<{ tickets: Ticket[], totalCount: number }> {
   const offset = (page - 1) * limit
   
-  let whereConditions = ['t.role_id = 1']
-  let queryParams: any[] = []
+  const whereConditions = ['t.role_id = 1']
+  const queryParams: unknown[] = []
   let paramIndex = 1
   
   // Only add status condition if status is provided
