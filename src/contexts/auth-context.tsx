@@ -12,6 +12,7 @@ interface User {
   profilePicture?: string
   memberId?: number
   departmentId?: number
+  companyUuid?: string
   isAuthenticated: boolean
 }
 
@@ -99,6 +100,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const userData = await response.json()
       console.log('✅ User found in Railway database:', userData.user)
+      // Create server-side session cookie so API routes can authenticate
+      const sessionResp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      if (!sessionResp.ok) {
+        console.log('❌ Failed to create server session cookie')
+        await supabase.auth.signOut()
+        return { success: false, error: 'Failed to create session' }
+      }
+
       setUser({
         ...userData.user,
         isAuthenticated: true
@@ -115,6 +129,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🚪 Logging out user...')
       await supabase.auth.signOut()
+      // Clear server-side session cookie
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' })
+      } catch (e) {
+        console.warn('Logout API call failed (ignored):', e)
+      }
       setUser(null)
       
     } catch (error) {

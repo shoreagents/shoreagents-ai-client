@@ -147,26 +147,27 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
   return (
     <Card className={`@container/card relative overflow-hidden ${className}`}>
       <CardHeader className="relative">
-        <CardDescription>New Hires</CardDescription>
-        <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
+        <CardTitle>New Hires</CardTitle>
+        <CardDescription>Recently joined employees</CardDescription>
+        <div className="mt-2">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="h-6 w-6 text-purple-600" />
+            <CalendarIcon className="h-5 w-5 text-purple-600" />
             <NumberFlow 
               value={getNewHiresCount()}
               transformTiming={{ duration: 750, easing: 'ease-out' }}
               spinTiming={{ duration: 750, easing: 'ease-out' }}
               opacityTiming={{ duration: 350, easing: 'ease-out' }}
-              className="tabular-nums"
+              className="text-2xl font-semibold tabular-nums"
               style={{ '--number-flow-mask-height': '0.1em' } as React.CSSProperties}
             />
           </div>
-        </CardTitle>
+        </div>
         <div className="absolute right-4 top-4">
           <div className="flex flex-col items-end gap-1">
-            <Badge variant="outline" className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-sidebar dark:bg-[#252525] transition-all duration-500 ease-out px-1.5 py-0.5 border w-20 h-6 items-center ${
+            <Badge className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-gray-200 dark:bg-zinc-800 transition-all duration-500 ease-out px-1.5 py-0.5 border-0 w-20 h-6 items-center ${
               getNewHiresPercentage() >= 0 
-                ? 'text-green-700 dark:text-green-400 border-green-200 dark:border-green-600/30' 
-                : 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-600/30'
+                ? 'text-green-700 dark:text-green-400' 
+                : 'text-red-700 dark:text-red-400'
             }`}>
               <div className="flex items-center justify-center">
                 <TrendingUpIcon className="size-3" />
@@ -195,11 +196,7 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
         </div>
       </CardHeader>
       <CardFooter className="flex-col items-start gap-1 text-sm">
-        <div className="line-clamp-1 flex gap-2 font-medium">
-          Team Growth
-        </div>
-        <div className="text-muted-foreground text-xs">Recently joined employees.</div>
-        <div className="mt-2">
+        <div className="mt-1">
           <AnimatedTabs
             tabs={[
               { title: "This Month", value: "month" },
@@ -207,7 +204,7 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
               { title: "Last 6 Months", value: "half" }
             ]}
             containerClassName="rounded-lg"
-            activeTabClassName="bg-gray-200 dark:bg-gray-700"
+            activeTabClassName="bg-gray-200 dark:bg-zinc-800"
             tabClassName="text-xs text-muted-foreground hover:text-foreground"
             onTabChange={(tab) => setViewMode(tab.value as 'month' | 'quarter' | 'half')}
           />

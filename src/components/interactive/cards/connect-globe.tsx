@@ -46,21 +46,24 @@ export function GrowthRateCard({ className }: GrowthRateCardProps) {
   return (
     <Card className={`@container/card relative overflow-hidden ${className}`}>
       <CardHeader className="relative">
-        <CardDescription>Connect</CardDescription>
-        <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-        </CardTitle>
+        <CardTitle>Connect</CardTitle>
+        <CardDescription>Chat and collaborate with your team in real time via Connect chat.</CardDescription>
       </CardHeader>
-      <CardContent className="relative h-64 w-full grid place-items-center">
-        <Image
-          src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/global.png"
-          alt="Growth Globe"
-          width={350}
-          height={350}
-          className="col-start-1 row-start-1 object-contain h-full w-auto"
-        />
-        <div className="col-start-1 row-start-1">
+      <CardContent className="relative w-full grid">
+        {/* Globe aligned at bottom and overlapping the card without absolute positioning */}
+        <div className="col-start-1 row-start-1 w-full flex items-end justify-center">
+          <Image
+            src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/global.png"
+            alt="Growth Globe"
+            width={520}
+            height={520}
+            className="pointer-events-none select-none w-[90%] h-auto object-contain mb-[-250px]"
+          />
+        </div>
+        {/* Centered badge overlay */}
+        <div className="col-start-1 row-start-1 place-self-center">
           <Badge variant="outline" className="rounded-full text-sm px-3 py-1 bg-white/80 backdrop-blur-sm border-border text-black">
-            {loading ? "Loading..." : (memberInfo?.country || "Unknown")}
+            Coming Soon
           </Badge>
         </div>
       </CardContent>

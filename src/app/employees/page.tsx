@@ -139,7 +139,7 @@ export default function EmployeesPage() {
                     <div>
                       <h1 className="text-2xl font-bold">Employees</h1>
                       <p className="text-sm text-muted-foreground">
-                        Manage your team members and their information
+                        Manage your team members and their information.
                       </p>
                     </div>
                   </div>
@@ -210,7 +210,7 @@ export default function EmployeesPage() {
                   <div>
                     <h1 className="text-2xl font-bold">Employees</h1>
                     <p className="text-sm text-muted-foreground">
-                      Manage your team members and their information
+                      Manage your team members and their information.
                     </p>
                   </div>
                 </div>
@@ -292,7 +292,6 @@ export default function EmployeesPage() {
                                 </Avatar>
                                 <div>
                                   <div className="font-medium">{employee.firstName} {employee.lastName}</div>
-                                  <div className="text-sm text-muted-foreground">{employee.email}</div>
                                 </div>
                               </div>
                             </TableCell>

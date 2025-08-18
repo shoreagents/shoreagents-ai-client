@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Query to get user data from Railway PostgreSQL - check all user types
+    // Query to get user data - only allow Client users (matching login route restriction)
     const userQuery = `
       SELECT 
         u.id,
@@ -21,21 +21,23 @@ export async function GET(request: NextRequest) {
         pi.first_name,
         pi.last_name,
         pi.profile_picture,
-        COALESCE(c.member_id, a.member_id) as member_id,
-        COALESCE(c.department_id, a.department_id) as department_id
+        c.member_id,
+        c.department_id,
+        m.company_id as company_uuid
       FROM users u
       LEFT JOIN personal_info pi ON u.id = pi.user_id
       LEFT JOIN clients c ON u.id = c.user_id
-      LEFT JOIN agents a ON u.id = a.user_id
+      LEFT JOIN members m ON m.id = c.member_id
       WHERE u.email = $1 
-        AND (u.user_type = 'Client' OR u.user_type = 'Internal' OR u.user_type = 'Agent')
+        AND u.user_type = 'Client'
+        AND c.user_id IS NOT NULL
     `
 
     const userResult = await pool.query(userQuery, [email])
 
     if (userResult.rows.length === 0) {
       return NextResponse.json(
-        { error: 'User not found or not authorized. Only Client, Internal, and Agent users are allowed.' },
+        { error: 'User not found or not authorized. Only Client users are allowed.' },
         { status: 404 }
       )
     }
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
         profilePicture: dbUser.profile_picture,
         memberId: dbUser.member_id,
         departmentId: dbUser.department_id,
+        companyUuid: dbUser.company_uuid,
         isAuthenticated: true
       }
     })

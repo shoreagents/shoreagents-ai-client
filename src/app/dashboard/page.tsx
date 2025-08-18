@@ -343,6 +343,8 @@ export default function Dashboard() {
                     maxRows={5}
                     title="Activity Rankings"
                     description="Top 5 performers for this month based on activity points."
+                    scrollable
+                    visibleRows={3}
                   />
                   <GrowthRateCard />
                 </div>
