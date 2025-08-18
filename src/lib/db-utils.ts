@@ -74,7 +74,7 @@ export async function getAllTickets(): Promise<Ticket[]> {
 }
 
 // Get tickets by status (filtered by IT role, excluding For Approval)
-export async function getTicketsByStatus(status: string, _past: boolean = false): Promise<Ticket[]> {
+export async function getTicketsByStatus(status: string, past: boolean = false): Promise<Ticket[]> {
   const result = await pool.query(`
     SELECT t.id, t.ticket_id, t.user_id, t.concern, t.details, t.status, t.position, t.created_at, t.resolved_at, t.resolved_by,
            t.role_id, pi.profile_picture, pi.first_name, pi.last_name, s.station_id, tc.name as category_name,

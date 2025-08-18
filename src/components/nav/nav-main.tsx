@@ -2,6 +2,7 @@
 
 import { type LucideIcon } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { useRef } from "react"
 
 import {
   SidebarGroup,

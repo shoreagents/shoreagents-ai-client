@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 5000) // 5 second timeout
     
     return () => clearTimeout(timeout)
-  }, [loading])
+  }, [])
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
