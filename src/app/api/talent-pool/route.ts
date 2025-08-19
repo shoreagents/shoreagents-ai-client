@@ -164,6 +164,17 @@ export async function GET(request: NextRequest) {
                 if (skillsData.languages && Array.isArray(skillsData.languages)) {
                   allSkills.push(...skillsData.languages)
                 }
+                if (skillsData.tools && Array.isArray(skillsData.tools)) {
+                  allSkills.push(...skillsData.tools)
+                }
+                // Add any other categories that might exist
+                Object.keys(skillsData).forEach(category => {
+                  if (category !== 'soft' && category !== 'technical' && category !== 'languages' && category !== 'tools') {
+                    if (Array.isArray(skillsData[category])) {
+                      allSkills.push(...skillsData[category])
+                    }
+                  }
+                })
                 return allSkills
               }
               // Fallback for array format
@@ -176,6 +187,13 @@ export async function GET(request: NextRequest) {
               return []
             }
           })() : [],
+          originalSkillsData: userData.resume_skills ? (() => {
+            try {
+              return JSON.parse(userData.resume_skills)
+            } catch (e) {
+              return null
+            }
+          })() : null,
           description: userData.resume_summary || row.comment || 'Professional summary not available',
           category: 'General', // Default category
           status: row.status,

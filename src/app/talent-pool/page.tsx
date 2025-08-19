@@ -55,7 +55,7 @@ export default function TalentPoolPage() {
   const [sortBy, setSortBy] = useState("rating")
   const [selectedTalent, setSelectedTalent] = useState<TalentProfile | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [openTooltipId, setOpenTooltipId] = useState<string | null>(null)
+
 
   useEffect(() => {
     const fetchTalents = async () => {
@@ -262,20 +262,13 @@ export default function TalentPoolPage() {
                                       ))}
                                       {talent.skills.length > 8 && (
                                         <TooltipProvider>
-                                          <Tooltip 
-                                            open={openTooltipId === talent.id}
-                                            onOpenChange={(open) => setOpenTooltipId(open ? talent.id : null)}
-                                            delayDuration={0}
-                                          >
+                                          <Tooltip>
                                             <TooltipTrigger asChild>
-                                              <Badge 
-                                                className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0 cursor-pointer hover:bg-gray-300 dark:hover:bg-zinc-700 transition-colors"
-                                                onClick={() => setOpenTooltipId(openTooltipId === talent.id ? null : talent.id)}
-                                              >
+                                              <Badge className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0 cursor-pointer hover:bg-gray-300 dark:hover:bg-zinc-700 transition-colors">
                                                 +{talent.skills.length - 8} more
                                               </Badge>
                                             </TooltipTrigger>
-                                            <TooltipContent side="top" className="p-2">
+                                            <TooltipContent side="top" className="p-3 max-w-xs">
                                               <div className="text-center">
                                                 <div className="flex flex-wrap gap-2 justify-center">
                                                   {talent.skills.slice(8).map((skill: string, index: number) => (

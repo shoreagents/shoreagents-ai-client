@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from "framer-motion"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface TalentsDetailModalProps {
   talent: TalentProfile | null
@@ -29,6 +30,7 @@ interface TalentProfile {
   rating: number
   description: string
   skills: string[]
+  originalSkillsData?: any
   position?: string
   shift?: string
   status?: string
@@ -136,6 +138,10 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   const [hoveredComment, setHoveredComment] = React.useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
   const [commentToDelete, setCommentToDelete] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState("information")
+  const [aiAnalysis, setAiAnalysis] = React.useState<any>(null)
+  const [isLoadingAi, setIsLoadingAi] = React.useState(false)
+  const [aiError, setAiError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     // Reset comments on modal open or talent change
@@ -159,6 +165,34 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
     }
     fetchComments()
   }, [isOpen, talent?.id])
+
+  React.useEffect(() => {
+    const fetchAi = async () => {
+      if (!isOpen || !talent?.id) return
+      if (activeTab !== 'ai-analysis') return
+      if (aiAnalysis) return
+      setIsLoadingAi(true)
+      setAiError(null)
+      try {
+        const resp = await fetch(`/api/talent-pool/${talent.id}/ai-analysis`)
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}))
+          throw new Error(err.error || 'Failed to fetch AI analysis')
+        }
+        const data = await resp.json()
+        if (data?.hasAnalysis && data.analysis) {
+          setAiAnalysis(data.analysis)
+        } else {
+          setAiAnalysis(null)
+        }
+      } catch (e: any) {
+        setAiError(e?.message || 'Failed to load AI analysis')
+      } finally {
+        setIsLoadingAi(false)
+      }
+    }
+    fetchAi()
+  }, [isOpen, talent?.id, activeTab])
 
   if (!talent) return null
 
@@ -312,185 +346,326 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                 <Separator />
               </div>
 
-              {/* Talent Content */}
-              <div className="flex-1 px-6 py-5 overflow-y-auto">
-                <div className="space-y-6">
-                  {/* About Section */}
-                  <div>
-                    <h3 className="text-lg font-medium mb-2 text-muted-foreground">About</h3>
-                    <div className="rounded-lg p-6 text-sm leading-relaxed min-h-[120px] border">
-                      {talent.description || "No description provided."}
-                    </div>
-                  </div>
+                             {/* Talent Content - Tabbed View */}
+               <div className="flex-1 px-6 py-5 overflow-y-auto">
+                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                       <TabsList className="grid w-full grid-cols-2 mb-6">
+                      <TabsTrigger value="information" className="text-sm font-medium">
+                        About
+                      </TabsTrigger>
+                      <TabsTrigger value="ai-analysis" className="text-sm font-medium">
+                        AI Analysis
+                      </TabsTrigger>
+                    </TabsList>
 
-                                                        {/* Skills and Resume & AI Analysis Section - 2 Columns */}
-                   <div className="grid grid-cols-2 gap-6 items-start">
-                     {/* Skills Section */}
-                     <div className="h-full">
-                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Skills</h3>
-                       <div className="rounded-lg p-6 min-h-[200px] border h-full flex flex-col">
-                         <div className="space-y-4 flex-1">
-                           {/* Technical Skills */}
-                           {talent.skills.filter(skill => 
-                             ['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora'].includes(skill)
-                           ).length > 0 && (
-                             <div>
-                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Technical Skills</h4>
-                               <div className="flex flex-wrap gap-2">
-                                 {talent.skills.filter(skill => 
-                                   ['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora'].includes(skill)
-                                 ).map((skill: string, index: number) => (
-                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                     {skill}
-                                   </Badge>
-                                 ))}
+                   {/* Information Tab */}
+                   <TabsContent value="information" className="space-y-6">
+                                           {/* Summary Section */}
+                      <div>
+                        <h3 className="text-lg font-medium mb-2 text-muted-foreground">Summary</h3>
+                        <div className="rounded-lg p-6 text-sm leading-relaxed min-h-[120px] border">
+                          {talent.description || "No description provided."}
+                        </div>
+                      </div>
+
+                                           {/* Skills and Resume Section - 2 Columns */}
+                      <div className="grid grid-cols-2 gap-6 items-start">
+                        {/* Skills Section */}
+                        <div className="h-full">
+                          <h3 className="text-lg font-medium mb-2 text-muted-foreground">Skills</h3>
+                          <div className="rounded-lg p-6 min-h-[200px] border h-full flex flex-col">
+                            <div className="space-y-4 flex-1">
+                              {/* Dynamic Skills Categories */}
+                              {(() => {
+                                // Get the original skills data from the talent object
+                                const originalSkillsData = (talent as any).originalSkillsData || talent.skills
+                                
+                                // If we have structured skills data, display by category
+                                if (originalSkillsData && typeof originalSkillsData === 'object' && !Array.isArray(originalSkillsData)) {
+                                  const categories = Object.keys(originalSkillsData)
+                                  const validCategories = categories.filter(cat => 
+                                    Array.isArray(originalSkillsData[cat]) && originalSkillsData[cat].length > 0
+                                  )
+                                  
+                                  if (validCategories.length > 0) {
+                                    return validCategories.map((category) => (
+                                      <div key={category}>
+                                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                                          {category.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                                        </h4>
+                                        <div className="flex flex-wrap gap-2">
+                                          {originalSkillsData[category].map((skill: string, index: number) => (
+                                            <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                              {skill}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))
+                                  }
+                                }
+                                
+                                // Fallback to flat skills array if no structured data
+                                if (Array.isArray(talent.skills) && talent.skills.length > 0) {
+                                  return (
+                                    <div>
+                                      <h4 className="text-sm font-medium text-muted-foreground mb-2">All Skills</h4>
+                                      <div className="flex flex-wrap gap-2">
+                                        {talent.skills.map((skill: string, index: number) => (
+                                          <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                            {skill}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )
+                                }
+                                
+                                // No skills fallback
+                                return (
+                                  <span className="text-sm text-muted-foreground">No skills listed</span>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Resume Container */}
+                        <div className="h-full">
+                          <h3 className="text-lg font-medium mb-2 text-muted-foreground">Resume</h3>
+                          <div className="rounded-lg p-6 min-h-[200px] border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 hover:from-blue-100 hover:to-indigo-200 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all duration-200 cursor-pointer h-full flex flex-col"
+                               onClick={() => talent.resumeSlug && window.open(`https://www.bpoc.io/${talent.resumeSlug}`, '_blank')}>
+                            <div className="flex flex-col items-center justify-center flex-1 text-center">
+                              <div className="mb-3">
+                                <div className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center mb-2">
+                                  <IconFile className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                </div>
+                              </div>
+                              <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                                View Resume
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Click to open resume
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                     {/* Education Section */}
+                     {talent.education && talent.education.length > 0 && (
+                       <div>
+                         <h3 className="text-lg font-medium mb-2 text-muted-foreground">Education</h3>
+                         <div className="rounded-lg p-6 min-h-[120px] border">
+                           <div className="space-y-2">
+                             {talent.education.map((edu: Education, index: number) => (
+                               <div key={index} className="flex items-start gap-2">
+                                 <IconAward className="h-4 w-4 text-yellow-500" />
+                                 <div className="flex-1">
+                                   <p className="text-sm font-medium">{edu.degree}</p>
+                                   <p className="text-xs text-muted-foreground">{edu.major}</p>
+                                   <p className="text-xs text-muted-foreground">{edu.institution}</p>
+                                   <p className="text-xs text-muted-foreground">{edu.years}</p>
+                                   <p className="text-xs text-muted-foreground">{edu.location}</p>
+                                 </div>
                                </div>
-                             </div>
-                           )}
-                           
-                           {/* Soft Skills */}
-                           {talent.skills.filter(skill => 
-                             ['Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
-                           ).length > 0 && (
-                             <div>
-                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Soft Skills</h4>
-                               <div className="flex flex-wrap gap-2">
-                                 {talent.skills.filter(skill => 
-                                   ['Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
-                                 ).map((skill: string, index: number) => (
-                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                     {skill}
-                                   </Badge>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
-                           
-                           {/* Other Skills */}
-                           {talent.skills.filter(skill => 
-                             !['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora', 'Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
-                           ).length > 0 && (
-                             <div>
-                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Other Skills</h4>
-                               <div className="flex flex-wrap gap-2">
-                                 {talent.skills.filter(skill => 
-                                   !['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora', 'Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
-                                 ).map((skill: string, index: number) => (
-                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                     {skill}
-                                   </Badge>
-                                 ))}
-                               </div>
-                             </div>
-                           )}
-                           
-                           {/* No Skills Fallback */}
-                           {(!talent.skills || talent.skills.length === 0) && (
-                             <span className="text-sm text-muted-foreground">No skills listed</span>
-                           )}
+                             ))}
+                           </div>
                          </div>
                        </div>
-                     </div>
+                     )}
 
-                     {/* Resume & AI Analysis Section */}
-                     <div className="h-full">
-                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Resume & AI Analysis</h3>
-                       <div className="rounded-lg p-6 min-h-[200px] border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 hover:from-blue-100 hover:to-indigo-200 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all duration-200 cursor-pointer h-full flex flex-col"
-                            onClick={() => talent.resumeSlug && window.open(`https://www.bpoc.io/${talent.resumeSlug}`, '_blank')}>
-                         <div className="flex flex-col items-center justify-center flex-1 text-center">
-                           <div className="mb-3">
-                             <div className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center mb-2">
-                               <IconFile className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                     {/* Languages Section */}
+                     {talent.languages && talent.languages.length > 0 && (
+                       <div>
+                         <h3 className="text-lg font-medium mb-2 text-muted-foreground">Languages</h3>
+                         <div className="rounded-lg p-6 min-h-[120px] border">
+                           <div className="flex flex-wrap gap-2">
+                             {talent.languages.map((language: string, index: number) => (
+                               <Badge key={index} variant="outline" className="text-xs">
+                                 {language}
+                               </Badge>
+                             ))}
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Certifications Section */}
+                     {talent.certifications && talent.certifications.length > 0 && (
+                       <div>
+                         <h3 className="text-lg font-medium mb-2 text-muted-foreground">Certifications</h3>
+                         <div className="rounded-lg p-6 min-h-[120px] border">
+                           <div className="space-y-2">
+                             {talent.certifications.map((cert: string, index: number) => (
+                               <div key={index} className="flex items-center gap-2">
+                                 <IconAward className="h-4 w-4 text-yellow-500" />
+                                 <span className="text-sm">{cert}</span>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Portfolio Section */}
+                     {talent.portfolio && (
+                       <div>
+                         <h3 className="text-lg font-medium mb-2 text-muted-foreground">Portfolio</h3>
+                         <div className="rounded-lg p-6 min-h-[120px] border">
+                           <div className="flex items-center gap-2 mb-2">
+                             <IconCode className="h-4 w-4 text-muted-foreground" />
+                             <a 
+                               href={talent.portfolio} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="text-blue-600 hover:underline"
+                             >
+                               {talent.portfolio}
+                             </a>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </TabsContent>
+
+                   {/* AI Analysis Tab */}
+                   <TabsContent value="ai-analysis" className="space-y-6">
+                     {isLoadingAi ? (
+                       <div className="space-y-4">
+                         <div className="h-8 w-56 bg-muted animate-pulse rounded" />
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                           <div className="h-24 bg-muted animate-pulse rounded" />
+                           <div className="h-24 bg-muted animate-pulse rounded" />
+                           <div className="h-24 bg-muted animate-pulse rounded" />
+                         </div>
+                         <div className="h-32 bg-muted animate-pulse rounded" />
+                       </div>
+                     ) : aiError ? (
+                       <div className="text-center py-12">
+                         <p className="text-sm text-red-500 mb-3">{aiError}</p>
+                         <Button 
+                           onClick={() => { setAiAnalysis(null); setAiError(null); setActiveTab('ai-analysis') }}
+                           variant="secondary"
+                           size="sm"
+                         >
+                           Retry
+                         </Button>
+                       </div>
+                     ) : !aiAnalysis ? (
+                       <div className="text-center py-12">
+                         <div className="w-16 h-16 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center mx-auto mb-4">
+                           <IconFile className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                         </div>
+                         <h3 className="text-xl font-semibold mb-2">AI-Powered Analysis</h3>
+                         <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                           No AI analysis results were found for this talent.
+                         </p>
+                         {talent.resumeSlug && (
+                           <Button 
+                             onClick={() => window.open(`https://www.bpoc.io/${talent.resumeSlug}`, '_blank')}
+                             className="bg-blue-600 hover:bg-blue-700"
+                           >
+                             <IconFile className="h-4 w-4 mr-2" />
+                             Open Resume
+                           </Button>
+                         )}
+                       </div>
+                     ) : (
+                       <div className="space-y-6">
+                         {/* Key Strengths */}
+                         {Array.isArray(aiAnalysis.keyStrengths) && aiAnalysis.keyStrengths.length > 0 && (
+                           <div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               {/* Key Strengths Card */}
+                               {Array.isArray(aiAnalysis.keyStrengths) && aiAnalysis.keyStrengths.length > 0 && (
+                                 <Card className="h-full">
+                                   <CardHeader className="pb-2">
+                                     <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
+                                       <span>🎯</span>
+                                       Key Strengths
+                                     </CardTitle>
+                                   </CardHeader>
+                                   <CardContent className="text-sm text-foreground/90">
+                                     <ol className="list-decimal ml-4 space-y-1">
+                                       {aiAnalysis.keyStrengths.map((strength: any, idx: number) => (
+                                         <li key={idx}>
+                                           {typeof strength === 'string' ? strength : strength?.title || strength?.name || 'Strength'}
+                                         </li>
+                                       ))}
+                                     </ol>
+                                   </CardContent>
+                                 </Card>
+                               )}
+                               
+                               {(() => {
+                                 const strengths = aiAnalysis.strengthsAnalysis
+                                 const categories = [
+                                   { key: 'topStrengths', label: 'Top Strengths', icon: '⭐' },
+                                   { key: 'coreStrengths', label: 'Core Strengths', icon: '💪' },
+                                   { key: 'technicalStrengths', label: 'Technical Strengths', icon: '⚙️' },
+                                   { key: 'achievements', label: 'Notable Achievements', icon: '🏆' },
+                                   { key: 'marketAdvantage', label: 'Market Advantages', icon: '📈' },
+                                   { key: 'uniqueValue', label: 'Unique Value Proposition', icon: '💎' },
+                                   { key: 'areasToHighlight', label: 'Areas to Highlight', icon: '✨' }
+                                 ]
+                                 
+                                 return categories.map(({ key, label, icon }) => {
+                                   const data = strengths[key]
+                                   if (!data) return null
+                                   
+                                   let displayValue = ''
+                                   if (Array.isArray(data)) {
+                                     displayValue = data.map((item: any) => 
+                                       typeof item === 'string' ? item : item?.title || item?.name || item?.description || 'Item'
+                                     ).join(', ')
+                                   } else if (typeof data === 'string') {
+                                     displayValue = data
+                                   } else {
+                                     return null
+                                   }
+                                   
+                                   if (!displayValue.trim()) return null
+                                   
+                                   return (
+                                     <Card key={key} className="h-full">
+                                       <CardHeader className="pb-2">
+                                         <CardTitle className="text-base text-muted-foreground flex items-center gap-2">
+                                           <span>{icon}</span>
+                                           {label}
+                                         </CardTitle>
+                                       </CardHeader>
+                                       <CardContent className="text-sm text-foreground/90">
+                                         {Array.isArray(data) ? (
+                                           <ol className="list-decimal ml-4 space-y-1">
+                                             {data.map((item: any, idx: number) => (
+                                               <li key={idx}>
+                                                 {typeof item === 'string' ? item : item?.title || item?.name || item?.description || 'Item'}
+                                               </li>
+                                             ))}
+                                           </ol>
+                                         ) : typeof data === 'string' ? (
+                                           <ol className="list-decimal ml-4 space-y-1">
+                                             <li>{data}</li>
+                                           </ol>
+                                         ) : (
+                                           <ol className="list-decimal ml-4 space-y-1">
+                                             <li>{JSON.stringify(data)}</li>
+                                           </ol>
+                                         )}
+                                       </CardContent>
+                                     </Card>
+                                   )
+                                 }).filter(Boolean)
+                               })()}
                              </div>
                            </div>
-                           <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
-                             View Detailed Analysis
-                           </p>
-                           <p className="text-xs text-muted-foreground">
-                             AI-powered resume insights
-                           </p>
-                         </div>
+                         )}
                        </div>
-                     </div>
-                   </div>
-
-                   {/* Education Section */}
-                   {talent.education && talent.education.length > 0 && (
-                     <div>
-                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Education</h3>
-                       <div className="rounded-lg p-6 min-h-[120px] border">
-                         <div className="space-y-2">
-                           {talent.education.map((edu: Education, index: number) => (
-                             <div key={index} className="flex items-start gap-2">
-                               <IconAward className="h-4 w-4 text-yellow-500" />
-                               <div className="flex-1">
-                                 <p className="text-sm font-medium">{edu.degree}</p>
-                                 <p className="text-xs text-muted-foreground">{edu.major}</p>
-                                 <p className="text-xs text-muted-foreground">{edu.institution}</p>
-                                 <p className="text-xs text-muted-foreground">{edu.years}</p>
-                                 <p className="text-xs text-muted-foreground">{edu.location}</p>
-                               </div>
-                             </div>
-                           ))}
-                         </div>
-                       </div>
-                     </div>
-                   )}
-
-                  {/* Languages Section */}
-                  {talent.languages && talent.languages.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-2 text-muted-foreground">Languages</h3>
-                      <div className="rounded-lg p-6 min-h-[120px] border">
-                        <div className="flex flex-wrap gap-2">
-                          {talent.languages.map((language: string, index: number) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {language}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Certifications Section */}
-                  {talent.certifications && talent.certifications.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-2 text-muted-foreground">Certifications</h3>
-                      <div className="rounded-lg p-6 min-h-[120px] border">
-                        <div className="space-y-2">
-                          {talent.certifications.map((cert: string, index: number) => (
-                            <div key={index} className="flex items-center gap-2">
-                              <IconAward className="h-4 w-4 text-yellow-500" />
-                              <span className="text-sm">{cert}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Portfolio Section */}
-                  {talent.portfolio && (
-                    <div>
-                      <h3 className="text-lg font-medium mb-2 text-muted-foreground">Portfolio</h3>
-                      <div className="rounded-lg p-6 min-h-[120px] border">
-                        <div className="flex items-center gap-2 mb-2">
-                          <IconCode className="h-4 w-4 text-muted-foreground" />
-                          <a 
-                            href={talent.portfolio} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {talent.portfolio}
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+                     )}
+                   </TabsContent>
+                 </Tabs>
+               </div>
             </div>
 
             {/* Right Panel - Activity & Comments */}
@@ -633,28 +808,27 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
          </DialogContent>
        </Dialog>
 
-       {/* Delete Confirmation Modal */}
-       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-         <DialogContent className="max-w-md">
-           <DialogHeader>
-             <DialogTitle className="flex items-center gap-2">
-               <IconTrash className="h-5 w-5 text-red-500" />
-               Delete Comment
-             </DialogTitle>
-           </DialogHeader>
-           <div className="py-4">
-             <p className="text-sm text-muted-foreground">
-               Are you sure you want to delete this comment? This action cannot be undone.
-             </p>
-           </div>
+               {/* Delete Confirmation Modal */}
+        <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <DialogContent className="max-w-sm" hideClose>
+            <DialogHeader>
+              <DialogTitle>
+                Delete Comment
+              </DialogTitle>
+            </DialogHeader>
+                       <div>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete this comment? This action cannot be undone.
+              </p>
+            </div>
            <div className="flex justify-end gap-3">
-             <Button 
-               variant="outline" 
-               onClick={cancelDeleteComment}
-               disabled={deletingId !== null}
-             >
-               Cancel
-             </Button>
+                           <Button 
+                variant="ghost" 
+                onClick={cancelDeleteComment}
+                disabled={deletingId !== null}
+              >
+                Cancel
+              </Button>
              <Button 
                variant="destructive" 
                onClick={confirmDeleteComment}
