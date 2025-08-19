@@ -7,7 +7,6 @@ import NumberFlow from '@number-flow/react'
 import { motion, AnimatePresence } from "framer-motion"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 
 import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
@@ -263,9 +262,9 @@ export default function Dashboard() {
                 </div>
               </div>
               {loading ? (
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  {/* Active Tickets Skeleton */}
-                  <Card className="@container/card">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 auto-rows-[180px] gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
+                  {/* 1. Salmon (2x2) */}
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-2">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="flex items-center gap-2 mt-2">
@@ -283,75 +282,141 @@ export default function Dashboard() {
                     </CardFooter>
                   </Card>
                   
-                  {/* Closed Tickets Skeleton */}
-                  <Card className="@container/card">
+                  {/* 2. Broccoli (1x1) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="flex items-center gap-2 mt-2">
                         <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
                         <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
                       </div>
-                      <div className="absolute right-4 top-4">
-                        <div className="h-6 w-20 bg-muted animate-pulse rounded-lg"></div>
-                      </div>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
-                      <div className="h-3 w-48 bg-muted animate-pulse rounded"></div>
-                      <div className="mt-2">
-                        <div className="flex gap-1">
-                          <div className="h-6 w-12 bg-muted animate-pulse rounded"></div>
-                          <div className="h-6 w-16 bg-muted animate-pulse rounded"></div>
-                          <div className="h-6 w-20 bg-muted animate-pulse rounded"></div>
-                        </div>
-                      </div>
-                    </CardFooter>
+                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
                   </Card>
                   
-                  {/* Placeholder Skeleton for Activity Rankings */}
-                  <Card className="@container/card">
+                  {/* 3. Tamago (1x1) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                    <CardHeader className="relative">
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                  </Card>
+                  
+                  {/* 4. Pork (1x2) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-2">
+                    <CardHeader className="relative">
+                      <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                      <div className="h-8 w-12 bg-muted animate-pulse rounded mt-2"></div>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                  </Card>
+
+                  {/* 5. Edamame (2x1) */}
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="h-8 w-24 bg-muted animate-pulse rounded mt-2"></div>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className="h-4 w-40 bg-muted animate-pulse rounded"></div>
-                      <div className="h-3 w-32 bg-muted animate-pulse rounded"></div>
-                    </CardFooter>
+                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
                   </Card>
-                  
-                  {/* Connect Globe Skeleton */}
-                  <Card className="@container/card">
+
+                  {/* 6. Tomato (1x1) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
                     <CardHeader className="relative">
-                      <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
-                      <div className="h-8 w-12 bg-muted animate-pulse rounded mt-2"></div>
-                      <div className="absolute right-4 top-4">
-                        <div className="h-6 w-16 bg-muted animate-pulse rounded-lg"></div>
-                      </div>
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className="h-4 w-36 bg-muted animate-pulse rounded"></div>
-                      <div className="h-3 w-40 bg-muted animate-pulse rounded"></div>
-                    </CardFooter>
+                  </Card>
+
+                  {/* 7. Tofu (1x1) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                    <CardHeader className="relative">
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 8. Tempura (2x1) */}
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1">
+                    <CardHeader className="relative">
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 9. Gyoza (1x1) */}
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                    <CardHeader className="relative">
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                    </CardHeader>
                   </Card>
                 </div>
               ) : (
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  <NewHires employees={employees} />
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 auto-rows-[180px] gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
+                  {/* 1. Salmon (2x2) - New Hires */}
+                  <NewHires employees={employees} className="sm:col-span-2 lg:col-span-2 lg:row-span-2" />
+
+                  {/* 2. Broccoli (1x1) - Closed */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">Closed</CardTitle>
+                      <CardDescription>{allClosedTicketsCount} total</CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 3. Tamago (1x1) - In Progress */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">In Progress</CardTitle>
+                      <CardDescription>{statusCounts.inProgress} tickets</CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 4. Pork (1x2) - Connect */}
+                  <GrowthRateCard className="lg:col-span-1 lg:row-span-2" />
+
+                  {/* 5. Edamame (2x1) - Activity Rankings */}
                   <ActivityRankings 
                     leaderboardData={leaderboardData} 
-                    maxRows={5}
+                    maxRows={6}
                     title="Activity Rankings"
-                    description="Top 5 performers for this month based on activity points."
+                    description="Top performers for this month based on activity points."
                     scrollable
-                    visibleRows={3}
+                    visibleRows={4}
+                    className="lg:col-span-2 lg:row-span-1"
                   />
-                  <GrowthRateCard />
+
+                  {/* 6. Tomato (1x1) - Stuck */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">Stuck</CardTitle>
+                      <CardDescription>{statusCounts.stuck} tickets</CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 7. Tofu (1x1) - On Hold */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">On Hold</CardTitle>
+                      <CardDescription>{statusCounts.onHold} tickets</CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 8. Tempura (2x1) - Actioned */}
+                  <Card className="lg:col-span-2 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">Actioned</CardTitle>
+                      <CardDescription>{statusCounts.actioned} tickets</CardDescription>
+                    </CardHeader>
+                  </Card>
+
+                  {/* 9. Gyoza (1x1) - Approved */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">Approved</CardTitle>
+                      <CardDescription>{statusCounts.approved} tickets</CardDescription>
+                    </CardHeader>
+                  </Card>
                 </div>
               )}
-              <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
-              </div>
+              {/* Removed Total Visitors section */}
             </div>
           </div>
         </div>
