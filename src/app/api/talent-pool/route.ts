@@ -91,18 +91,14 @@ export async function GET(request: NextRequest) {
             u.bio,
             u.email,
             (SELECT COUNT(*) FROM applications a2 WHERE a2.user_id = u.id AND a2.status = 'hired') as completed_jobs,
-            (SELECT re.resume_data->>'skills' as resume_skills
-             FROM resumes_extracted re
-             WHERE re.user_id = u.id
+            (SELECT rg.generated_resume_data->>'skills' as resume_skills
+             FROM resumes_generated rg
+             WHERE rg.user_id = u.id
              LIMIT 1) as resume_skills,
-            (SELECT re.resume_data->>'summary' as resume_summary
-             FROM resumes_extracted re
-             WHERE re.user_id = u.id
-             LIMIT 1) as resume_summary,
-            (SELECT re.resume_data->>'education' as resume_education
-             FROM resumes_extracted re
-             WHERE re.user_id = u.id
-             LIMIT 1) as resume_education
+            (SELECT rg.generated_resume_data->>'summary' as resume_summary
+             FROM resumes_generated rg
+             WHERE rg.user_id = u.id
+             LIMIT 1) as resume_summary
           FROM users u
           WHERE u.id = $1
         `
@@ -155,17 +151,28 @@ export async function GET(request: NextRequest) {
           completedJobs: parseInt(userData.completed_jobs) || 0,
           skills: userData.resume_skills ? (() => {
             try {
-              return JSON.parse(userData.resume_skills)
+              const skillsData = JSON.parse(userData.resume_skills)
+              // Handle nested skills structure
+              if (typeof skillsData === 'object' && skillsData !== null) {
+                const allSkills: string[] = []
+                if (skillsData.soft && Array.isArray(skillsData.soft)) {
+                  allSkills.push(...skillsData.soft)
+                }
+                if (skillsData.technical && Array.isArray(skillsData.technical)) {
+                  allSkills.push(...skillsData.technical)
+                }
+                if (skillsData.languages && Array.isArray(skillsData.languages)) {
+                  allSkills.push(...skillsData.languages)
+                }
+                return allSkills
+              }
+              // Fallback for array format
+              if (Array.isArray(skillsData)) {
+                return skillsData
+              }
+              return []
             } catch (e) {
               console.error(`Error parsing skills JSON for ${row.applicant_id}:`, e)
-              return []
-            }
-          })() : [],
-          education: userData.resume_education ? (() => {
-            try {
-              return JSON.parse(userData.resume_education)
-            } catch (e) {
-              console.error(`Error parsing education JSON for ${row.applicant_id}:`, e)
               return []
             }
           })() : [],
@@ -197,7 +204,6 @@ export async function GET(request: NextRequest) {
           hourlyRate: row.expected_monthly_salary || 0,
           completedJobs: 0,
           skills: [],
-          education: [], // Return empty array for education if parsing fails
           description: row.comment || 'Professional summary not available',
           category: 'General',
           status: row.status,

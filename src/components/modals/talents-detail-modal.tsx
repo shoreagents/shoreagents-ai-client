@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface TalentsDetailModalProps {
   talent: TalentProfile | null
@@ -132,6 +133,9 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false)
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
   const [commentsList, setCommentsList] = React.useState<Comment[]>(talent?.comments || [])
+  const [hoveredComment, setHoveredComment] = React.useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false)
+  const [commentToDelete, setCommentToDelete] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     // Reset comments on modal open or talent change
@@ -196,23 +200,35 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
 
   const handleDeleteComment = async (commentId: string) => {
     if (!talent) return
-    if (!confirm('Delete this comment?')) return
-    setDeletingId(commentId)
+    setCommentToDelete(commentId)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteComment = async () => {
+    if (!talent || !commentToDelete) return
+    setDeletingId(commentToDelete)
     try {
-      const resp = await fetch(`/api/talent-pool/${talent.id}/comments?commentId=${commentId}`, {
+      const resp = await fetch(`/api/talent-pool/${talent.id}/comments?commentId=${commentToDelete}`, {
         method: 'DELETE'
       })
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}))
         throw new Error(err.error || 'Failed to delete comment')
       }
-      setCommentsList((prev) => prev.filter(c => c.id !== commentId))
+      setCommentsList((prev) => prev.filter(c => c.id !== commentToDelete))
+      setShowDeleteModal(false)
+      setCommentToDelete(null)
     } catch (e) {
       console.error('Delete comment failed:', e)
       alert('Failed to delete comment')
     } finally {
       setDeletingId(null)
     }
+  }
+
+  const cancelDeleteComment = () => {
+    setShowDeleteModal(false)
+    setCommentToDelete(null)
   }
 
   return (
@@ -307,66 +323,119 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                     </div>
                   </div>
 
-                  {/* Skills Section */}
-                  <div>
-                    <h3 className="text-lg font-medium mb-2 text-muted-foreground">Skills</h3>
-                    <div className="rounded-lg p-6 min-h-[120px] border">
-                      <div className="flex flex-wrap gap-2">
-                        {talent.skills.map((skill: string, index: number) => (
-                          <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                                                        {/* Skills and Resume & AI Analysis Section - 2 Columns */}
+                   <div className="grid grid-cols-2 gap-6 items-start">
+                     {/* Skills Section */}
+                     <div className="h-full">
+                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Skills</h3>
+                       <div className="rounded-lg p-6 min-h-[200px] border h-full flex flex-col">
+                         <div className="space-y-4 flex-1">
+                           {/* Technical Skills */}
+                           {talent.skills.filter(skill => 
+                             ['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora'].includes(skill)
+                           ).length > 0 && (
+                             <div>
+                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Technical Skills</h4>
+                               <div className="flex flex-wrap gap-2">
+                                 {talent.skills.filter(skill => 
+                                   ['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora'].includes(skill)
+                                 ).map((skill: string, index: number) => (
+                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                     {skill}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                           
+                           {/* Soft Skills */}
+                           {talent.skills.filter(skill => 
+                             ['Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
+                           ).length > 0 && (
+                             <div>
+                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Soft Skills</h4>
+                               <div className="flex flex-wrap gap-2">
+                                 {talent.skills.filter(skill => 
+                                   ['Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
+                                 ).map((skill: string, index: number) => (
+                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                     {skill}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                           
+                           {/* Other Skills */}
+                           {talent.skills.filter(skill => 
+                             !['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora', 'Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
+                           ).length > 0 && (
+                             <div>
+                               <h4 className="text-sm font-medium text-muted-foreground mb-2">Other Skills</h4>
+                               <div className="flex flex-wrap gap-2">
+                                 {talent.skills.filter(skill => 
+                                   !['HTML', 'CSS', 'JavaScript', 'PHP', 'Java', 'Python', 'SQL', 'WordPress', 'Grav CMS', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe Premiere', 'Adobe Lightroom', 'GIMP', 'Filmora', 'Team Leadership', 'Creative Direction', 'Project Management'].includes(skill)
+                                 ).map((skill: string, index: number) => (
+                                   <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                     {skill}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                           
+                           {/* No Skills Fallback */}
+                           {(!talent.skills || talent.skills.length === 0) && (
+                             <span className="text-sm text-muted-foreground">No skills listed</span>
+                           )}
+                         </div>
+                       </div>
+                     </div>
 
-                  {/* Education and Resume Section - 2 Columns */}
-                  <div className="grid grid-cols-2 gap-6 items-start">
-                    {/* Education Section */}
-                    {talent.education && talent.education.length > 0 && (
-                      <div className="h-full">
-                        <h3 className="text-lg font-medium mb-2 text-muted-foreground">Education</h3>
-                        <div className="rounded-lg p-6 min-h-[200px] border h-full flex flex-col">
-                          <div className="space-y-2 flex-1">
-                            {talent.education.map((edu: Education, index: number) => (
-                              <div key={index} className="flex items-start gap-2">
-                                <IconAward className="h-4 w-4 text-yellow-500" />
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium">{edu.degree}</p>
-                                  <p className="text-xs text-muted-foreground">{edu.major}</p>
-                                  <p className="text-xs text-muted-foreground">{edu.institution}</p>
-                                  <p className="text-xs text-muted-foreground">{edu.years}</p>
-                                  <p className="text-xs text-muted-foreground">{edu.location}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                     {/* Resume & AI Analysis Section */}
+                     <div className="h-full">
+                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Resume & AI Analysis</h3>
+                       <div className="rounded-lg p-6 min-h-[200px] border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 hover:from-blue-100 hover:to-indigo-200 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all duration-200 cursor-pointer h-full flex flex-col"
+                            onClick={() => talent.resumeSlug && window.open(`https://www.bpoc.io/${talent.resumeSlug}`, '_blank')}>
+                         <div className="flex flex-col items-center justify-center flex-1 text-center">
+                           <div className="mb-3">
+                             <div className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center mb-2">
+                               <IconFile className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                             </div>
+                           </div>
+                           <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                             View Detailed Analysis
+                           </p>
+                           <p className="text-xs text-muted-foreground">
+                             AI-powered resume insights
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
 
-                    {/* Resume & AI Analysis Section */}
-                    <div className="h-full">
-                      <h3 className="text-lg font-medium mb-2 text-muted-foreground">Resume & AI Analysis</h3>
-                      <div className="rounded-lg p-6 min-h-[200px] border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950/20 dark:to-indigo-950/20 hover:from-blue-100 hover:to-indigo-200 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all duration-200 cursor-pointer h-full flex flex-col"
-                           onClick={() => talent.resumeSlug && window.open(`https://www.bpoc.io/${talent.resumeSlug}`, '_blank')}>
-                        <div className="flex flex-col items-center justify-center flex-1 text-center">
-                          <div className="mb-3">
-                            <div className="w-12 h-12 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center mb-2">
-                              <IconFile className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                            </div>
-                          </div>
-                          <p className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
-                            View Detailed Analysis
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            AI-powered resume insights
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                   {/* Education Section */}
+                   {talent.education && talent.education.length > 0 && (
+                     <div>
+                       <h3 className="text-lg font-medium mb-2 text-muted-foreground">Education</h3>
+                       <div className="rounded-lg p-6 min-h-[120px] border">
+                         <div className="space-y-2">
+                           {talent.education.map((edu: Education, index: number) => (
+                             <div key={index} className="flex items-start gap-2">
+                               <IconAward className="h-4 w-4 text-yellow-500" />
+                               <div className="flex-1">
+                                 <p className="text-sm font-medium">{edu.degree}</p>
+                                 <p className="text-xs text-muted-foreground">{edu.major}</p>
+                                 <p className="text-xs text-muted-foreground">{edu.institution}</p>
+                                 <p className="text-xs text-muted-foreground">{edu.years}</p>
+                                 <p className="text-xs text-muted-foreground">{edu.location}</p>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     </div>
+                   )}
 
                   {/* Languages Section */}
                   {talent.languages && talent.languages.length > 0 && (
@@ -439,47 +508,86 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                       const commentDate = formatDate(comment.created_at)
                       
                       return (
-                        <div key={comment.id} className="group rounded-lg p-4 bg-sidebar border">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8 flex-shrink-0">
-                                <AvatarFallback>{comment.user_name?.charAt(0) || 'U'}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-medium">{comment.user_name}</span>
+                                                 <motion.div 
+                           key={comment.id} 
+                           className="rounded-lg p-4 bg-sidebar border"
+                           onHoverStart={() => setHoveredComment(comment.id)}
+                           onHoverEnd={() => setHoveredComment(null)}
+                         >
+                           <div className="flex items-center justify-between mb-3">
+                             <div className="flex items-center gap-3">
+                               <Avatar className="h-8 w-8 flex-shrink-0">
+                                 <AvatarFallback>{comment.user_name?.charAt(0) || 'U'}</AvatarFallback>
+                               </Avatar>
+                               <span className="text-sm font-medium">{comment.user_name}</span>
+                             </div>
+                             
+                             <div className="relative">
+                                                               <AnimatePresence mode="wait">
+                                  {hoveredComment !== comment.id ? (
+                                    <motion.div 
+                                      key="date-time"
+                                      className="flex items-center gap-2 text-xs text-muted-foreground"
+                                      initial={{ opacity: 0, x: 20 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      exit={{ opacity: 0, x: 20 }}
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      <span>{commentDate.date}</span>
+                                      <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
+                                      <span>{commentDate.time}</span>
+                                    </motion.div>
+                                  ) : (
+                                                                                                               <motion.div
+                                       key="clock-icon"
+                                       initial={{ opacity: 0, x: -20 }}
+                                       animate={{ opacity: 1, x: 0 }}
+                                       exit={{ opacity: 0, x: -20 }}
+                                       transition={{ duration: 0.2 }}
+                                       className="flex items-center gap-1"
+                                     >
+                                       <TooltipProvider>
+                                         <Tooltip>
+                                           <TooltipTrigger asChild>
+                                             <div className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
+                                               <IconClock className="h-4 w-4 text-muted-foreground" />
+                                             </div>
+                                           </TooltipTrigger>
+                                                                                       <TooltipContent side="top" className="p-2">
+                                              <div className="text-center">
+                                                <p className="text-xs font-medium">{commentDate.date}</p>
+                                                <p className="text-xs text-muted-foreground">{commentDate.time}</p>
+                                              </div>
+                                            </TooltipContent>
+                                         </Tooltip>
+                                       </TooltipProvider>
+                                       
+                                       <TooltipProvider>
+                                         <Tooltip>
+                                           <TooltipTrigger asChild>
+                                                                                           <div 
+                                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                                onClick={() => handleDeleteComment(comment.id)}
+                                              >
+                                                <IconTrash className="h-4 w-4 text-red-400" />
+                                              </div>
+                                           </TooltipTrigger>
+                                           <TooltipContent side="top" className="p-2">
+                                             <div className="text-center">
+                                               <p className="text-sm font-medium text-red-400">Delete</p>
+                                             </div>
+                                           </TooltipContent>
+                                         </Tooltip>
+                                       </TooltipProvider>
+                                     </motion.div>
+                                 )}
+                               </AnimatePresence>
+                             </div>
+                           </div>
+                                                       <div className="text-sm text-foreground leading-relaxed">
+                              {comment.comment}
                             </div>
-                            <div className="relative flex items-center gap-2">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground transition-all duration-200 group-hover:opacity-0 group-hover:scale-95 data-[state=open]:opacity-0 data-[state=open]:scale-95">
-                                <span>{commentDate.date}</span>
-                                <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
-                                <span>{commentDate.time}</span>
-                              </div>
-                              {comment.user_id && (
-                                <div className="absolute right-0 opacity-0 group-hover:opacity-100 transition-all duration-200 transform translate-x-2 group-hover:translate-x-0 data-[state=open]:opacity-100 data-[state=open]:translate-x-0">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-150">
-                                        <IconDots className="h-4 w-4" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-36">
-                                      <DropdownMenuItem
-                                        className="text-red-400 hover:text-red-500 focus:text-red-500"
-                                        onClick={() => handleDeleteComment(comment.id)}
-                                        disabled={deletingId === comment.id}
-                                      >
-                                        <IconTrash className="h-4 w-4 mr-0 text-current" />
-                                        {deletingId === comment.id ? 'Deleting...' : 'Delete'}
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-sm text-foreground leading-relaxed">
-                            {comment.comment}
-                          </div>
-                        </div>
+                         </motion.div>
                       )
                     })
                   ) : (
@@ -521,9 +629,43 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                 </div>
               </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </TooltipProvider>
-  )
-}
+                     </div>
+         </DialogContent>
+       </Dialog>
+
+       {/* Delete Confirmation Modal */}
+       <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+         <DialogContent className="max-w-md">
+           <DialogHeader>
+             <DialogTitle className="flex items-center gap-2">
+               <IconTrash className="h-5 w-5 text-red-500" />
+               Delete Comment
+             </DialogTitle>
+           </DialogHeader>
+           <div className="py-4">
+             <p className="text-sm text-muted-foreground">
+               Are you sure you want to delete this comment? This action cannot be undone.
+             </p>
+           </div>
+           <div className="flex justify-end gap-3">
+             <Button 
+               variant="outline" 
+               onClick={cancelDeleteComment}
+               disabled={deletingId !== null}
+             >
+               Cancel
+             </Button>
+             <Button 
+               variant="destructive" 
+               onClick={confirmDeleteComment}
+               disabled={deletingId !== null}
+               className="bg-red-600 hover:bg-red-700"
+             >
+               {deletingId !== null ? 'Deleting...' : 'Delete'}
+             </Button>
+           </div>
+         </DialogContent>
+       </Dialog>
+     </TooltipProvider>
+   )
+ }

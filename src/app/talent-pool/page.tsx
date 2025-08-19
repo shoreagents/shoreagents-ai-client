@@ -55,6 +55,7 @@ export default function TalentPoolPage() {
   const [sortBy, setSortBy] = useState("rating")
   const [selectedTalent, setSelectedTalent] = useState<TalentProfile | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [openTooltipId, setOpenTooltipId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchTalents = async () => {
@@ -162,134 +163,182 @@ export default function TalentPoolPage() {
                   </div>
                 </div>
 
-                {/* Talent Grid */}
-                {loading ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <Card key={i} className="rounded-xl">
-                        <CardHeader className="pb-4">
-                          <div className="flex items-start gap-3">
-                            <Skeleton className="h-12 w-12 rounded-full" />
-                            <div className="flex-1 space-y-2">
-                              <Skeleton className="h-5 w-3/4" />
-                              <Skeleton className="h-4 w-1/2" />
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Skeleton className="h-4 w-16" />
-                            <Skeleton className="h-4 w-20" />
-                          </div>
-                          <Skeleton className="h-16 w-full" />
-                          <div className="flex flex-wrap gap-1">
-                            <Skeleton className="h-6 w-16" />
-                            <Skeleton className="h-6 w-20" />
-                            <Skeleton className="h-6 w-14" />
-                          </div>
-                          <Skeleton className="h-10 w-full" />
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : displayTalents.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <Users className="h-12 w-12 mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No talents found</h3>
-                    <p className="text-sm">Try adjusting your search or filters</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayTalents.map((talent: TalentProfile) => (
-                      <Card
-                        key={talent.id}
-                        className="rounded-xl flex flex-col"
-                      >
-                        <CardHeader className="pb-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <Avatar className="h-12 w-12">
-                                <AvatarImage src={talent.avatar} alt={talent.name} />
-                                <AvatarFallback>
-                                  {talent.name.split(' ').map((n: string) => n[0]).join('')}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-lg leading-tight">
-                                  {talent.name}
-                                </h3>
-                                <div className="flex items-center gap-1 mt-1">
-                                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                                  <span className="text-sm font-medium">{talent.rating}</span>
+                {/* Two Column Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                  {/* Left Column - Talent Grid */}
+                  <div className="lg:col-span-3">
+                    {loading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <Card key={i} className="rounded-xl">
+                            <CardHeader className="pb-4">
+                              <div className="flex items-start gap-3">
+                                <Skeleton className="h-12 w-12 rounded-full" />
+                                <div className="flex-1 space-y-2">
+                                  <Skeleton className="h-5 w-3/4" />
+                                  <Skeleton className="h-4 w-1/2" />
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-1 text-sm">
-                              <span className="text-green-600 font-bold">₱</span>
-                              <span className="font-bold text-base">{talent.hourlyRate}</span>
-                              <span className="text-muted-foreground text-xs"> /month</span>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="flex flex-col justify-between min-h-0 flex-1">
-
-                          <div className="space-y-4">
-                            {/* Description */}
-                            <p className="text-sm text-muted-foreground line-clamp-3">
-                              {talent.description}
-                            </p>
-                            
-                            {/* Email */}
-                            {talent.email && (
-                              <div className="flex items-center gap-2 text-sm text-foreground">
-                                <Mail className="h-4 w-4" />
-                                <span className="truncate">{talent.email}</span>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <Skeleton className="h-4 w-16" />
+                                <Skeleton className="h-4 w-20" />
                               </div>
-                            )}
-
-                            {/* Skills */}
-                            <div className="flex flex-wrap gap-2">
-                              {talent.skills.slice(0, 10).map((skill: string, index: number) => (
-                                <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                  {skill}
-                                </Badge>
-                              ))}
-                              {talent.skills.length > 10 && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Badge className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0 cursor-pointer">
-                                        +{talent.skills.length - 10} more
-                                      </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs">
-                                      <div className="flex flex-wrap gap-2">
-                                        {talent.skills.slice(10).map((skill: string, index: number) => (
-                                          <Badge key={index + 10} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                            {skill}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Action Button */}
-                          <Button 
-                            variant="default" 
-                            className="w-full text-sm h-9 rounded-lg shadow-none mt-4"
-                            onClick={() => handleOpenModal(talent)}
+                              <Skeleton className="h-16 w-full" />
+                              <div className="flex flex-wrap gap-1">
+                                <Skeleton className="h-6 w-16" />
+                                <Skeleton className="h-6 w-20" />
+                                <Skeleton className="h-6 w-14" />
+                              </div>
+                              <Skeleton className="h-10 w-full" />
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : displayTalents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                        <Users className="h-12 w-12 mb-4" />
+                        <h3 className="text-lg font-medium mb-2">No talents found</h3>
+                        <p className="text-sm">Try adjusting your search or filters</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {displayTalents.map((talent: TalentProfile) => (
+                          <Card
+                            key={talent.id}
+                            className="rounded-xl flex flex-col"
                           >
-                            See Profile
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <CardHeader className="pb-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3">
+                                  <Avatar className="h-12 w-12">
+                                    <AvatarImage src={talent.avatar} alt={talent.name} />
+                                    <AvatarFallback>
+                                      {talent.name ? talent.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-lg leading-tight">
+                                      {talent.name}
+                                    </h3>
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                      <span className="text-sm font-medium">{talent.rating || 0}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 text-sm">
+                                  <span className="text-green-600 font-bold">₱</span>
+                                  <span className="font-bold text-base">{talent.hourlyRate || 0}</span>
+                                  <span className="text-muted-foreground text-xs"> /month</span>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex flex-col justify-between min-h-0 flex-1">
+
+                              <div className="space-y-4">
+                                {/* Description */}
+                                <p className="text-sm text-muted-foreground line-clamp-3">
+                                  {talent.description || 'No description available'}
+                                </p>
+                                
+                                {/* Email */}
+                                {talent.email && (
+                                  <div className="flex items-center gap-2 text-sm text-foreground">
+                                    <Mail className="h-4 w-4" />
+                                    <span className="truncate">{talent.email}</span>
+                                  </div>
+                                )}
+
+                                {/* Skills */}
+                                <div className="flex flex-wrap gap-2">
+                                  {talent.skills && talent.skills.length > 0 ? (
+                                    <>
+                                      {talent.skills.slice(0, 8).map((skill: string, index: number) => (
+                                        <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                          {skill}
+                                        </Badge>
+                                      ))}
+                                      {talent.skills.length > 8 && (
+                                        <TooltipProvider>
+                                          <Tooltip 
+                                            open={openTooltipId === talent.id}
+                                            onOpenChange={(open) => setOpenTooltipId(open ? talent.id : null)}
+                                            delayDuration={0}
+                                          >
+                                            <TooltipTrigger asChild>
+                                              <Badge 
+                                                className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0 cursor-pointer hover:bg-gray-300 dark:hover:bg-zinc-700 transition-colors"
+                                                onClick={() => setOpenTooltipId(openTooltipId === talent.id ? null : talent.id)}
+                                              >
+                                                +{talent.skills.length - 8} more
+                                              </Badge>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="p-2">
+                                              <div className="text-center">
+                                                <div className="flex flex-wrap gap-2 justify-center">
+                                                  {talent.skills.slice(8).map((skill: string, index: number) => (
+                                                    <Badge key={index + 8} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
+                                                      {skill}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">No skills listed</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Action Button */}
+                              <Button 
+                                variant="default" 
+                                className="w-full text-sm h-9 rounded-lg shadow-none mt-4"
+                                onClick={() => handleOpenModal(talent)}
+                              >
+                                See Profile
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  {/* Right Column - AI Assistant */}
+                  <div className="lg:col-span-1">
+                    <Card className="rounded-xl sticky top-6">
+                      <CardHeader>
+                        <h3 className="text-lg font-semibold">AI Assistant</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Get help finding the perfect talent
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="text-center">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-3">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                          </div>
+                          <h4 className="font-medium mb-2">Smart Talent Matching</h4>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Describe your project requirements and let AI find the best candidates
+                          </p>
+                          <Button className="w-full" size="sm">
+                            Start AI Search
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

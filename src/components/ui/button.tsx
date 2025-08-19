@@ -19,7 +19,7 @@ const buttonVariants = cva(
           "bg-teal-600 text-white shadow-sm hover:bg-teal-700",
         soft:
           "bg-[hsl(var(--accent-foreground)/0.16)] text-foreground shadow-sm hover:bg-[hsl(var(--accent-foreground)/0.28)] dark:hover:bg-[hsl(var(--accent-foreground)/0.1)]",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-[#1e1e1e] dark:text-gray-200 dark:hover:bg-[#2a2a2a]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

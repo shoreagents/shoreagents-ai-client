@@ -485,7 +485,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left stepper */}
               <div className="lg:col-span-4">
-                <div className="rounded-xl bg-sidebar p-4 border border-border h-full flex items-center">
+                <div className="rounded-xl bg-sidebar p-4 border border-border h-full flex items-start">
                   <div className="space-y-4 w-full">
                     <div className="text-left">
                       <h3 className="text-lg font-semibold text-foreground">Steps</h3>
