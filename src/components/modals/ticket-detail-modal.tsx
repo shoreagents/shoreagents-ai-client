@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -267,6 +267,12 @@ export function TicketDetailModal({ ticket, isOpen, onClose }: TicketDetailModal
         <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl" style={{ 
           backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' 
         }}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Ticket Details: {ticket.ticket_id}</DialogTitle>
+            <DialogDescription>
+              View and manage ticket details for {ticket.concern}
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex h-[95vh]">
             {/* Left Panel - Task Details */}
             <div className="flex-1 flex flex-col">

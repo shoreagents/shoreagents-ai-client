@@ -1,13 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconCircle, IconAlertCircle, IconInfoCircle, IconStar, IconCurrencyPeso, IconMapPin as IconLocation, IconAward, IconCode, IconDots } from "@tabler/icons-react"
+import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconCircle, IconAlertCircle, IconInfoCircle, IconStar, IconCurrencyPeso, IconMapPin as IconLocation, IconAward, IconCode, IconDots, IconRobot, IconSend, IconBrain, IconRefresh, IconSparkles, IconBulb } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -74,6 +74,18 @@ interface Comment {
   user_id?: string
   user_name: string
   user_role: string
+}
+
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  timestamp: Date
+  metadata?: {
+    talentId?: string
+    analysisType?: string
+    confidence?: number
+  }
 }
 
 const getStatusColor = (status: string) => {
@@ -143,6 +155,14 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   const [aiAnalysis, setAiAnalysis] = React.useState<any>(null)
   const [isLoadingAi, setIsLoadingAi] = React.useState(false)
   const [aiError, setAiError] = React.useState<string | null>(null)
+  
+  // Chatbot state
+  const [activityTab, setActivityTab] = React.useState<'comments' | 'ai-chat'>('comments')
+  const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = React.useState("")
+  const [isLoadingChat, setIsLoadingChat] = React.useState(false)
+  const [conversationStarters, setConversationStarters] = React.useState<string[]>([])
+  const [isLoadingStarters, setIsLoadingStarters] = React.useState(false)
 
   React.useEffect(() => {
     // Reset comments on modal open or talent change
@@ -194,6 +214,45 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
     }
     fetchAi()
   }, [isOpen, talent?.id, activeTab])
+
+  // Load chatbot conversation history and starters
+  React.useEffect(() => {
+    const loadChatData = async () => {
+      if (!isOpen || !talent?.id || activityTab !== 'ai-chat') return
+      
+      try {
+        // Load conversation history
+        const historyResp = await fetch(`/api/talent-pool/${talent.id}/chatbot`)
+        if (historyResp.ok) {
+          const historyData = await historyResp.json()
+          if (historyData.success && historyData.conversationHistory) {
+            setChatMessages(historyData.conversationHistory.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            })))
+          }
+        }
+
+        // Load conversation starters
+        if (conversationStarters.length === 0) {
+          setIsLoadingStarters(true)
+          const startersResp = await fetch(`/api/talent-pool/${talent.id}/chatbot?action=starters`)
+          if (startersResp.ok) {
+            const startersData = await startersResp.json()
+            if (startersData.success && startersData.starters) {
+              setConversationStarters(startersData.starters)
+            }
+          }
+          setIsLoadingStarters(false)
+        }
+      } catch (error) {
+        console.error('Error loading chat data:', error)
+        setIsLoadingStarters(false)
+      }
+    }
+
+    loadChatData()
+  }, [isOpen, talent?.id, activityTab, conversationStarters.length])
 
   if (!talent) return null
 
@@ -266,12 +325,78 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
     setCommentToDelete(null)
   }
 
+  // Chatbot functions
+  const handleChatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!chatInput.trim() || !talent || isLoadingChat) return
+    
+    setIsLoadingChat(true)
+    try {
+      const response = await fetch(`/api/talent-pool/${talent.id}/chatbot`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: chatInput.trim(),
+          conversationHistory: chatMessages
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to send message')
+      }
+
+      const data = await response.json()
+      if (data.success && data.conversationHistory) {
+        setChatMessages(data.conversationHistory.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        })))
+      }
+      
+      setChatInput("")
+    } catch (error) {
+      console.error('Error sending chat message:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsLoadingChat(false)
+    }
+  }
+
+  const handleStarterClick = async (starter: string) => {
+    setChatInput(starter)
+  }
+
+  const clearChatHistory = async () => {
+    if (!talent) return
+    
+    try {
+      const response = await fetch(`/api/talent-pool/${talent.id}/chatbot`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        setChatMessages([])
+      }
+    } catch (error) {
+      console.error('Error clearing chat history:', error)
+    }
+  }
+
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl" style={{ 
           backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' 
         }}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Talent Profile: {talent.name}</DialogTitle>
+            <DialogDescription>
+              View detailed profile information and interact with {talent.name}'s talent profile
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex h-[95vh]">
             {/* Left Panel - Talent Details */}
             <div className="flex-1 flex flex-col">
@@ -322,7 +447,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                 </div>
                 
                 {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="image 40% table 60%grid grid-cols-2 gap-4 text-sm">
                   {/* Shift */}
                   {talent.shift && (
                     <div className="flex items-center gap-2">
@@ -673,138 +798,324 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                </div>
             </div>
 
-            {/* Right Panel - Activity & Comments */}
+                        {/* Right Panel - Activity & Comments */}
             <div className="w-96 flex flex-col border-l h-full">
-                             {/* Activity Header */}
-               <div className="flex items-center justify-between px-6 py-5 bg-sidebar h-16 border-b flex-shrink-0">
-                 <h3 className="font-medium">Activity</h3>
-               </div>
-
-              {/* Activity Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0 bg-[#ebebeb] dark:bg-[#0a0a0a]">
-                <div className="space-y-4">
-                  {commentsList && commentsList.length > 0 ? (
-                    commentsList.map((comment) => {
-                      const commentDate = formatDate(comment.created_at)
-                      
-                      return (
-                                                 <motion.div 
-                           key={comment.id} 
-                           className="rounded-lg p-4 bg-sidebar border"
-                           onHoverStart={() => setHoveredComment(comment.id)}
-                           onHoverEnd={() => setHoveredComment(null)}
-                         >
-                           <div className="flex items-center justify-between mb-3">
-                             <div className="flex items-center gap-3">
-                               <Avatar className="h-8 w-8 flex-shrink-0">
-                                 <AvatarFallback>{comment.user_name?.charAt(0) || 'U'}</AvatarFallback>
-                               </Avatar>
-                               <span className="text-sm font-medium">{comment.user_name}</span>
-                             </div>
-                             
-                             <div className="relative">
-                                                               <AnimatePresence mode="wait">
-                                  {hoveredComment !== comment.id ? (
-                                    <motion.div 
-                                      key="date-time"
-                                      className="flex items-center gap-2 text-xs text-muted-foreground"
-                                      initial={{ opacity: 0, x: 20 }}
-                                      animate={{ opacity: 1, x: 0 }}
-                                      exit={{ opacity: 0, x: 20 }}
-                                      transition={{ duration: 0.2 }}
-                                    >
-                                      <span>{commentDate.date}</span>
-                                      <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
-                                      <span>{commentDate.time}</span>
-                                    </motion.div>
-                                  ) : (
-                                                                                                               <motion.div
-                                       key="clock-icon"
-                                       initial={{ opacity: 0, x: -20 }}
-                                       animate={{ opacity: 1, x: 0 }}
-                                       exit={{ opacity: 0, x: -20 }}
-                                       transition={{ duration: 0.2 }}
-                                       className="flex items-center gap-1"
-                                     >
-                                       <TooltipProvider>
-                                         <Tooltip>
-                                           <TooltipTrigger asChild>
-                                             <div className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
-                                               <IconClock className="h-4 w-4 text-muted-foreground" />
-                                             </div>
-                                           </TooltipTrigger>
-                                                                                       <TooltipContent side="top" className="p-2">
-                                              <div className="text-center">
-                                                <p className="text-xs font-medium">{commentDate.date}</p>
-                                                <p className="text-xs text-muted-foreground">{commentDate.time}</p>
-                                              </div>
-                                            </TooltipContent>
-                                         </Tooltip>
-                                       </TooltipProvider>
-                                       
-                                       <TooltipProvider>
-                                         <Tooltip>
-                                           <TooltipTrigger asChild>
-                                                                                           <div 
-                                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                                                onClick={() => handleDeleteComment(comment.id)}
-                                              >
-                                                <IconTrash className="h-4 w-4 text-red-400" />
-                                              </div>
-                                           </TooltipTrigger>
-                                           <TooltipContent side="top" className="p-2">
-                                             <div className="text-center">
-                                               <p className="text-sm font-medium text-red-400">Delete</p>
-                                             </div>
-                                           </TooltipContent>
-                                         </Tooltip>
-                                       </TooltipProvider>
-                                     </motion.div>
-                                 )}
-                               </AnimatePresence>
-                             </div>
-                           </div>
-                                                       <div className="text-sm text-foreground leading-relaxed">
-                              {comment.comment}
-                            </div>
-                         </motion.div>
-                      )
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <IconMessage className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No comments yet</p>
-                      <p className="text-xs">Be the first to add a comment!</p>
-                    </div>
-                  )}
+              {/* Activity Header with Tabs */}
+              <div className="bg-sidebar border-b flex-shrink-0">
+                <div className="px-6 py-4">
+                  <h3 className="font-medium mb-3">Activity</h3>
+                  <div className="flex gap-1 bg-background rounded-lg p-1">
+                    <button
+                      onClick={() => setActivityTab('comments')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        activityTab === 'comments'
+                          ? 'bg-sidebar text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <IconMessage className="h-4 w-4" />
+                      Comments
+                    </button>
+                    <button
+                      onClick={() => setActivityTab('ai-chat')}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        activityTab === 'ai-chat'
+                          ? 'bg-sidebar text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <IconRobot className="h-4 w-4" />
+                      AI Assistant
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Comment Input */}
+                            {/* Activity Content */}
+              <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0 bg-[#ebebeb] dark:bg-[#0a0a0a]">
+                
+                {/* Comments Tab */}
+                {activityTab === 'comments' && (
+                  <div className="space-y-4">
+                    {commentsList && commentsList.length > 0 ? (
+                      commentsList.map((comment) => {
+                        const commentDate = formatDate(comment.created_at)
+                        
+                        return (
+                          <motion.div 
+                            key={comment.id} 
+                            className="rounded-lg p-4 bg-sidebar border"
+                            onHoverStart={() => setHoveredComment(comment.id)}
+                            onHoverEnd={() => setHoveredComment(null)}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                  <AvatarFallback>{comment.user_name?.charAt(0) || 'U'}</AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm font-medium">{comment.user_name}</span>
+                              </div>
+                              
+                              <div className="relative">
+                                <AnimatePresence mode="wait">
+                                   {hoveredComment !== comment.id ? (
+                                     <motion.div 
+                                       key="date-time"
+                                       className="flex items-center gap-2 text-xs text-muted-foreground"
+                                       initial={{ opacity: 0, x: 20 }}
+                                       animate={{ opacity: 1, x: 0 }}
+                                       exit={{ opacity: 0, x: 20 }}
+                                       transition={{ duration: 0.2 }}
+                                     >
+                                       <span>{commentDate.date}</span>
+                                       <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
+                                       <span>{commentDate.time}</span>
+                                     </motion.div>
+                                   ) : (
+                                     <motion.div
+                                        key="clock-icon"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="flex items-center gap-1"
+                                      >
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
+                                                <IconClock className="h-4 w-4 text-muted-foreground" />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="p-2">
+                                               <div className="text-center">
+                                                 <p className="text-xs font-medium">{commentDate.date}</p>
+                                                 <p className="text-xs text-muted-foreground">{commentDate.time}</p>
+                                               </div>
+                                             </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                        
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div 
+                                                 className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                                 onClick={() => handleDeleteComment(comment.id)}
+                                               >
+                                                 <IconTrash className="h-4 w-4 text-red-400" />
+                                               </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="p-2">
+                                              <div className="text-center">
+                                                <p className="text-sm font-medium text-red-400">Delete</p>
+                                              </div>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                            <div className="text-sm text-foreground leading-relaxed">
+                               {comment.comment}
+                             </div>
+                          </motion.div>
+                       )
+                     })
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <IconMessage className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No comments yet</p>
+                        <p className="text-xs">Be the first to add a comment!</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* AI Chat Tab */}
+                {activityTab === 'ai-chat' && (
+                  <div className="space-y-4">
+                    {/* Chat Header with Actions */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <IconBrain className="h-4 w-4" />
+                        <span>AI Talent Analysis Assistant</span>
+                      </div>
+                      {chatMessages.length > 0 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearChatHistory}
+                                className="h-8 w-8 p-0"
+                              >
+                                <IconRefresh className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Clear conversation</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="space-y-4">
+                      {chatMessages.length > 0 ? (
+                        chatMessages.map((message) => (
+                          <motion.div
+                            key={message.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`rounded-lg p-4 ${
+                              message.role === 'user'
+                                ? 'bg-blue-500/10 border border-blue-500/20 ml-8'
+                                : 'bg-sidebar border'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-8 w-8 flex-shrink-0">
+                                {message.role === 'user' ? (
+                                  <AvatarFallback className="bg-blue-500 text-white">U</AvatarFallback>
+                                ) : (
+                                  <AvatarFallback className="bg-purple-500 text-white">
+                                    <IconRobot className="h-4 w-4" />
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-sm font-medium">
+                                    {message.role === 'user' ? 'You' : 'AI Assistant'}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {message.timestamp.toLocaleTimeString()}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                                  {message.content}
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
+                            <IconSparkles className="h-8 w-8 text-purple-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold mb-2">AI Talent Assistant</h3>
+                          <p className="text-muted-foreground mb-6 text-sm">
+                            Ask me anything about {talent.name}'s profile, skills, or potential fit for roles.
+                          </p>
+                          
+                          {/* Conversation Starters */}
+                          {!isLoadingStarters && conversationStarters.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground mb-3 flex items-center justify-center gap-1">
+                                <IconBulb className="h-3 w-3" />
+                                Try asking:
+                              </p>
+                              {conversationStarters.slice(0, 3).map((starter, index) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-auto py-2 px-3 text-left whitespace-normal w-full"
+                                  onClick={() => handleStarterClick(starter)}
+                                >
+                                  {starter}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {isLoadingStarters && (
+                            <div className="space-y-2">
+                              <div className="h-8 bg-muted animate-pulse rounded" />
+                              <div className="h-8 bg-muted animate-pulse rounded" />
+                              <div className="h-8 bg-muted animate-pulse rounded" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input Section */}
               <div className="px-3 pb-3 bg-[#ebebeb] dark:bg-[#0a0a0a]">
                 <div className="flex gap-3 bg-sidebar rounded-lg p-4 border">
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src="" alt="Current User" />
-                    <AvatarFallback className="text-xs">CU</AvatarFallback>
+                    <AvatarFallback className="text-xs">
+                      {activityTab === 'ai-chat' ? <IconRobot className="h-4 w-4" /> : 'CU'}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <form onSubmit={handleCommentSubmit}>
-                      <Input 
-                        placeholder="Write a comment..." 
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        className="text-sm"
-                        disabled={isSubmittingComment}
-                      />
-                    </form>
+                    {activityTab === 'comments' ? (
+                      <form onSubmit={handleCommentSubmit}>
+                        <Input 
+                          placeholder="Write a comment..." 
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          className="text-sm"
+                          disabled={isSubmittingComment}
+                        />
+                      </form>
+                    ) : (
+                      <form onSubmit={handleChatSubmit}>
+                        <Input 
+                          placeholder="Ask about this talent's skills, experience, or potential fit..." 
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          className="text-sm"
+                          disabled={isLoadingChat}
+                        />
+                      </form>
+                    )}
                   </div>
                   <Button 
                     size="sm" 
                     className="rounded-lg" 
-                    onClick={handleCommentSubmit}
-                    disabled={!comment.trim() || isSubmittingComment}
+                    onClick={activityTab === 'comments' ? handleCommentSubmit : handleChatSubmit}
+                    disabled={
+                      activityTab === 'comments' 
+                        ? (!comment.trim() || isSubmittingComment)
+                        : (!chatInput.trim() || isLoadingChat)
+                    }
                   >
-                    {isSubmittingComment ? 'Sending...' : 'Send'}
+                    {activityTab === 'comments' ? (
+                      isSubmittingComment ? (
+                        <>
+                          <IconClock className="h-4 w-4 mr-1 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <IconSend className="h-4 w-4 mr-1" />
+                          Send
+                        </>
+                      )
+                    ) : (
+                      isLoadingChat ? (
+                        <>
+                          <IconClock className="h-4 w-4 mr-1 animate-spin" />
+                          Thinking...
+                        </>
+                      ) : (
+                        <>
+                          <IconSend className="h-4 w-4 mr-1" />
+                          Ask AI
+                        </>
+                      )
+                    )}
                   </Button>
                 </div>
               </div>

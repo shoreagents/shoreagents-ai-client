@@ -389,7 +389,12 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[1100px] w-[95vw] p-0 !rounded-xl max-h-[90vh] overflow-y-auto">
-
+        <DialogHeader className="sr-only">
+          <DialogTitle>Job Request Form</DialogTitle>
+          <DialogDescription>
+            Create a new job request by providing job details and requirements through guided steps.
+          </DialogDescription>
+        </DialogHeader>
         <div className="px-6 pt-6 pb-6">
           <div className="mb-6 flex items-start justify-between">
             <div className="flex-1">
