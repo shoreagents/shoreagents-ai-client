@@ -167,6 +167,17 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   React.useEffect(() => {
     // Reset comments on modal open or talent change
     setCommentsList(talent?.comments || [])
+    // Reset AI analysis when talent changes
+    setAiAnalysis(null)
+    setAiError(null)
+    // Reset active tab to default when talent changes
+    setActiveTab("information")
+    // Reset activity tab to default when talent changes
+    setActivityTab('comments')
+    // Reset chat state when talent changes
+    setChatMessages([])
+    setChatInput("")
+    setConversationStarters([])
   }, [talent?.id, isOpen])
 
   React.useEffect(() => {
@@ -191,7 +202,6 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
     const fetchAi = async () => {
       if (!isOpen || !talent?.id) return
       if (activeTab !== 'ai-analysis') return
-      if (aiAnalysis) return
       setIsLoadingAi(true)
       setAiError(null)
       try {
@@ -387,7 +397,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
 
   return (
     <TooltipProvider>
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={onClose} key={talent?.id}>
         <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl" style={{ 
           backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' 
         }}>

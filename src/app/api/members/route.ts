@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pool from '@/lib/database'
+import { getMemberById } from '@/lib/db-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,35 +14,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Query to get member information
-    const memberQuery = `
-      SELECT 
-        id,
-        company,
-        address,
-        phone,
-        logo,
-        service,
-        status,
-        badge_color,
-        country,
-        website
-      FROM members
-      WHERE id = $1
-    `
-
     console.log('📊 API: Executing member query for memberId:', memberId)
-    const memberResult = await pool.query(memberQuery, [memberId])
-    console.log('📊 API: Found', memberResult.rows.length, 'members')
+    const member = await getMemberById(memberId)
+    console.log('📊 API: Found', member ? 1 : 0, 'members')
 
-    if (memberResult.rows.length === 0) {
+    if (!member) {
       return NextResponse.json(
         { error: 'Member not found' },
         { status: 404 }
       )
     }
-
-    const member = memberResult.rows[0]
     
     const response = {
       id: member.id,

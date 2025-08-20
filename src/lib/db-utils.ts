@@ -1,4 +1,4 @@
-import pool from './database'
+import pool, { poolBPOC } from './database'
 
 export type TicketStatus = 'On Hold' | 'In Progress' | 'Approved' | 'Stuck' | 'Actioned' | 'Closed'
 
@@ -531,4 +531,1291 @@ export async function getTicketsByStatusWithPagination(
     tickets: dataResult.rows,
     totalCount
   }
+}
+
+// =============================
+// Job Requests (BPOC database)
+// =============================
+
+function isUuid(val: any): val is string {
+  return typeof val === 'string' && /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val)
+}
+
+function isNumeric(val: any): val is string {
+  return typeof val === 'string' && /^[0-9]+$/.test(val)
+}
+
+export async function resolveCompanyId(companyParam: string | null): Promise<string | null> {
+  if (!companyParam) return null
+  if (isUuid(companyParam)) return companyParam
+  if (isNumeric(companyParam)) {
+    const r = await poolBPOC.query(
+      'SELECT company_id FROM public.members WHERE id = $1 LIMIT 1',
+      [Number(companyParam)]
+    )
+    return r.rows[0]?.company_id ?? null
+  }
+  return null
+}
+
+export interface JobRequestInsert {
+  companyId: string | null
+  jobTitle: string
+  workArrangement?: string | null
+  salaryMin?: number | null
+  salaryMax?: number | null
+  jobDescription: string
+  requirements?: any[] | null
+  responsibilities?: any[] | null
+  benefits?: any[] | null
+  skills?: any[] | null
+  experienceLevel?: string | null
+  applicationDeadline?: string | null
+  industry?: string | null
+  department?: string | null
+}
+
+export async function getJobRequestsForCompany(companyParam: string | null) {
+  const companyId = await resolveCompanyId(companyParam)
+  const where = companyId ? 'WHERE company_id = $1' : ''
+  const params = companyId ? [companyId] : []
+  const { rows } = await poolBPOC.query(
+    `SELECT id, company_id, job_title, work_arrangement, status, applicants, views, created_at,
+            salary_min, salary_max, job_description, requirements, responsibilities,
+            benefits, skills, experience_level, application_deadline, industry, department
+     FROM public.job_requests
+     ${where}
+     ORDER BY created_at DESC
+     LIMIT 200`,
+    params
+  )
+  return rows
+}
+
+export async function insertJobRequest(data: JobRequestInsert) {
+  const q = `
+    INSERT INTO job_requests (
+      company_id, job_title, work_arrangement,
+      salary_min, salary_max, job_description, requirements, responsibilities,
+      benefits, skills, experience_level, application_deadline, industry, department,
+      status
+    )
+    VALUES (
+      $1, $2, $3,
+      $4, $5, $6, $7, $8,
+      $9, $10, $11, $12, $13, $14,
+      $15
+    )
+    RETURNING id
+  `
+  const params = [
+    data.companyId,
+    data.jobTitle,
+    data.workArrangement ?? null,
+    data.salaryMin ?? null,
+    data.salaryMax ?? null,
+    data.jobDescription,
+    data.requirements ?? [],
+    data.responsibilities ?? [],
+    data.benefits ?? [],
+    data.skills ?? [],
+    data.experienceLevel ?? null,
+    data.applicationDeadline ?? null,
+    data.industry ?? null,
+    data.department ?? null,
+    'inactive',
+  ]
+
+  const { rows } = await poolBPOC.query(q, params)
+  return rows[0]
+}
+
+// =============================
+// Talent Pool
+// =============================
+
+export async function listTalentPool(search: string, category: string, sortBy: string) {
+  let mainQuery = `
+    SELECT 
+      tp.id,
+      tp.applicant_id,
+      tp.created_at,
+      tp.last_contact_date,
+      tp.interested_clients,
+      rc_latest.comment as latest_comment,
+      rc_latest.created_at as latest_comment_date,
+      br.status,
+      br.shift,
+      br.position as rank_position,
+      br.expected_monthly_salary,
+      br.current_salary,
+      br.video_introduction_url,
+      br.resume_slug
+    FROM talent_pool tp
+    JOIN bpoc_recruits br ON tp.applicant_id = br.applicant_id
+    LEFT JOIN LATERAL (
+      SELECT rc.comment, rc.created_at
+      FROM recruits_comments rc
+      WHERE rc.talent_pool_id = tp.id
+      ORDER BY rc.created_at DESC
+      LIMIT 1
+    ) rc_latest ON true
+    WHERE br.status = 'passed'
+  `
+
+  const queryParams: any[] = []
+  let paramCount = 0
+
+  if (search) {
+    paramCount++
+    mainQuery += ` AND (
+      br.shift ILIKE $${paramCount}
+    )`
+    queryParams.push(`%${search}%`)
+  }
+
+  // Category can be extended in the future
+  if (category && category !== 'All') {
+    // Placeholder for future category filtering
+  }
+
+  switch (sortBy) {
+    case 'rating':
+      mainQuery += ` ORDER BY br.position ASC NULLS LAST`
+      break
+    case 'rate':
+      mainQuery += ` ORDER BY br.expected_monthly_salary DESC NULLS LAST`
+      break
+    case 'jobs':
+      mainQuery += ` ORDER BY tp.created_at DESC`
+      break
+    default:
+      mainQuery += ` ORDER BY tp.created_at DESC`
+  }
+
+  const mainResult = await pool.query(mainQuery, queryParams)
+
+  const talents = await Promise.all(
+    mainResult.rows.map(async (row) => {
+      try {
+        const userQuery = `
+          SELECT 
+            u.first_name,
+            u.last_name,
+            u.full_name,
+            u.location,
+            u.avatar_url,
+            u.position as user_position,
+            u.bio,
+            u.email,
+            (SELECT COUNT(*) FROM applications a2 WHERE a2.user_id = u.id AND a2.status = 'hired') as completed_jobs,
+            (SELECT rg.generated_resume_data->>'skills' as resume_skills
+             FROM resumes_generated rg
+             WHERE rg.user_id = u.id
+             LIMIT 1) as resume_skills,
+            (SELECT rg.generated_resume_data->>'summary' as resume_summary
+             FROM resumes_generated rg
+             WHERE rg.user_id = u.id
+             LIMIT 1) as resume_summary
+          FROM users u
+          WHERE u.id = $1
+        `
+
+        const userResult = await poolBPOC.query(userQuery, [row.applicant_id])
+        const userData = userResult.rows[0] || {}
+
+        let comments: any[] = []
+        try {
+          const commentsQuery = `
+            SELECT 
+              rc.id,
+              rc.comment,
+              rc.created_at,
+              rc.comment_type,
+              u.email,
+              pi.first_name,
+              pi.last_name
+            FROM recruits_comments rc
+            LEFT JOIN users u ON rc.created_by = u.id
+            LEFT JOIN personal_info pi ON u.id = pi.user_id
+            WHERE rc.talent_pool_id = $1
+            ORDER BY rc.created_at DESC
+          `
+          const commentsResult = await pool.query(commentsQuery, [row.id])
+          comments = commentsResult.rows.map((comment) => ({
+            id: comment.id.toString(),
+            comment: comment.comment,
+            created_at: comment.created_at,
+            user_name:
+              comment.first_name && comment.last_name
+                ? `${comment.first_name} ${comment.last_name}`.trim()
+                : comment.email || 'Unknown User',
+            user_role: 'Client',
+          }))
+        } catch (_) {
+          comments = []
+        }
+
+        return {
+          id: row.id.toString(),
+          name:
+            userData.full_name ||
+            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() ||
+            `Applicant ${row.applicant_id.slice(0, 8)}`,
+          title: userData.user_position || row.shift || 'Available Position',
+          location: userData.location || 'Location not specified',
+          avatar: userData.avatar_url || '',
+          rating: 5.0,
+          hourlyRate: row.expected_monthly_salary || 0,
+          completedJobs: parseInt(userData.completed_jobs) || 0,
+          skills: userData.resume_skills
+            ? (() => {
+                try {
+                  const skillsData = JSON.parse(userData.resume_skills)
+                  if (typeof skillsData === 'object' && skillsData !== null) {
+                    const allSkills: string[] = []
+                    if (skillsData.soft && Array.isArray(skillsData.soft)) {
+                      allSkills.push(...skillsData.soft)
+                    }
+                    if (skillsData.technical && Array.isArray(skillsData.technical)) {
+                      allSkills.push(...skillsData.technical)
+                    }
+                    if (skillsData.languages && Array.isArray(skillsData.languages)) {
+                      allSkills.push(...skillsData.languages)
+                    }
+                    if (skillsData.tools && Array.isArray(skillsData.tools)) {
+                      allSkills.push(...skillsData.tools)
+                    }
+                    Object.keys(skillsData).forEach((category) => {
+                      if (
+                        category !== 'soft' &&
+                        category !== 'technical' &&
+                        category !== 'languages' &&
+                        category !== 'tools'
+                      ) {
+                        if (Array.isArray(skillsData[category])) {
+                          allSkills.push(...skillsData[category])
+                        }
+                      }
+                    })
+                    return allSkills
+                  }
+                  if (Array.isArray(skillsData)) {
+                    return skillsData
+                  }
+                  return []
+                } catch {
+                  return []
+                }
+              })()
+            : [],
+          originalSkillsData: userData.resume_skills
+            ? (() => {
+                try {
+                  return JSON.parse(userData.resume_skills)
+                } catch {
+                  return null
+                }
+              })()
+            : null,
+          description: userData.resume_summary || row.comment || 'Professional summary not available',
+          category: 'General',
+          status: row.status,
+          rankPosition: row.rank_position,
+          createdAt: row.created_at,
+          lastContactDate: row.last_contact_date,
+          interestedClients: row.interested_clients || [],
+          videoIntroductionUrl: row.video_introduction_url,
+          resumeSlug: row.resume_slug,
+          currentSalary: row.current_salary,
+          expectedSalary: row.expected_monthly_salary,
+          email: userData.email || null,
+          bio: userData.bio || null,
+          comments,
+        }
+      } catch (error) {
+        return {
+          id: row.id.toString(),
+          name: `Applicant ${row.applicant_id.slice(0, 8)}`,
+          title: row.shift || 'Available Position',
+          location: 'Location not specified',
+          avatar: '',
+          rating: 5.0,
+          hourlyRate: row.expected_monthly_salary || 0,
+          completedJobs: 0,
+          skills: [],
+          description: row.comment || 'Professional summary not available',
+          category: 'General',
+          status: row.status,
+          rankPosition: row.rank_position,
+          createdAt: row.created_at,
+          lastContactDate: row.last_contact_date,
+          interestedClients: row.interested_clients || [],
+          videoIntroductionUrl: row.video_introduction_url,
+          resumeSlug: row.resume_slug,
+          currentSalary: row.current_salary,
+          expectedSalary: row.expected_monthly_salary,
+          email: null,
+          bio: null,
+          comments: [],
+        }
+      }
+    })
+  )
+
+  return talents
+}
+
+// =============================
+// Talent AI Analysis (BPOC + main)
+// =============================
+
+export async function getAiAnalysisByTalentPoolId(talentId: string) {
+  const lookupQuery = `
+    SELECT applicant_id
+    FROM talent_pool
+    WHERE id = $1
+  `
+  const lookupResult = await pool.query(lookupQuery, [talentId])
+  if (lookupResult.rows.length === 0) {
+    return { notFound: true as const }
+  }
+
+  const applicantId = lookupResult.rows[0].applicant_id
+
+  const analysisQuery = `
+    SELECT 
+      id,
+      user_id,
+      session_id,
+      original_resume_id,
+      overall_score,
+      ats_compatibility_score,
+      content_quality_score,
+      professional_presentation_score,
+      skills_alignment_score,
+      key_strengths,
+      strengths_analysis,
+      improvements,
+      recommendations,
+      improved_summary,
+      salary_analysis,
+      career_path,
+      section_analysis,
+      analysis_metadata,
+      portfolio_links,
+      files_analyzed,
+      created_at,
+      updated_at,
+      candidate_profile,
+      skills_snapshot,
+      experience_snapshot,
+      education_snapshot
+    FROM ai_analysis_results
+    WHERE user_id = $1
+    LIMIT 1
+  `
+  const analysisResult = await poolBPOC.query(analysisQuery, [applicantId])
+  if (analysisResult.rows.length === 0) {
+    return { hasAnalysis: false as const, analysis: null }
+  }
+
+  const a = analysisResult.rows[0]
+  const analysis = {
+    id: a.id,
+    userId: a.user_id,
+    sessionId: a.session_id,
+    originalResumeId: a.original_resume_id,
+    overallScore: a.overall_score,
+    atsCompatibilityScore: a.ats_compatibility_score,
+    contentQualityScore: a.content_quality_score,
+    professionalPresentationScore: a.professional_presentation_score,
+    skillsAlignmentScore: a.skills_alignment_score,
+    keyStrengths: a.key_strengths,
+    strengthsAnalysis: a.strengths_analysis,
+    improvements: a.improvements,
+    recommendations: a.recommendations,
+    improvedSummary: a.improved_summary,
+    salaryAnalysis: a.salary_analysis,
+    careerPath: a.career_path,
+    sectionAnalysis: a.section_analysis,
+    analysisMetadata: a.analysis_metadata,
+    portfolioLinks: a.portfolio_links,
+    filesAnalyzed: a.files_analyzed,
+    createdAt: a.created_at,
+    updatedAt: a.updated_at,
+    candidateProfile: a.candidate_profile,
+    skillsSnapshot: a.skills_snapshot,
+    experienceSnapshot: a.experience_snapshot,
+    educationSnapshot: a.education_snapshot,
+  }
+
+  return { hasAnalysis: true as const, analysis }
+}
+
+// =============================
+// Auth/User helper
+// =============================
+
+export async function getClientUserByEmail(email: string) {
+  const userQuery = `
+    SELECT 
+      u.id,
+      u.email,
+      u.user_type,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      c.member_id,
+      c.department_id,
+      m.company_id as company_uuid
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN clients c ON u.id = c.user_id
+    LEFT JOIN members m ON m.id = c.member_id
+    WHERE u.email = $1 
+      AND u.user_type = 'Client'
+      AND c.user_id IS NOT NULL
+  `
+  const userResult = await pool.query(userQuery, [email])
+  return userResult.rows[0] || null
+}
+
+// =============================
+// Talent Pool Comments
+// =============================
+
+export async function getTalentPoolById(talentId: string) {
+  const result = await pool.query(
+    'SELECT id, applicant_id FROM talent_pool WHERE id = $1',
+    [talentId]
+  )
+  return result.rows[0] || null
+}
+
+export async function getTalentPoolCommentsByUser(talentId: string, userId: string) {
+  const query = `
+    SELECT 
+      rc.id,
+      rc.comment,
+      rc.created_at,
+      rc.updated_at,
+      rc.comment_type,
+      rc.created_by,
+      u.email,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture
+    FROM recruits_comments rc
+    LEFT JOIN users u ON rc.created_by = u.id
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    WHERE rc.talent_pool_id = $1 AND rc.created_by = $2
+    ORDER BY rc.created_at ASC
+  `
+  const result = await pool.query(query, [talentId, userId])
+  return (result.rows || []).map((row: any) => ({
+    id: String(row.id),
+    comment: row.comment,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    comment_type: row.comment_type,
+    user_id: String(row.created_by),
+    user_name: row.first_name && row.last_name
+      ? `${row.first_name} ${row.last_name}`.trim()
+      : row.email || 'Unknown User',
+    user_role: 'Client',
+    email: row.email || null,
+    profile_picture: row.profile_picture || null,
+  }))
+}
+
+export async function insertTalentPoolComment(talentId: string, userId: string, comment: string) {
+  try {
+    const insertWithLink = `
+      INSERT INTO recruits_comments (comment, created_by, comment_type, talent_pool_id)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, comment, created_at, updated_at, comment_type
+    `
+    const result = await pool.query(insertWithLink, [
+      comment.trim(),
+      userId,
+      'talent_pool',
+      talentId,
+    ])
+    return result.rows[0]
+  } catch (_e) {
+    const insertFallback = `
+      INSERT INTO recruits_comments (comment, created_by, comment_type)
+      VALUES ($1, $2, $3)
+      RETURNING id, comment, created_at, updated_at, comment_type
+    `
+    const result = await pool.query(insertFallback, [
+      comment.trim(),
+      userId,
+      'talent_pool',
+    ])
+    return result.rows[0]
+  }
+}
+
+export async function getBasicUserInfo(userId: string) {
+  const q = `
+    SELECT 
+      u.id,
+      u.email,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    WHERE u.id = $1
+  `
+  const r = await pool.query(q, [userId])
+  return r.rows[0] || null
+}
+
+export async function getCommentById(commentId: string) {
+  const r = await pool.query('SELECT id, created_by FROM recruits_comments WHERE id = $1', [commentId])
+  return r.rows[0] || null
+}
+
+export async function deleteTalentPoolComment(commentId: string) {
+  await pool.query('DELETE FROM recruits_comments WHERE id = $1', [commentId])
+}
+
+export async function touchTalentPoolUpdatedAt(talentId: string) {
+  try {
+    await pool.query('UPDATE talent_pool SET updated_at = NOW() WHERE id = $1', [talentId])
+  } catch (_) {
+    // ignore
+  }
+}
+
+// =============================
+// Breaks
+// =============================
+
+export async function getBreakSessions(memberId: string, date: string) {
+  const query = memberId === 'all' ? `
+    SELECT 
+      bs.id,
+      bs.agent_user_id,
+      bs.break_type,
+      bs.start_time,
+      bs.end_time,
+      bs.duration_minutes,
+      bs.created_at,
+      bs.pause_time,
+      bs.resume_time,
+      bs.pause_used,
+      bs.time_remaining_at_pause,
+      bs.break_date,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      u.email,
+      d.name as department_name
+    FROM break_sessions bs
+    LEFT JOIN personal_info pi ON bs.agent_user_id = pi.user_id
+    LEFT JOIN users u ON bs.agent_user_id = u.id
+    LEFT JOIN agents a ON bs.agent_user_id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    WHERE bs.break_date = $1
+    ORDER BY bs.created_at DESC
+  ` : `
+    SELECT 
+      bs.id,
+      bs.agent_user_id,
+      bs.break_type,
+      bs.start_time,
+      bs.end_time,
+      bs.duration_minutes,
+      bs.created_at,
+      bs.pause_time,
+      bs.resume_time,
+      bs.pause_used,
+      bs.time_remaining_at_pause,
+      bs.break_date,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      u.email,
+      d.name as department_name
+    FROM break_sessions bs
+    LEFT JOIN personal_info pi ON bs.agent_user_id = pi.user_id
+    LEFT JOIN users u ON bs.agent_user_id = u.id
+    LEFT JOIN agents a ON bs.agent_user_id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    WHERE a.member_id = $1 AND bs.break_date = $2
+    ORDER BY bs.created_at DESC
+  `
+  const params = memberId === 'all' ? [date] : [memberId, date]
+  const result = await pool.query(query, params)
+  return result.rows
+}
+
+export async function getBreakStats(memberId: string, date: string) {
+  const query = memberId === 'all' ? `
+    SELECT 
+      COUNT(*) as total_sessions,
+      COUNT(CASE WHEN end_time IS NULL THEN 1 END) as active_sessions,
+      COUNT(CASE WHEN break_date = $1 THEN 1 END) as today_sessions,
+      AVG(duration_minutes) as average_duration
+    FROM break_sessions bs
+    LEFT JOIN agents a ON bs.agent_user_id = a.user_id
+    WHERE bs.break_date = $1
+  ` : `
+    SELECT 
+      COUNT(*) as total_sessions,
+      COUNT(CASE WHEN end_time IS NULL THEN 1 END) as active_sessions,
+      COUNT(CASE WHEN break_date = $2 THEN 1 END) as today_sessions,
+      AVG(duration_minutes) as average_duration
+    FROM break_sessions bs
+    LEFT JOIN agents a ON bs.agent_user_id = a.user_id
+    WHERE a.member_id = $1 AND bs.break_date = $2
+  `
+  const params = memberId === 'all' ? [date] : [memberId, date]
+  const result = await pool.query(query, params)
+  const stats = result.rows[0] || { total_sessions: 0, active_sessions: 0, today_sessions: 0, average_duration: 0 }
+  return {
+    total: parseInt(stats.total_sessions) || 0,
+    active: parseInt(stats.active_sessions) || 0,
+    today: parseInt(stats.today_sessions) || 0,
+    averageDuration: Math.round(parseFloat(stats.average_duration) || 0)
+  }
+}
+
+// =============================
+// Team Employees
+// =============================
+
+export async function getEmployees(memberId: string, search: string | null, department: string | null) {
+  let whereClause = `WHERE u.user_type = 'Agent'`
+  const params: any[] = []
+
+  if (memberId !== 'all') {
+    params.push(memberId)
+    whereClause += ` AND a.member_id = $${params.length}`
+  }
+
+  if (search) {
+    params.push(`%${search}%`)
+    whereClause += ` AND (pi.first_name ILIKE $${params.length} OR pi.last_name ILIKE $${params.length})`
+  }
+
+  if (department) {
+    params.push(department)
+    whereClause += ` AND d.name = $${params.length}`
+  }
+
+  const employeesQuery = `
+    SELECT 
+      u.id,
+      u.email,
+      u.user_type,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      pi.phone,
+      pi.birthday,
+      pi.city,
+      pi.address,
+      pi.gender,
+      a.exp_points,
+      a.department_id,
+      d.name as department_name,
+      d.description as department_description,
+      ji.job_title,
+      ji.employment_status,
+      ji.start_date,
+      ji.work_email
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    ${whereClause}
+    ORDER BY pi.last_name, pi.first_name
+  `
+
+  const employeesResult = await pool.query(employeesQuery, params)
+
+  const statsParams: any[] = []
+  let statsWhere = ''
+  if (memberId !== 'all') {
+    statsParams.push(memberId)
+    statsWhere = 'WHERE a.member_id = $1'
+  }
+  const departmentStatsQuery = `
+    SELECT 
+      COUNT(DISTINCT d.id) as total_departments,
+      COUNT(DISTINCT a.user_id) as total_agents
+    FROM departments d
+    LEFT JOIN agents a ON d.id = a.department_id
+    ${statsWhere}
+  `
+  const statsResult = await pool.query(departmentStatsQuery, statsParams)
+
+  const employees = employeesResult.rows.map((row: any) => ({
+    id: row.id.toString(),
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    email: row.email,
+    phone: row.phone,
+    department: row.department_name || 'Unassigned',
+    position: row.job_title || 'Agent',
+    hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+    avatar: row.profile_picture,
+    expPoints: row.exp_points || 0,
+    departmentId: row.department_id,
+    workEmail: row.work_email,
+    birthday: row.birthday,
+    city: row.city,
+    address: row.address,
+    gender: row.gender,
+  }))
+
+  const stats = statsResult.rows[0] || { total_departments: 0, total_agents: 0 }
+  return {
+    employees,
+    stats: {
+      total: employees.length,
+      departments: stats.total_departments,
+    },
+  }
+}
+
+// =============================
+// Productivity Scores & Trends
+// =============================
+
+export async function getDailyTrend(memberId: string, startISO: string, endISO: string) {
+  const dailyTrendQueryAll = `
+    WITH base AS (
+      SELECT ad.user_id,
+             ad.today_date,
+             ad.today_active_seconds,
+             ad.today_inactive_seconds
+      FROM activity_data ad
+      JOIN users u ON ad.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND ad.today_date BETWEEN $1 AND $2
+    ),
+    totals_by_day AS (
+      SELECT today_date,
+             SUM(today_active_seconds)::int AS total_active_seconds,
+             SUM(today_inactive_seconds)::int AS total_inactive_seconds
+      FROM base
+      GROUP BY today_date
+    ),
+    ranked AS (
+      SELECT b.today_date,
+             b.user_id,
+             b.today_active_seconds,
+             ROW_NUMBER() OVER (PARTITION BY b.today_date ORDER BY b.today_active_seconds DESC) AS rn
+      FROM base b
+    )
+    SELECT r.today_date AS date,
+           t.total_active_seconds,
+           t.total_inactive_seconds,
+           (MAX(CASE WHEN r.rn = 1 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top1,
+           (MAX(CASE WHEN r.rn = 2 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top2,
+           (MAX(CASE WHEN r.rn = 3 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top3,
+           (MAX(CASE WHEN r.rn = 4 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top4,
+           (MAX(CASE WHEN r.rn = 5 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top5
+    FROM ranked r
+    JOIN personal_info pi ON pi.user_id = r.user_id
+    JOIN totals_by_day t ON t.today_date = r.today_date
+    GROUP BY r.today_date, t.total_active_seconds, t.total_inactive_seconds
+    ORDER BY r.today_date
+  `
+
+  const dailyTrendQueryByMember = `
+    WITH base AS (
+      SELECT ad.user_id,
+             ad.today_date,
+             ad.today_active_seconds,
+             ad.today_inactive_seconds
+      FROM activity_data ad
+      JOIN users u ON ad.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND ag.member_id = $3
+        AND ad.today_date BETWEEN $1 AND $2
+    ),
+    totals_by_day AS (
+      SELECT today_date,
+             SUM(today_active_seconds)::int AS total_active_seconds,
+             SUM(today_inactive_seconds)::int AS total_inactive_seconds
+      FROM base
+      GROUP BY today_date
+    ),
+    ranked AS (
+      SELECT b.today_date,
+             b.user_id,
+             b.today_active_seconds,
+             ROW_NUMBER() OVER (PARTITION BY b.today_date ORDER BY b.today_active_seconds DESC) AS rn
+      FROM base b
+    )
+    SELECT r.today_date AS date,
+           t.total_active_seconds,
+           t.total_inactive_seconds,
+           (MAX(CASE WHEN r.rn = 1 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top1,
+           (MAX(CASE WHEN r.rn = 2 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top2,
+           (MAX(CASE WHEN r.rn = 3 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top3,
+           (MAX(CASE WHEN r.rn = 4 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top4,
+           (MAX(CASE WHEN r.rn = 5 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.today_active_seconds
+               )::text
+           ) END))::json AS top5
+    FROM ranked r
+    JOIN personal_info pi ON pi.user_id = r.user_id
+    JOIN totals_by_day t ON t.today_date = r.today_date
+    GROUP BY r.today_date, t.total_active_seconds, t.total_inactive_seconds
+    ORDER BY r.today_date
+  `
+
+  const result = memberId === 'all'
+    ? await pool.query(dailyTrendQueryAll, [startISO, endISO])
+    : await pool.query(dailyTrendQueryByMember, [startISO, endISO, memberId])
+  return result.rows
+}
+
+export async function getWeeklyTrend(memberId: string, startISO: string, endISO: string) {
+  const weeklyTrendQueryAll = `
+    WITH base AS (
+      SELECT was.user_id,
+             was.week_start_date,
+             was.week_end_date,
+             COALESCE(was.total_active_seconds, 0)   AS total_active_seconds,
+             COALESCE(was.total_inactive_seconds, 0) AS total_inactive_seconds
+      FROM weekly_activity_summary was
+      JOIN users u ON was.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND was.week_start_date <= $2
+        AND was.week_end_date >= $1
+    ),
+    avg_by_week AS (
+      SELECT week_start_date,
+             week_end_date,
+             AVG(total_active_seconds)::int   AS avg_active_seconds,
+             AVG(total_inactive_seconds)::int AS avg_inactive_seconds
+      FROM base
+      GROUP BY week_start_date, week_end_date
+    ),
+    ranked AS (
+      SELECT b.week_start_date,
+             b.week_end_date,
+             b.user_id,
+             b.total_active_seconds,
+             ROW_NUMBER() OVER (
+               PARTITION BY b.week_start_date, b.week_end_date
+               ORDER BY b.total_active_seconds DESC
+             ) AS rn
+      FROM base b
+    )
+    SELECT r.week_start_date,
+           r.week_end_date,
+           a.avg_active_seconds,
+           a.avg_inactive_seconds,
+           MAX(CASE WHEN r.rn = 1 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi1.first_name,
+             'last_name', pi1.last_name,
+             'profile_picture', pi1.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top1,
+           MAX(CASE WHEN r.rn = 2 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi2.first_name,
+             'last_name', pi2.last_name,
+             'profile_picture', pi2.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top2,
+           MAX(CASE WHEN r.rn = 3 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi3.first_name,
+             'last_name', pi3.last_name,
+             'profile_picture', pi3.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top3
+    FROM ranked r
+    LEFT JOIN personal_info pi1 ON (r.rn = 1 AND pi1.user_id = r.user_id)
+    LEFT JOIN personal_info pi2 ON (r.rn = 2 AND pi2.user_id = r.user_id)
+    LEFT JOIN personal_info pi3 ON (r.rn = 3 AND pi3.user_id = r.user_id)
+    JOIN avg_by_week a ON a.week_start_date = r.week_start_date AND a.week_end_date = r.week_end_date
+    GROUP BY r.week_start_date, r.week_end_date, a.avg_active_seconds, a.avg_inactive_seconds
+    ORDER BY r.week_start_date
+  `
+
+  const weeklyTrendQueryByMember = `
+    WITH base AS (
+      SELECT was.user_id,
+             was.week_start_date,
+             was.week_end_date,
+             COALESCE(was.total_active_seconds, 0)   AS total_active_seconds,
+             COALESCE(was.total_inactive_seconds, 0) AS total_inactive_seconds
+      FROM weekly_activity_summary was
+      JOIN users u ON was.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND ag.member_id = $3
+        AND was.week_start_date <= $2
+        AND was.week_end_date >= $1
+    ),
+    avg_by_week AS (
+      SELECT week_start_date,
+             week_end_date,
+             AVG(total_active_seconds)::int   AS avg_active_seconds,
+             AVG(total_inactive_seconds)::int AS avg_inactive_seconds
+      FROM base
+      GROUP BY week_start_date, week_end_date
+    ),
+    ranked AS (
+      SELECT b.week_start_date,
+             b.week_end_date,
+             b.user_id,
+             b.total_active_seconds,
+             ROW_NUMBER() OVER (
+               PARTITION BY b.week_start_date, b.week_end_date
+               ORDER BY b.total_active_seconds DESC
+             ) AS rn
+      FROM base b
+    )
+    SELECT r.week_start_date,
+           r.week_end_date,
+           a.avg_active_seconds,
+           a.avg_inactive_seconds,
+           MAX(CASE WHEN r.rn = 1 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi1.first_name,
+             'last_name', pi1.last_name,
+             'profile_picture', pi1.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top1,
+           MAX(CASE WHEN r.rn = 2 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi2.first_name,
+             'last_name', pi2.last_name,
+             'profile_picture', pi2.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top2,
+           MAX(CASE WHEN r.rn = 3 THEN json_build_object(
+             'user_id', r.user_id,
+             'first_name', pi3.first_name,
+             'last_name', pi3.last_name,
+             'profile_picture', pi3.profile_picture,
+             'points', r.total_active_seconds
+           ) END) AS top3
+    FROM ranked r
+    LEFT JOIN personal_info pi1 ON (r.rn = 1 AND pi1.user_id = r.user_id)
+    LEFT JOIN personal_info pi2 ON (r.rn = 2 AND pi2.user_id = r.user_id)
+    LEFT JOIN personal_info pi3 ON (r.rn = 3 AND pi3.user_id = r.user_id)
+    JOIN avg_by_week a ON a.week_start_date = r.week_start_date AND a.week_end_date = r.week_end_date
+    GROUP BY r.week_start_date, r.week_end_date, a.avg_active_seconds, a.avg_inactive_seconds
+    ORDER BY r.week_start_date
+  `
+
+  const result = memberId === 'all'
+    ? await pool.query(weeklyTrendQueryAll, [startISO, endISO])
+    : await pool.query(weeklyTrendQueryByMember, [startISO, endISO, memberId])
+  return result.rows
+}
+
+export async function getProductivityScoresRows(memberId: string, monthYear: string, limit?: number) {
+  const limitClause = limit ? `LIMIT ${parseInt(String(limit))}` : ''
+  const query = memberId === 'all' ? `
+    SELECT 
+      ps.id,
+      ps.user_id,
+      ps.month_year,
+      ps.productivity_score,
+      ps.total_active_seconds,
+      ps.total_inactive_seconds,
+      ps.total_seconds,
+      ps.active_percentage,
+      ps.created_at,
+      ps.updated_at,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      u.email,
+      d.name as department_name,
+      a.exp_points
+    FROM productivity_scores ps
+    LEFT JOIN personal_info pi ON ps.user_id = pi.user_id
+    LEFT JOIN users u ON ps.user_id = u.id
+    LEFT JOIN agents a ON ps.user_id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    WHERE ps.month_year = $1
+      AND u.user_type = 'Agent'
+    ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+    ${limitClause}
+  ` : `
+    SELECT 
+      ps.id,
+      ps.user_id,
+      ps.month_year,
+      ps.productivity_score,
+      ps.total_active_seconds,
+      ps.total_inactive_seconds,
+      ps.total_seconds,
+      ps.active_percentage,
+      ps.created_at,
+      ps.updated_at,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      u.email,
+      d.name as department_name,
+      a.exp_points
+    FROM productivity_scores ps
+    LEFT JOIN personal_info pi ON ps.user_id = pi.user_id
+    LEFT JOIN users u ON ps.user_id = u.id
+    LEFT JOIN agents a ON ps.user_id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    WHERE ps.month_year = $1
+      AND u.user_type = 'Agent'
+      AND a.member_id = $2
+    ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+    ${limitClause}
+  `
+  const result = memberId === 'all'
+    ? await pool.query(query, [monthYear])
+    : await pool.query(query, [monthYear, memberId])
+  return result.rows
+}
+
+export async function getProductivityStatsRow(memberId: string, monthYear: string) {
+  const query = memberId === 'all' ? `
+    SELECT 
+      COUNT(*) as total_agents,
+      AVG(ps.productivity_score) as average_productivity,
+      AVG(ps.active_percentage) as average_active_percentage,
+      MAX(ps.productivity_score) as highest_productivity,
+      MIN(ps.productivity_score) as lowest_productivity
+    FROM productivity_scores ps
+    LEFT JOIN users u ON ps.user_id = u.id
+    LEFT JOIN agents a ON ps.user_id = a.user_id
+    WHERE ps.month_year = $1
+      AND u.user_type = 'Agent'
+  ` : `
+    SELECT 
+      COUNT(*) as total_agents,
+      AVG(ps.productivity_score) as average_productivity,
+      AVG(ps.active_percentage) as average_active_percentage,
+      MAX(ps.productivity_score) as highest_productivity,
+      MIN(ps.productivity_score) as lowest_productivity
+    FROM productivity_scores ps
+    LEFT JOIN users u ON ps.user_id = u.id
+    LEFT JOIN agents a ON ps.user_id = a.user_id
+    WHERE ps.month_year = $1
+      AND u.user_type = 'Agent'
+      AND a.member_id = $2
+  `
+  const result = memberId === 'all'
+    ? await pool.query(query, [monthYear])
+    : await pool.query(query, [monthYear, memberId])
+  return result.rows[0] || null
+}
+
+// =============================
+// Members
+// =============================
+
+export async function getMemberById(memberId: string) {
+  const memberQuery = `
+    SELECT 
+      id,
+      company,
+      address,
+      phone,
+      logo,
+      service,
+      status,
+      badge_color,
+      country,
+      website
+    FROM members
+    WHERE id = $1
+  `
+  const memberResult = await pool.query(memberQuery, [memberId])
+  return memberResult.rows[0] || null
+}
+
+// =============================
+// Tickets stats helpers
+// =============================
+
+export async function countClosedTicketsBetween(startISO: string, endISO: string) {
+  const q = `
+    SELECT COUNT(*) as count
+    FROM public.tickets 
+    WHERE status = 'Closed' 
+      AND role_id = 1
+      AND resolved_at >= $1
+      AND resolved_at < $2
+  `
+  const r = await pool.query(q, [startISO, endISO])
+  return parseInt(r.rows[0]?.count || '0')
+}
+
+export async function countTotalClosedTickets() {
+  const q = `
+    SELECT COUNT(*) as count
+    FROM public.tickets 
+    WHERE status = 'Closed' 
+      AND role_id = 1
+  `
+  const r = await pool.query(q)
+  return parseInt(r.rows[0]?.count || '0')
+}
+
+export async function countClosedWithResolvedAt() {
+  const q = `
+    SELECT COUNT(*) as count
+    FROM public.tickets 
+    WHERE status = 'Closed' 
+      AND role_id = 1
+      AND resolved_at IS NOT NULL
+  `
+  const r = await pool.query(q)
+  return parseInt(r.rows[0]?.count || '0')
+}
+
+// =============================
+// Ticket comments
+// =============================
+
+export async function getTicketIdByCode(ticketCode: string) {
+  const r = await pool.query('SELECT id FROM tickets WHERE ticket_id = $1', [ticketCode])
+  return r.rows[0]?.id || null
+}
+
+export async function getTicketComments(ticketId: number) {
+  const q = `
+    SELECT 
+      tc.id,
+      tc.ticket_id,
+      tc.user_id,
+      tc.comment,
+      tc.created_at,
+      tc.updated_at,
+      u.email,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture
+    FROM ticket_comments tc
+    LEFT JOIN users u ON tc.user_id = u.id
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    WHERE tc.ticket_id = $1
+    ORDER BY tc.created_at ASC
+  `
+  const result = await pool.query(q, [ticketId])
+  return result.rows
+}
+
+export async function addTicketComment(ticketId: number, userId: string, comment: string) {
+  const insertQuery = `
+    INSERT INTO ticket_comments (ticket_id, user_id, comment)
+    VALUES ($1, $2, $3)
+    RETURNING id, ticket_id, user_id, comment, created_at, updated_at
+  `
+  const result = await pool.query(insertQuery, [ticketId, userId, comment.trim()])
+  return result.rows[0]
+}
+
+export async function getBasicUserInfoById(userId: string) {
+  const q = `
+    SELECT 
+      u.id,
+      u.email,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    WHERE u.id = $1
+  `
+  const r = await pool.query(q, [userId])
+  return r.rows[0] || null
 }

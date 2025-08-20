@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pool from '@/lib/database'
+import { 
+  getTalentPoolCommentsByUser,
+  getTalentPoolById,
+  insertTalentPoolComment,
+  getBasicUserInfo,
+  getCommentById,
+  deleteTalentPoolComment,
+  touchTalentPoolUpdatedAt,
+} from '@/lib/db-utils'
 
 export async function GET(
   request: NextRequest,
@@ -24,42 +32,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    // Get comments for the talent pool entry
-    // Prefer selecting by talent_pool_id if the column exists; fallback to single linked comment_id
-    const queryByTalent = `
-      SELECT 
-        rc.id,
-        rc.comment,
-        rc.created_at,
-        rc.updated_at,
-        rc.comment_type,
-        rc.created_by,
-        u.email,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture
-      FROM recruits_comments rc
-      LEFT JOIN users u ON rc.created_by = u.id
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      WHERE rc.talent_pool_id = $1 AND rc.created_by = $2
-      ORDER BY rc.created_at ASC
-    `
-    const result = await pool.query(queryByTalent, [id, sessionData.id])
-
-    const comments = (result.rows || []).map((row) => ({
-      id: String(row.id),
-      comment: row.comment,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      comment_type: row.comment_type,
-      user_id: String(row.created_by),
-      user_name: row.first_name && row.last_name
-        ? `${row.first_name} ${row.last_name}`.trim()
-        : row.email || 'Unknown User',
-      user_role: 'Client',
-      email: row.email || null,
-      profile_picture: row.profile_picture || null,
-    }))
+    const comments = await getTalentPoolCommentsByUser(id, String(sessionData.id))
 
     console.log('Found comments:', comments.length)
     return NextResponse.json({ comments })
@@ -95,18 +68,12 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if talent pool entry exists
-    const talentQuery = `
-      SELECT id, applicant_id FROM talent_pool WHERE id = $1
-    `
-    const talentResult = await pool.query(talentQuery, [id])
-    
-    if (talentResult.rows.length === 0) {
+    const talent = await getTalentPoolById(id)
+    if (!talent) {
       console.log('Talent pool entry not found for id:', id)
       return NextResponse.json({ error: 'Talent pool entry not found' }, { status: 404 })
     }
 
-    const talent = talentResult.rows[0]
     console.log('Talent pool entry found:', talent.id)
 
     const body = await request.json()
@@ -118,54 +85,13 @@ export async function POST(
 
     console.log('Comment validated, attempting database insert...')
 
-    // Insert the comment (prefer schema with talent_pool_id if available)
-    let result
-    try {
-      const insertWithLink = `
-        INSERT INTO recruits_comments (comment, created_by, comment_type, talent_pool_id)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, comment, created_at, updated_at, comment_type
-      `
-      console.log('Executing insert (with talent_pool_id)')
-      result = await pool.query(insertWithLink, [
-        comment.trim(),
-        sessionData.id,
-        'talent_pool',
-        id,
-      ])
-    } catch (e) {
-      const insertFallback = `
-        INSERT INTO recruits_comments (comment, created_by, comment_type)
-        VALUES ($1, $2, $3)
-        RETURNING id, comment, created_at, updated_at, comment_type
-      `
-      console.log('Executing insert (fallback without talent_pool_id)')
-      result = await pool.query(insertFallback, [
-        comment.trim(),
-        sessionData.id,
-        'talent_pool',
-      ])
-    }
-
-    const newComment = result.rows[0]
+    const newComment = await insertTalentPoolComment(id, String(sessionData.id), comment)
     console.log('Comment inserted successfully:', newComment)
 
     // No longer updating talent_pool.comment_id; linkage is via recruits_comments.talent_pool_id only
 
     // Get the user information for the response
-    const userInfoQuery = `
-      SELECT 
-        u.id,
-        u.email,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture
-      FROM users u
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      WHERE u.id = $1
-    `
-    const userInfoResult = await pool.query(userInfoQuery, [sessionData.id])
-    const userInfo = userInfoResult.rows[0]
+    const userInfo = await getBasicUserInfo(String(sessionData.id))
 
     // Create response object
     const responseComment = {
@@ -222,35 +148,19 @@ export async function DELETE(
     }
 
     // Ensure comment exists and belongs to the current user (or allow admin rules if needed)
-    const checkQuery = `
-      SELECT id, created_by FROM recruits_comments WHERE id = $1
-    `
-    const checkResult = await pool.query(checkQuery, [commentId])
-    if (checkResult.rows.length === 0) {
+    const existing = await getCommentById(commentId)
+    if (!existing) {
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
     }
-    const comment = checkResult.rows[0]
-    if (String(comment.created_by) !== String(sessionData.id)) {
+    if (String(existing.created_by) !== String(sessionData.id)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Delete the comment
-    const deleteQuery = `
-      DELETE FROM recruits_comments WHERE id = $1
-      RETURNING id
-    `
-    await pool.query(deleteQuery, [commentId])
+    await deleteTalentPoolComment(commentId)
 
     // If the talent_pool.comment_id was pointing to this comment, clear it
-    try {
-      const clearTalentQuery = `
-        UPDATE talent_pool SET updated_at = NOW()
-        WHERE id = $1
-      `
-      await pool.query(clearTalentQuery, [id])
-    } catch (_) {
-      // ignore
-    }
+    await touchTalentPoolUpdatedAt(id)
 
     return NextResponse.json({ success: true })
   } catch (error) {

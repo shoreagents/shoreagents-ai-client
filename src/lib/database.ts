@@ -1,12 +1,21 @@
 import { Pool } from 'pg'
 
-// Railway PostgreSQL connection
+// Main Railway PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 })
 
+// BPOC database connection
+const poolBPOC = new Pool({
+  connectionString: process.env.BPOC_DATABASE_URL,
+  ssl: process.env.BPOC_DATABASE_URL?.includes("sslmode=require")
+    ? undefined
+    : { rejectUnauthorized: false },
+})
+
 export default pool
+export { poolBPOC }
 
 // Test database connection
 export async function testConnection() {
@@ -16,6 +25,18 @@ export async function testConnection() {
     return true
   } catch (error) {
     console.error('Database connection failed:', error)
+    return false
+  }
+}
+
+// Test BPOC database connection
+export async function testBPOCConnection() {
+  try {
+    const result = await poolBPOC.query('SELECT NOW()')
+    console.log('BPOC Database connected successfully:', result.rows[0])
+    return true
+  } catch (error) {
+    console.error('BPOC Database connection failed:', error)
     return false
   }
 }

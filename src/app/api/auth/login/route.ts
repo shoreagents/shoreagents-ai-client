@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import pool from '@/lib/database'
+import { getClientUserByEmail } from '@/lib/db-utils'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
@@ -18,24 +18,6 @@ export async function POST(request: NextRequest) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Query to check if user exists and is a Client user
-    const userQuery = `
-      SELECT 
-        u.id,
-        u.email,
-        u.user_type,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture,
-        c.member_id,
-        c.department_id
-      FROM users u
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      LEFT JOIN clients c ON u.id = c.user_id
-      WHERE u.email = $1 
-        AND u.user_type = 'Client'
-        AND c.user_id IS NOT NULL
-    `
 
     // First, authenticate with Supabase
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -51,9 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Now check if user exists in our database and has proper roles
-    const userResult = await pool.query(userQuery, [email])
-
-    if (userResult.rows.length === 0) {
+    const user = await getClientUserByEmail(email)
+    if (!user) {
       // Logout from Supabase if user doesn't exist in our database
       await supabase.auth.signOut()
       return NextResponse.json(
@@ -61,8 +42,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    const user = userResult.rows[0]
 
     // Create session data (in a real app, you'd use JWT or session management)
     const sessionData = {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import pool from '@/lib/database'
+import { addTicketComment, getTicketComments, getTicketIdByCode, getBasicUserInfoById } from '@/lib/db-utils'
 
 export async function GET(
   request: NextRequest,
@@ -10,41 +10,15 @@ export async function GET(
     console.log('GET /api/tickets/[id]/comments - Starting...')
     
     // Get the ticket's numeric ID from the Railway database
-    const ticketQuery = `
-      SELECT id FROM tickets WHERE ticket_id = $1
-    `
-    const ticketResult = await pool.query(ticketQuery, [params.id])
-    
-    if (ticketResult.rows.length === 0) {
+    const ticketId = await getTicketIdByCode(params.id)
+    if (!ticketId) {
       console.log('Ticket not found for ticket_id:', params.id)
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
-    
-    const ticket = ticketResult.rows[0]
-    console.log('Ticket found with ID:', ticket.id)
+    console.log('Ticket found with ID:', ticketId)
     
     // Get comments for the ticket with user information using Railway database
-    const query = `
-      SELECT 
-        tc.id,
-        tc.ticket_id,
-        tc.user_id,
-        tc.comment,
-        tc.created_at,
-        tc.updated_at,
-        u.email,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture
-      FROM ticket_comments tc
-      LEFT JOIN users u ON tc.user_id = u.id
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      WHERE tc.ticket_id = $1
-      ORDER BY tc.created_at ASC
-    `
-    
-    const result = await pool.query(query, [ticket.id])
-    const comments = result.rows || []
+    const comments = await getTicketComments(ticketId)
 
     console.log('Found comments:', comments.length)
     return NextResponse.json({ comments })
@@ -77,18 +51,12 @@ export async function POST(
     console.log('User authenticated:', user.id)
 
     // Get the ticket's numeric ID from the Railway database
-    const ticketQuery = `
-      SELECT id FROM tickets WHERE ticket_id = $1
-    `
-    const ticketResult = await pool.query(ticketQuery, [params.id])
-    
-    if (ticketResult.rows.length === 0) {
+    const ticketId = await getTicketIdByCode(params.id)
+    if (!ticketId) {
       console.log('Ticket not found for ticket_id:', params.id)
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
-
-    const ticket = ticketResult.rows[0]
-    console.log('Ticket found:', ticket.id)
+    console.log('Ticket found:', ticketId)
 
     const body = await request.json()
     const { comment } = body
@@ -100,38 +68,11 @@ export async function POST(
     console.log('Comment validated, attempting database insert...')
 
     // Insert the comment using Railway database
-    const insertQuery = `
-      INSERT INTO ticket_comments (ticket_id, user_id, comment)
-      VALUES ($1, $2, $3)
-      RETURNING id, ticket_id, user_id, comment, created_at, updated_at
-    `
-    
-    console.log('Executing insert query with params:', [ticket.id, user.id, comment.trim()])
-    
-    const result = await pool.query(insertQuery, [
-      ticket.id,
-      user.id,
-      comment.trim()
-    ])
-
-    const newComment = result.rows[0]
+    const newComment = await addTicketComment(ticketId, user.id, comment)
     console.log('Comment inserted successfully:', newComment)
 
     // Get the user information for the response
-    const userQuery = `
-      SELECT 
-        u.id,
-        u.email,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture
-      FROM users u
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      WHERE u.id = $1
-    `
-    
-    const userResult = await pool.query(userQuery, [user.id])
-    const userInfo = userResult.rows[0]
+    const userInfo = await getBasicUserInfoById(user.id)
 
     // Create a simple response object
     const responseComment = {
