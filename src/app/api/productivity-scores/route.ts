@@ -8,8 +8,9 @@ export async function GET(request: NextRequest) {
     const timeframe = searchParams.get('timeframe') || 'monthly' // weekly, monthly, quarterly
     const monthYear = searchParams.get('monthYear') // Format: YYYY-MM
     const trend = searchParams.get('trend') // 'daily' for activity_data trend
+    const limit = searchParams.get('limit') // Optional limit for top N results
 
-    console.log('📊 API: Fetching productivity scores for memberId:', memberId, 'timeframe:', timeframe, 'monthYear:', monthYear)
+    console.log('📊 API: Fetching productivity scores for memberId:', memberId, 'timeframe:', timeframe, 'monthYear:', monthYear, 'limit:', limit)
 
     if (!memberId) {
       return NextResponse.json({ error: 'Member ID is required' }, { status: 400 })
@@ -379,6 +380,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Build the query based on memberId and timeframe
+    const limitClause = limit ? `LIMIT ${parseInt(limit)}` : ''
+    
     const productivityQuery = memberId === 'all' ? `
       SELECT 
         ps.id,
@@ -405,6 +408,7 @@ export async function GET(request: NextRequest) {
       WHERE ps.month_year = $1
         AND u.user_type = 'Agent'
       ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+      ${limitClause}
     ` : `
       SELECT 
         ps.id,
@@ -432,6 +436,7 @@ export async function GET(request: NextRequest) {
         AND u.user_type = 'Agent'
         AND a.member_id = $2
       ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+      ${limitClause}
     `
 
     console.log('📊 API: Executing productivity scores query for memberId:', memberId, 'monthYear:', targetMonthYear)

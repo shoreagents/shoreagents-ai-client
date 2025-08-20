@@ -34,7 +34,6 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ActivityRankings } from "@/components/interactive/cards/activity-rankings"
 
 interface LeaderboardEntry {
   id: number
@@ -196,6 +195,12 @@ export default function LeaderboardPage() {
     return seconds.toLocaleString()
   }
   
+  const formatActiveTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours}h ${minutes}m`
+  }
+  
   
 
   // Generate month options
@@ -286,9 +291,9 @@ export default function LeaderboardPage() {
                 <div className="px-4 lg:px-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h1 className="text-2xl font-bold">Leaderboard</h1>
+                      <h1 className="text-2xl font-bold">Ranking</h1>
                       <p className="text-sm text-muted-foreground">
-                        Track team performance and recognize top contributors across different metrics.
+                        View team rankings based on productivity scores and activity metrics.
                       </p>
                     </div>
                   </div>
@@ -459,9 +464,9 @@ export default function LeaderboardPage() {
                 <div className="px-4 lg:px-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h1 className="text-2xl font-bold">Leaderboard</h1>
+                      <h1 className="text-2xl font-bold">Ranking</h1>
                       <p className="text-sm text-muted-foreground">
-                        Track team performance and recognize top contributors across different metrics.
+                        View team rankings based on productivity scores and activity metrics.
                       </p>
                     </div>
                   </div>
@@ -498,22 +503,83 @@ export default function LeaderboardPage() {
               {/* Two Column Layout */}
               <div className="px-4 lg:px-6">
                 {/* Mobile-only header (title/description) */}
-                <div className="mb-4 lg:hidden">
-                  <h1 className="text-2xl font-bold">Leaderboard</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Track team performance and recognize top contributors across different metrics.
-                  </p>
-                </div>
+                                  <div className="mb-4 lg:hidden">
+                    <h1 className="text-2xl font-bold">Ranking</h1>
+                    <p className="text-sm text-muted-foreground">
+                      View team rankings based on productivity scores and activity metrics.
+                    </p>
+                  </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Column 1: Fixed-height header + Activity Rankings */}
                   <div className="order-3 lg:order-1">
                     <div className="mb-4 min-h-[72px] hidden lg:block">
-                      <h1 className="text-2xl font-bold">Leaderboard</h1>
+                      <h1 className="text-2xl font-bold">Ranking</h1>
                       <p className="text-sm text-muted-foreground">
-                        Track team performance and recognize top contributors across different metrics.
+                        View team rankings based on productivity scores and activity metrics.
                       </p>
                     </div>
-                    <ActivityRankings leaderboardData={leaderboardData} />
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          Ranking
+                        </CardTitle>
+                        <CardDescription>
+                          View team rankings based on productivity scores and activity metrics.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="h-12">
+                                <TableHead className="w-16">Rank</TableHead>
+                                <TableHead>Team Member</TableHead>
+                                <TableHead className="text-center">Points</TableHead>
+                                <TableHead className="text-center">Active Time</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {leaderboardData.map((entry, index) => (
+                                <TableRow key={entry.id} className={`h-14 ${index < 3 ? "bg-muted/50" : ""}`}>
+                                  <TableCell className="font-medium">
+                                    <span className={`text-sm font-medium ${
+                                      index + 1 === 1 ? 'text-yellow-500' :
+                                      index + 1 === 2 ? 'text-gray-500' :
+                                      index + 1 === 3 ? 'text-amber-600' :
+                                      index + 1 === 4 ? 'text-blue-500' :
+                                      index + 1 === 5 ? 'text-purple-500' :
+                                      'text-muted-foreground'
+                                    }`}>#{index + 1}</span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarImage src={entry.profile_picture || undefined} alt={`${entry.first_name} ${entry.last_name}`} />
+                                        <AvatarFallback>
+                                          {entry.first_name?.[0]}{entry.last_name?.[0]}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <div className="font-medium flex items-center gap-2">
+                                          {entry.first_name} {entry.last_name}
+                                          {getRankIcon(index + 1)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className="font-mono text-sm">{formatPoints(entry.total_active_seconds)}</span>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className="font-mono text-sm">{formatActiveTime(entry.total_active_seconds)}</span>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
 
                   {/* Column 2: Fixed-height period header + Top Performers, Daily Performance (sticky) */}

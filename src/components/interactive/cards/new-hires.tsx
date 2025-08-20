@@ -145,24 +145,26 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
   }
 
   return (
-    <Card className={`@container/card relative overflow-hidden ${className}`}>
-      <CardHeader className="relative">
-        <CardTitle>New Hires</CardTitle>
-        <CardDescription>Recently joined employees</CardDescription>
-        <div className="mt-2">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-purple-600" />
-            <NumberFlow 
-              value={getNewHiresCount()}
-              transformTiming={{ duration: 750, easing: 'ease-out' }}
-              spinTiming={{ duration: 750, easing: 'ease-out' }}
-              opacityTiming={{ duration: 350, easing: 'ease-out' }}
-              className="text-2xl font-semibold tabular-nums"
-              style={{ '--number-flow-mask-height': '0.1em' } as React.CSSProperties}
-            />
+    <Card className={`@container/card relative flex flex-col h-full ${className}`}>
+      <CardHeader className="relative flex-shrink-0">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>New Hires</CardTitle>
+            <div className="mt-2">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-purple-600" />
+                <NumberFlow 
+                  value={getNewHiresCount()}
+                  transformTiming={{ duration: 750, easing: 'ease-out' }}
+                  spinTiming={{ duration: 750, easing: 'ease-out' }}
+                  opacityTiming={{ duration: 350, easing: 'ease-out' }}
+                  className="text-2xl font-semibold tabular-nums"
+                  style={{ '--number-flow-mask-height': '0.1em' } as React.CSSProperties}
+                />
+              </div>
+              <CardDescription className="mt-1">Recently joined employees</CardDescription>
+            </div>
           </div>
-        </div>
-        <div className="absolute right-4 top-4">
           <div className="flex flex-col items-end gap-1">
             <Badge className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-gray-200 dark:bg-zinc-800 transition-all duration-500 ease-out px-1.5 py-0.5 border-0 w-20 h-6 items-center ${
               getNewHiresPercentage() >= 0 
@@ -188,28 +190,29 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
               </div>
             </Badge>
             <div className="text-xs text-muted-foreground text-right">
-              {viewMode === 'month' && 'vs last month'}
-              {viewMode === 'quarter' && 'vs previous 3m'}
-              {viewMode === 'half' && 'vs previous 6m'}
             </div>
           </div>
         </div>
       </CardHeader>
-      <CardFooter className="flex-col items-start gap-1 text-sm">
-        <div className="mt-1">
-          <AnimatedTabs
-            tabs={[
-              { title: "This Month", value: "month" },
-              { title: "Last 3 Months", value: "quarter" },
-              { title: "Last 6 Months", value: "half" }
-            ]}
-            containerClassName="rounded-lg"
-            activeTabClassName="bg-gray-200 dark:bg-zinc-800"
-            tabClassName="text-xs text-muted-foreground hover:text-foreground"
-            onTabChange={(tab) => setViewMode(tab.value as 'month' | 'quarter' | 'half')}
-          />
-        </div>
-      </CardFooter>
+      
+      {/* Flexible content area */}
+      <div className="flex-1 min-h-0 flex flex-col justify-end">
+        <CardFooter className="flex-col items-start gap-1 text-sm flex-shrink-0">
+          <div className="mt-1">
+            <AnimatedTabs
+              tabs={[
+                { title: "This Month", value: "month" },
+                { title: "Last 3 Months", value: "quarter" },
+                { title: "Last 6 Months", value: "half" }
+              ]}
+              containerClassName="rounded-lg"
+              activeTabClassName="bg-gray-200 dark:bg-zinc-800"
+              tabClassName="text-xs text-muted-foreground hover:text-foreground"
+              onTabChange={(tab) => setViewMode(tab.value as 'month' | 'quarter' | 'half')}
+            />
+          </div>
+        </CardFooter>
+      </div>
     </Card>
   )
 }

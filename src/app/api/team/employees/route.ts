@@ -4,7 +4,10 @@ import pool from '@/lib/database'
 export async function GET(request: NextRequest) {
   try {
     const memberId = request.nextUrl.searchParams.get('memberId')
-    console.log('🔍 API: Fetching employees for memberId:', memberId)
+    const search = request.nextUrl.searchParams.get('search')
+    const department = request.nextUrl.searchParams.get('department')
+
+    console.log('🔍 API: Fetching employees for memberId:', memberId, 'search:', search, 'department:', department)
     
     if (!memberId) {
       console.log('❌ API: No member ID provided')
@@ -14,8 +17,27 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Query to get agents (employees) for the specific member_id or all if memberId is 'all'
-    const employeesQuery = memberId === 'all' ? `
+    // Build dynamic WHERE clause with parameters
+    let whereClause = `WHERE u.user_type = 'Agent'`
+    const params: any[] = []
+
+    if (memberId !== 'all') {
+      params.push(memberId)
+      whereClause += ` AND a.member_id = $${params.length}`
+    }
+
+    if (search) {
+      // Search by first or last name (case-insensitive)
+      params.push(`%${search}%`)
+      whereClause += ` AND (pi.first_name ILIKE $${params.length} OR pi.last_name ILIKE $${params.length})`
+    }
+
+    if (department) {
+      params.push(department)
+      whereClause += ` AND d.name = $${params.length}`
+    }
+
+    const employeesQuery = `
       SELECT 
         u.id,
         u.email,
@@ -41,66 +63,33 @@ export async function GET(request: NextRequest) {
       LEFT JOIN agents a ON u.id = a.user_id
       LEFT JOIN departments d ON a.department_id = d.id
       LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
-      WHERE u.user_type = 'Agent'
-      ORDER BY pi.first_name, pi.last_name
-    ` : `
-      SELECT 
-        u.id,
-        u.email,
-        u.user_type,
-        pi.first_name,
-        pi.last_name,
-        pi.profile_picture,
-        pi.phone,
-        pi.birthday,
-        pi.city,
-        pi.address,
-        pi.gender,
-        a.exp_points,
-        a.department_id,
-        d.name as department_name,
-        d.description as department_description,
-        ji.job_title,
-        ji.employment_status,
-        ji.start_date,
-        ji.work_email
-      FROM users u
-      LEFT JOIN personal_info pi ON u.id = pi.user_id
-      LEFT JOIN agents a ON u.id = a.user_id
-      LEFT JOIN departments d ON a.department_id = d.id
-      LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
-      WHERE u.user_type = 'Agent' 
-        AND a.member_id = $1
-      ORDER BY pi.first_name, pi.last_name
+      ${whereClause}
+      ORDER BY pi.last_name, pi.first_name
     `
 
-    console.log('📊 API: Executing employees query for memberId:', memberId)
-    const employeesResult = memberId === 'all' 
-      ? await pool.query(employeesQuery)
-      : await pool.query(employeesQuery, [memberId])
+    console.log('📊 API: Executing employees query with', params.length, 'params')
+    const employeesResult = await pool.query(employeesQuery, params)
     console.log('📊 API: Found', employeesResult.rows.length, 'employees')
 
-    // Get department statistics
-    const departmentStatsQuery = memberId === 'all' ? `
+    // Department stats (total departments, total agents) — respect memberId filter when provided
+    const statsParams: any[] = []
+    let statsWhere = ''
+    if (memberId !== 'all') {
+      statsParams.push(memberId)
+      statsWhere = 'WHERE a.member_id = $1'
+    }
+
+    const departmentStatsQuery = `
       SELECT 
         COUNT(DISTINCT d.id) as total_departments,
         COUNT(DISTINCT a.user_id) as total_agents
       FROM departments d
       LEFT JOIN agents a ON d.id = a.department_id
-    ` : `
-      SELECT 
-        COUNT(DISTINCT d.id) as total_departments,
-        COUNT(DISTINCT a.user_id) as total_agents
-      FROM departments d
-      LEFT JOIN agents a ON d.id = a.department_id
-      WHERE a.member_id = $1
+      ${statsWhere}
     `
 
-    console.log('📊 API: Executing stats query for memberId:', memberId)
-    const statsResult = memberId === 'all'
-      ? await pool.query(departmentStatsQuery)
-      : await pool.query(departmentStatsQuery, [memberId])
-    console.log('📊 API: Stats result:', statsResult.rows[0])
+    console.log('📊 API: Executing stats query')
+    const statsResult = await pool.query(departmentStatsQuery, statsParams)
 
     const employees = employeesResult.rows.map(row => ({
       id: row.id.toString(),
@@ -131,7 +120,7 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    console.log('✅ API: Returning response:', response)
+    console.log('✅ API: Returning response')
     return NextResponse.json(response)
 
   } catch (error) {

@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useRouter } from "next/navigation"
 
 interface LeaderboardEntry {
   id: number
@@ -35,7 +36,7 @@ interface LeaderboardEntry {
 }
 
 interface ActivityRankingsProps {
-  leaderboardData: LeaderboardEntry[]
+  leaderboardData: LeaderboardEntry[] // Expected to be pre-limited to top 3 from API
   className?: string
   title?: string
   description?: string
@@ -47,12 +48,18 @@ interface ActivityRankingsProps {
 export function ActivityRankings({ 
   leaderboardData, 
   className, 
-  title = "Activity Rankings", 
-  description = "Complete leaderboard showing all team members and their activity metrics for this month.", 
+  title = "Leaderboards", 
+  description = "Top 3 team members based on activity points for this month.", 
   maxRows,
   scrollable = false,
   visibleRows = 3,
 }: ActivityRankingsProps) {
+  const router = useRouter()
+
+  const handleCardClick = () => {
+    router.push('/leaderboard')
+  }
+
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
@@ -77,10 +84,10 @@ export function ActivityRankings({
   }
 
   const formatPoints = (seconds: number) => {
-    return Math.floor(seconds / 60).toLocaleString()
+    return seconds.toLocaleString()
   }
 
-  const rows = maxRows ? leaderboardData.slice(0, maxRows) : leaderboardData
+  const rows = leaderboardData // Data is already limited to top 3 from API
 
   // Enforce fixed heights so we can precisely cap visible rows
   const rowHeightPx = 56 // h-14
@@ -90,63 +97,84 @@ export function ActivityRankings({
   const maxHeight = scrollable ? headerHeightPx + rowHeightPx * capRows - 4 : undefined
 
   return (
-    <Card className={className}>
+    <Card 
+      className={`${className} bg-gradient-to-br from-white/30 via-violet-500/20 to-violet-600/30 dark:from-violet-500/30 dark:via-black/35 dark:to-black/50 cursor-pointer transition-all duration-200 hover:shadow-lg group`} 
+      onClick={handleCardClick}
+    >
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className={scrollable ? "overflow-y-auto" : ""} style={scrollable ? { maxHeight } : undefined}>
-          <Table>
-            <TableHeader className={scrollable ? "sticky top-0 z-10 bg-card" : undefined}>
-              <TableRow className="h-12">
-                <TableHead className="w-16">Rank</TableHead>
-                <TableHead>Team Member</TableHead>
-                <TableHead className="text-center">Points</TableHead>
-                <TableHead className="text-center">Active Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((entry, index) => (
-                <TableRow key={entry.id} className={`h-14 ${index < 3 ? "bg-muted/50" : ""}`}>
-                  <TableCell className="font-medium">
-                    <span className={`text-sm font-medium ${
-                      entry.rank === 1 ? 'text-yellow-500' :
-                      entry.rank === 2 ? 'text-gray-500' :
-                      entry.rank === 3 ? 'text-amber-600' :
-                      entry.rank === 4 ? 'text-blue-500' :
-                      entry.rank === 5 ? 'text-purple-500' :
-                      'text-muted-foreground'
-                    }`}>#{entry.rank}</span>
-                  </TableCell>
-                  <TableCell>
+      <CardContent className="p-0">
+        <div className="flex gap-1">
+          {/* First Column - Trophy Image */}
+          <div className="w-[35%] flex items-end justify-start">
+            <img 
+              src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/trophy-leaderboard.png"
+              alt="Trophy Leaderboard"
+              className="w-full h-auto max-w-[200px] object-contain opacity-50 transition-opacity duration-600 group-hover:opacity-80"
+            />
+          </div>
+          
+          {/* Second Column - Item Containers */}
+          <div className={`w-[65%] pr-4 pb-4 ${scrollable ? "overflow-y-auto" : ""}`} style={scrollable ? { maxHeight: maxHeight } : {}}>
+            <div className="space-y-3">
+              {rows.length > 0 ? (
+                rows.map((entry, index) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
+                      <Avatar className="h-10 w-10">
                         <AvatarImage src={entry.profile_picture || undefined} alt={`${entry.first_name} ${entry.last_name}`} />
                         <AvatarFallback>
                           {entry.first_name?.[0]}{entry.last_name?.[0]}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="font-medium flex items-center gap-2">
-                          {entry.first_name} {entry.last_name}
-                          {getRankIcon(entry.rank)}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{entry.first_name} {entry.last_name}</span>
+                        <div className="flex items-center gap-1">
+                          {getRankIcon(index + 1)}
+                          <span className={`text-sm font-bold ${
+                            index === 0 ? 'text-yellow-500' :
+                            index === 1 ? 'text-gray-500' :
+                            index === 2 ? 'text-amber-600' :
+                            'text-muted-foreground'
+                          }`}>
+                            {index + 1}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-mono text-sm">{formatPoints(entry.total_active_seconds)}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="font-mono text-sm">{formatActiveTime(entry.total_active_seconds)}</span>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    <div className="text-right">
+                      <span className="font-mono text-sm font-medium">{formatPoints(entry.total_active_seconds)}</span>
+                      <div className="text-xs text-muted-foreground">Points</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // Skeleton loading states
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-white/30 animate-pulse"></div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-24 bg-white/30 animate-pulse rounded"></div>
+                        <div className="flex items-center gap-1">
+                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
+                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-16 bg-white/30 animate-pulse rounded mb-1"></div>
+                      <div className="h-3 w-12 bg-white/30 animate-pulse rounded"></div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

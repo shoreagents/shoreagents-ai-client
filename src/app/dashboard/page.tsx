@@ -126,12 +126,12 @@ export default function Dashboard() {
               setEmployees(employeesJson.employees || [])
             }
 
-            // Fetch leaderboard data for activity rankings
+            // Fetch leaderboard data for activity rankings (only top 3)
             const now = new Date()
             const currentMonth = now.getMonth() + 1
             const currentYear = now.getFullYear()
             const monthYear = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
-            const leaderboardRes = await fetch(`/api/productivity-scores?memberId=${memberId}&monthYear=${monthYear}`)
+            const leaderboardRes = await fetch(`/api/productivity-scores?memberId=${memberId}&monthYear=${monthYear}&limit=3`)
             if (leaderboardRes.ok) {
               const leaderboardJson = await leaderboardRes.json()
               setLeaderboardData(leaderboardJson.productivityScores || [])
@@ -262,9 +262,9 @@ export default function Dashboard() {
                 </div>
               </div>
               {loading ? (
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 auto-rows-[180px] gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
                   {/* 1. Salmon (2x2) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-2">
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="flex items-center gap-2 mt-2">
@@ -283,7 +283,7 @@ export default function Dashboard() {
                   </Card>
                   
                   {/* 2. Broccoli (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="flex items-center gap-2 mt-2">
@@ -295,7 +295,7 @@ export default function Dashboard() {
                   </Card>
                   
                   {/* 3. Tamago (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
@@ -303,7 +303,7 @@ export default function Dashboard() {
                   </Card>
                   
                   {/* 4. Pork (1x2) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-2">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-2 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
                       <div className="h-8 w-12 bg-muted animate-pulse rounded mt-2"></div>
@@ -312,7 +312,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* 5. Edamame (2x1) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                       <div className="h-8 w-24 bg-muted animate-pulse rounded mt-2"></div>
@@ -321,45 +321,40 @@ export default function Dashboard() {
                   </Card>
 
                   {/* 6. Tomato (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
                   </Card>
 
                   {/* 7. Tofu (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
                   </Card>
 
                   {/* 8. Tempura (2x1) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
                   </Card>
 
                   {/* 9. Gyoza (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1">
+                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader className="relative">
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
                     </CardHeader>
                   </Card>
                 </div>
               ) : (
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 auto-rows-[180px] gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
                   {/* 1. Salmon (2x2) - New Hires */}
                   <NewHires employees={employees} className="sm:col-span-2 lg:col-span-2 lg:row-span-2" />
 
                   {/* 2. Broccoli (1x1) - Closed */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-base">Closed</CardTitle>
-                      <CardDescription>{allClosedTicketsCount} total</CardDescription>
-                    </CardHeader>
-                  </Card>
+                  <NewHires employees={employees} className="lg:col-span-1 lg:row-span-1" />
 
                   {/* 3. Tamago (1x1) - In Progress */}
                   <Card className="lg:col-span-1 lg:row-span-1">
@@ -372,14 +367,9 @@ export default function Dashboard() {
                   {/* 4. Pork (1x2) - Connect */}
                   <GrowthRateCard className="lg:col-span-1 lg:row-span-2" />
 
-                  {/* 5. Edamame (2x1) - Activity Rankings */}
+                  {/* 5. Edamame (2x1) - Top 3 Performers */}
                   <ActivityRankings 
                     leaderboardData={leaderboardData} 
-                    maxRows={6}
-                    title="Activity Rankings"
-                    description="Top performers for this month based on activity points."
-                    scrollable
-                    visibleRows={4}
                     className="lg:col-span-2 lg:row-span-1"
                   />
 
@@ -408,7 +398,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* 9. Gyoza (1x1) - Approved */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
+                  <Card className="lg:col-span-1 lg:row-span-1 h-full">
                     <CardHeader>
                       <CardTitle className="text-base">Approved</CardTitle>
                       <CardDescription>{statusCounts.approved} tickets</CardDescription>

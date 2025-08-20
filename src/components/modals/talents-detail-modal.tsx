@@ -14,7 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from "framer-motion"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AnimatedTabs } from "@/components/ui/animated-tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 
 interface TalentsDetailModalProps {
   talent: TalentProfile | null
@@ -349,14 +350,18 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                              {/* Talent Content - Tabbed View */}
                <div className="flex-1 px-6 py-5 overflow-y-auto">
                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                       <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="information" className="text-sm font-medium">
-                        About
-                      </TabsTrigger>
-                      <TabsTrigger value="ai-analysis" className="text-sm font-medium">
-                        AI Analysis
-                      </TabsTrigger>
-                    </TabsList>
+                                       <div className="mb-6">
+                      <AnimatedTabs
+                        tabs={[
+                          { title: "About", value: "information" },
+                          { title: "AI Analysis", value: "ai-analysis" }
+                        ]}
+                        containerClassName="grid w-full grid-cols-2"
+                        activeTabClassName="bg-sidebar border"
+                        tabClassName="text-sm font-medium px-4 py-2 rounded-lg"
+                        onTabChange={(tab) => setActiveTab(tab.value)}
+                      />
+                    </div>
 
                    {/* Information Tab */}
                    <TabsContent value="information" className="space-y-6">
