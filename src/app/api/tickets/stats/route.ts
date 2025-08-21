@@ -15,24 +15,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Test query to see total closed tickets
-    const totalClosedQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-    `
     const totalClosed = await countTotalClosedTickets()
     console.log('Total closed tickets in system:', totalClosed)
 
-    // Check if closed tickets have resolved_at values
-    const closedWithResolvedAtQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at IS NOT NULL
-    `
     const closedWithResolvedAt = await countClosedWithResolvedAt()
     console.log('Closed tickets with resolved_at:', closedWithResolvedAt)
 
@@ -96,65 +81,7 @@ export async function GET(request: NextRequest) {
       nextMonth: nextMonth.toISOString()
     })
 
-    // Current period queries - no timezone conversion needed since DB stores Manila timezone
-    const currentDayQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at >= $1
-        AND resolved_at < $2
-    `
-    
-    const currentWeekQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at >= $1
-        AND resolved_at < $2
-    `
-    
-    const currentMonthQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at >= $1
-        AND resolved_at < $2
-    `
-    
-
-
-    // Previous period queries - no timezone conversion needed since DB stores Manila timezone
-    const previousDayQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at >= $1
-        AND resolved_at < $2
-    `
-    
-    const previousWeekQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-        AND role_id = 1
-        AND resolved_at >= $1
-        AND resolved_at < $2
-    `
-    
-    const previousMonthQuery = `
-      SELECT COUNT(*) as count
-      FROM public.tickets 
-      WHERE status = 'Closed' 
-      AND role_id = 1
-      AND resolved_at >= $1
-      AND resolved_at < $2
-    `
-    
-
+    // Current and previous period queries moved to db-utils helpers
 
     // Execute queries
     const [currentDay, currentWeek, currentMonth, previousDay, previousWeek, previousMonth] = await Promise.all([

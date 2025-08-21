@@ -206,8 +206,6 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
                 { title: "Last 6 Months", value: "half" }
               ]}
               containerClassName="rounded-lg"
-              activeTabClassName="bg-gray-200 dark:bg-zinc-800"
-              tabClassName="text-xs text-muted-foreground hover:text-foreground"
               onTabChange={(tab) => setViewMode(tab.value as 'month' | 'quarter' | 'half')}
             />
           </div>

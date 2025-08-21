@@ -483,23 +483,32 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
               </div>
 
                              {/* Talent Content - Tabbed View */}
-               <div className="flex-1 px-6 py-5 overflow-y-auto">
-                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                       <div className="mb-6">
-                      <AnimatedTabs
-                        tabs={[
-                          { title: "About", value: "information" },
-                          { title: "AI Analysis", value: "ai-analysis" }
-                        ]}
-                        containerClassName="grid w-full grid-cols-2"
-                        activeTabClassName="bg-sidebar border"
-                        tabClassName="text-sm font-medium px-4 py-2 rounded-lg"
-                        onTabChange={(tab) => setActiveTab(tab.value)}
-                      />
+               <div className="flex-1 flex flex-col px-6 py-5 min-h-0">
+                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
+                                       <div className="mb-6 flex-shrink-0">
+                                             <div className={`rounded-xl p-1 w-fit ${
+                         theme === 'dark' 
+                           ? 'bg-white/5 border border-white/10' 
+                           : 'bg-gray-100/80 border border-gray-200'
+                       }`}>
+                                                 <AnimatedTabs
+                           tabs={[
+                             { title: "About", value: "information" },
+                             { title: "AI Analysis", value: "ai-analysis" }
+                           ]}
+                           containerClassName="grid grid-cols-2 w-fit"
+                           activeTabClassName={`rounded-xl ${
+                             theme === 'dark' 
+                               ? 'bg-zinc-800' 
+                               : 'bg-[#ebebeb]'
+                           }`}
+                           onTabChange={(tab) => setActiveTab(tab.value)}
+                         />
+                      </div>
                     </div>
 
                    {/* Information Tab */}
-                   <TabsContent value="information" className="space-y-6">
+                   <TabsContent value="information" className="space-y-6 overflow-y-auto flex-1 min-h-0">
                                            {/* Summary Section */}
                       <div>
                         <h3 className="text-lg font-medium mb-2 text-muted-foreground">Summary</h3>
@@ -670,7 +679,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                    </TabsContent>
 
                    {/* AI Analysis Tab */}
-                   <TabsContent value="ai-analysis" className="space-y-6">
+                   <TabsContent value="ai-analysis" className="space-y-6 overflow-y-auto flex-1 min-h-0">
                      {isLoadingAi ? (
                        <div className="space-y-4">
                          <div className="h-8 w-56 bg-muted animate-pulse rounded" />

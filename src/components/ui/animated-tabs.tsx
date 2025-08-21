@@ -65,7 +65,7 @@ export const AnimatedTabs = ({
                 layoutId="clickedbutton"
                 transition={{ type: "spring", bounce: 0.3, duration: 0.6 }}
                 className={cn(
-                  "absolute inset-0 bg-gray-200 dark:bg-zinc-800 rounded-lg ",
+                  "absolute inset-0 bg-sidebar-accent dark:bg-zinc-800 rounded-lg ",
                   activeTabClassName
                 )}
               />
