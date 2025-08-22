@@ -280,17 +280,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
     generateWithAI()
   }
 
-  const demoAiFlow = () => {
-    setAiSuccess(false)
-    setAiInfoOpen(true)
-    setAiGenerating(true)
-    const stepMs = 900
-    const totalMs = Math.max(1, aiLoadingStates.length - 1) * stepMs + 300
-    setTimeout(() => {
-      setAiGenerating(false)
-      setAiSuccess(true)
-    }, totalMs)
-  }
+
 
   // Determine which fields are missing for AI guidance
   const missingIndustry = !(form.industry === "Others" ? otherIndustry : form.industry)
@@ -431,9 +421,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                   )}
                 </Tooltip>
               </TooltipProvider>
-              <Button size="sm" variant="outline" onClick={demoAiFlow} disabled={aiGenerating} className="ml-2">
-                Simulate AI
-              </Button>
+
             </div>
             <Dialog open={aiInfoOpen} onOpenChange={setAiInfoOpen}>
               <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[290px] overflow-hidden flex flex-col" hideClose>
