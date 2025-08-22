@@ -1221,7 +1221,6 @@ export async function getEmployees(memberId: string, search: string | null, depa
       pi.city,
       pi.address,
       pi.gender,
-      a.exp_points,
       a.department_id,
       d.name as department_name,
       d.description as department_description,
@@ -1266,7 +1265,7 @@ export async function getEmployees(memberId: string, search: string | null, depa
     position: row.job_title || 'Agent',
     hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
     avatar: row.profile_picture,
-    expPoints: row.exp_points || 0,
+
     departmentId: row.department_id,
     workEmail: row.work_email,
     birthday: row.birthday,
@@ -1619,8 +1618,7 @@ export async function getProductivityScoresRows(memberId: string, monthYear: str
       pi.last_name,
       pi.profile_picture,
       u.email,
-      d.name as department_name,
-      a.exp_points
+      d.name as department_name
     FROM productivity_scores ps
     LEFT JOIN personal_info pi ON ps.user_id = pi.user_id
     LEFT JOIN users u ON ps.user_id = u.id
@@ -1646,8 +1644,7 @@ export async function getProductivityScoresRows(memberId: string, monthYear: str
       pi.last_name,
       pi.profile_picture,
       u.email,
-      d.name as department_name,
-      a.exp_points
+      d.name as department_name
     FROM productivity_scores ps
     LEFT JOIN personal_info pi ON ps.user_id = pi.user_id
     LEFT JOIN users u ON ps.user_id = u.id

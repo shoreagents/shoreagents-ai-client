@@ -48,7 +48,6 @@ interface LeaderboardEntry {
   total_inactive_seconds: number
   total_seconds: number
   active_percentage: number
-  exp_points: number
   rank: number
 }
 

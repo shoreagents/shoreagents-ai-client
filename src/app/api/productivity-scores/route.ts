@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
       profile_picture: row.profile_picture,
       email: row.email,
       department_name: row.department_name || 'Unassigned',
-      exp_points: row.exp_points || 0,
       rank: index + 1
     }))
 

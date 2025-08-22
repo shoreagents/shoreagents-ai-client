@@ -56,15 +56,6 @@ CREATE SEQUENCE public.activity_data_id_seq
 	START 1
 	CACHE 1
 	NO CYCLE;
--- DROP SEQUENCE public.bpoc_comments_id_seq;
-
-CREATE SEQUENCE public.bpoc_comments_id_seq
-	INCREMENT BY 1
-	MINVALUE 1
-	MAXVALUE 2147483647
-	START 1
-	CACHE 1
-	NO CYCLE;
 -- DROP SEQUENCE public.break_sessions_id_seq;
 
 CREATE SEQUENCE public.break_sessions_id_seq
@@ -194,6 +185,15 @@ CREATE SEQUENCE public.personal_info_id_seq
 -- DROP SEQUENCE public.productivity_scores_id_seq;
 
 CREATE SEQUENCE public.productivity_scores_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.recruits_comments_id_seq;
+
+CREATE SEQUENCE public.recruits_comments_id_seq
 	INCREMENT BY 1
 	MINVALUE 1
 	MAXVALUE 2147483647
@@ -453,17 +453,6 @@ update
     public.activity_data for each row execute function update_updated_at_column();
 
 
--- public.bpoc_comments definition
-
--- Drop table
-
--- DROP TABLE public.bpoc_comments;
-
-CREATE TABLE public.bpoc_comments ( id serial4 NOT NULL, "comment" text NOT NULL, created_by int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, comment_type varchar(50) DEFAULT 'general'::character varying NULL, CONSTRAINT bpoc_comments_pkey PRIMARY KEY (id), CONSTRAINT bpoc_comments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id));
-CREATE INDEX idx_bpoc_comments_created_by ON public.bpoc_comments USING btree (created_by);
-CREATE INDEX idx_bpoc_comments_type ON public.bpoc_comments USING btree (comment_type);
-
-
 -- public.clinic_logs definition
 
 -- Drop table
@@ -479,7 +468,7 @@ CREATE TABLE public.clinic_logs ( id serial4 NOT NULL, patient_id int4 NOT NULL,
 
 -- DROP TABLE public.departments;
 
-CREATE TABLE public.departments ( id serial4 NOT NULL, "name" text NOT NULL, description text NULL, member_id int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT departments_pkey PRIMARY KEY (id), CONSTRAINT unique_department_id_member UNIQUE (id, member_id), CONSTRAINT unique_department_per_member UNIQUE (name, member_id), CONSTRAINT departments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE);
+CREATE TABLE public.departments ( id serial4 NOT NULL, "name" text NOT NULL, description text NULL, member_id int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT departments_pkey PRIMARY KEY (id), CONSTRAINT unique_department_id_member UNIQUE (id, member_id), CONSTRAINT unique_department_per_member UNIQUE (name, member_id), CONSTRAINT departments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL);
 
 -- Table Triggers
 
@@ -495,7 +484,7 @@ update
 
 -- DROP TABLE public.floor_plan_members;
 
-CREATE TABLE public.floor_plan_members ( id serial4 NOT NULL, floor_plan_id int4 NOT NULL, member_id int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT floor_plan_members_floor_plan_id_member_id_key UNIQUE (floor_plan_id, member_id), CONSTRAINT floor_plan_members_pkey PRIMARY KEY (id), CONSTRAINT floor_plan_members_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE, CONSTRAINT floor_plan_members_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE);
+CREATE TABLE public.floor_plan_members ( id serial4 NOT NULL, floor_plan_id int4 NOT NULL, member_id int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT floor_plan_members_floor_plan_id_member_id_key UNIQUE (floor_plan_id, member_id), CONSTRAINT floor_plan_members_pkey PRIMARY KEY (id), CONSTRAINT floor_plan_members_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE, CONSTRAINT floor_plan_members_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL);
 
 
 -- public.internal definition
@@ -553,6 +542,7 @@ update
 -- DROP TABLE public.personal_info;
 
 CREATE TABLE public.personal_info ( id serial4 NOT NULL, user_id int4 NOT NULL, first_name text NOT NULL, middle_name text NULL, last_name text NOT NULL, nickname text NULL, profile_picture text NULL, phone text NULL, birthday date NULL, city text NULL, address text NULL, gender public."gender_enum" NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT personal_info_pkey PRIMARY KEY (id), CONSTRAINT personal_info_user_id_key UNIQUE (user_id), CONSTRAINT personal_info_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_personal_info_user_names ON public.personal_info USING btree (user_id, first_name, last_name);
 
 -- Table Triggers
 
@@ -569,6 +559,7 @@ update
 -- DROP TABLE public.productivity_scores;
 
 CREATE TABLE public.productivity_scores ( id serial4 NOT NULL, user_id int4 NOT NULL, month_year varchar(7) NOT NULL, productivity_score numeric(5, 2) NOT NULL, total_active_seconds int4 DEFAULT 0 NULL, total_inactive_seconds int4 DEFAULT 0 NULL, total_seconds int4 DEFAULT 0 NULL, active_percentage numeric(5, 2) DEFAULT 0.00 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT productivity_scores_pkey PRIMARY KEY (id), CONSTRAINT productivity_scores_user_id_month_year_key UNIQUE (user_id, month_year), CONSTRAINT productivity_scores_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_productivity_scores_month_top ON public.productivity_scores USING btree (month_year, total_active_seconds DESC) INCLUDE (user_id, active_percentage, total_seconds, total_inactive_seconds, productivity_score);
 
 -- Table Triggers
 
@@ -600,9 +591,8 @@ update
 
 -- DROP TABLE public.talent_pool;
 
-CREATE TABLE public.talent_pool ( id serial4 NOT NULL, applicant_id uuid NOT NULL, comment_id int4 NULL, interested_clients _int4 NULL, last_contact_date timestamptz NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT talent_pool_pkey PRIMARY KEY (id), CONSTRAINT talent_pool_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.bpoc_recruits(applicant_id), CONSTRAINT talent_pool_comment_id_fkey FOREIGN KEY (comment_id) REFERENCES public.bpoc_comments(id));
+CREATE TABLE public.talent_pool ( id serial4 NOT NULL, applicant_id uuid NOT NULL, interested_clients _int4 NULL, last_contact_date timestamptz NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT talent_pool_pkey PRIMARY KEY (id), CONSTRAINT talent_pool_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.bpoc_recruits(applicant_id));
 CREATE INDEX idx_talent_pool_applicant_id ON public.talent_pool USING btree (applicant_id);
-CREATE INDEX idx_talent_pool_comment_id ON public.talent_pool USING btree (comment_id);
 CREATE INDEX idx_talent_pool_interested_clients ON public.talent_pool USING gin (interested_clients);
 
 
@@ -612,7 +602,7 @@ CREATE INDEX idx_talent_pool_interested_clients ON public.talent_pool USING gin 
 
 -- DROP TABLE public.tickets;
 
-CREATE TABLE public.tickets ( id serial4 NOT NULL, ticket_id varchar(50) NOT NULL, user_id int4 NOT NULL, concern text NOT NULL, details text NULL, status public."ticket_status_enum" DEFAULT 'For Approval'::ticket_status_enum NOT NULL, resolved_by int4 NULL, resolved_at timestamptz NULL, created_at timestamp DEFAULT (now() AT TIME ZONE 'Asia/Manila'::text) NOT NULL, updated_at timestamp DEFAULT (now() AT TIME ZONE 'Asia/Manila'::text) NOT NULL, "position" numeric(10, 3) DEFAULT 0 NOT NULL, category_id int4 NULL, supporting_files _text DEFAULT '{}'::text[] NULL, file_count int4 DEFAULT 0 NULL, role_id int4 NULL, CONSTRAINT check_file_count CHECK (((file_count = array_length(supporting_files, 1)) OR ((file_count = 0) AND (supporting_files = '{}'::text[])))), CONSTRAINT tickets_pkey PRIMARY KEY (id), CONSTRAINT tickets_ticket_id_key UNIQUE (ticket_id), CONSTRAINT tickets_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ticket_categories(id) ON DELETE SET NULL, CONSTRAINT tickets_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE SET NULL, CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.tickets ( id serial4 NOT NULL, ticket_id varchar(50) NOT NULL, user_id int4 NOT NULL, concern text NOT NULL, details text NULL, status public."ticket_status_enum" DEFAULT 'For Approval'::ticket_status_enum NOT NULL, resolved_by int4 NULL, resolved_at timestamptz NULL, created_at timestamp DEFAULT (now() AT TIME ZONE 'Asia/Manila'::text) NOT NULL, updated_at timestamp DEFAULT (now() AT TIME ZONE 'Asia/Manila'::text) NOT NULL, "position" int4 DEFAULT 0 NOT NULL, category_id int4 NULL, supporting_files _text DEFAULT '{}'::text[] NULL, file_count int4 DEFAULT 0 NULL, role_id int4 NULL, CONSTRAINT check_file_count CHECK (((file_count = array_length(supporting_files, 1)) OR ((file_count = 0) AND (supporting_files = '{}'::text[])))), CONSTRAINT tickets_pkey PRIMARY KEY (id), CONSTRAINT tickets_ticket_id_key UNIQUE (ticket_id), CONSTRAINT tickets_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ticket_categories(id) ON DELETE SET NULL, CONSTRAINT tickets_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE SET NULL, CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
 
 -- Table Triggers
 
@@ -662,7 +652,9 @@ update
 
 -- DROP TABLE public.agents;
 
-CREATE TABLE public.agents ( user_id int4 NOT NULL, exp_points int4 DEFAULT 0 NULL, member_id int4 NULL, department_id int4 NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT agents_pkey PRIMARY KEY (user_id), CONSTRAINT agents_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT agents_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE, CONSTRAINT agents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.agents ( user_id int4 NOT NULL, member_id int4 NULL, department_id int4 NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT agents_pkey PRIMARY KEY (user_id), CONSTRAINT agents_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT agents_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL, CONSTRAINT agents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_agents_department_member ON public.agents USING btree (department_id, member_id);
+CREATE INDEX idx_agents_member_user ON public.agents USING btree (member_id, user_id);
 
 -- Table Triggers
 
@@ -687,7 +679,7 @@ CREATE TABLE public.break_sessions ( id serial4 NOT NULL, agent_user_id int4 NOT
 
 -- DROP TABLE public.clients;
 
-CREATE TABLE public.clients ( user_id int4 NOT NULL, member_id int4 NOT NULL, department_id int4 NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT clients_pkey PRIMARY KEY (user_id), CONSTRAINT clients_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT clients_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE, CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.clients ( user_id int4 NOT NULL, member_id int4 NOT NULL, department_id int4 NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT clients_pkey PRIMARY KEY (user_id), CONSTRAINT clients_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT clients_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL, CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
 
 -- Table Triggers
 
@@ -744,6 +736,7 @@ insert
 -- DROP TABLE public.job_info;
 
 CREATE TABLE public.job_info ( id serial4 NOT NULL, employee_id varchar(20) NOT NULL, agent_user_id int4 NULL, internal_user_id int4 NULL, job_title text NULL, shift_period text NULL, shift_schedule text NULL, shift_time text NULL, work_setup text NULL, employment_status text NULL, hire_type text NULL, staff_source text NULL, start_date date NULL, exit_date date NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, work_email text NULL, CONSTRAINT chk_job_info_employee_type CHECK ((((agent_user_id IS NOT NULL) AND (internal_user_id IS NULL)) OR ((agent_user_id IS NULL) AND (internal_user_id IS NOT NULL)))), CONSTRAINT job_info_employee_id_key UNIQUE (employee_id), CONSTRAINT job_info_pkey PRIMARY KEY (id), CONSTRAINT job_info_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.agents(user_id) ON DELETE CASCADE, CONSTRAINT job_info_internal_user_id_fkey FOREIGN KEY (internal_user_id) REFERENCES public.internal(user_id) ON DELETE CASCADE);
+CREATE INDEX idx_job_info_agent_user ON public.job_info USING btree (agent_user_id);
 
 -- Table Triggers
 
@@ -751,6 +744,18 @@ create trigger update_job_info_updated_at before
 update
     on
     public.job_info for each row execute function update_updated_at_column();
+
+
+-- public.recruits_comments definition
+
+-- Drop table
+
+-- DROP TABLE public.recruits_comments;
+
+CREATE TABLE public.recruits_comments ( id serial4 NOT NULL, "comment" text NOT NULL, created_by int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, comment_type varchar(50) DEFAULT 'general'::character varying NULL, talent_pool_id int4 NULL, CONSTRAINT recruits_comments_pkey PRIMARY KEY (id), CONSTRAINT recruits_comments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id), CONSTRAINT recruits_comments_talent_pool_id_fkey FOREIGN KEY (talent_pool_id) REFERENCES public.talent_pool(id) ON DELETE CASCADE);
+CREATE INDEX idx_recruits_comments_created_by ON public.recruits_comments USING btree (created_by);
+CREATE INDEX idx_recruits_comments_talent_pool_id ON public.recruits_comments USING btree (talent_pool_id);
+CREATE INDEX idx_recruits_comments_type ON public.recruits_comments USING btree (comment_type);
 
 
 -- public.ticket_comments definition
@@ -769,56 +774,33 @@ CREATE OR REPLACE FUNCTION public.add_to_talent_pool()
  RETURNS trigger
  LANGUAGE plpgsql
 AS $function$
+DECLARE
+    v_talent_pool_id int4;
 BEGIN
-    -- Handle status change TO 'passed'
-    IF NEW.status = 'passed' AND (OLD.status IS NULL OR OLD.status != 'passed') THEN
-        
-        -- Check if applicant already exists in talent pool
+    IF NEW.status = 'passed' AND (OLD.status IS NULL OR OLD.status <> 'passed') THEN
         IF NOT EXISTS (SELECT 1 FROM public.talent_pool WHERE applicant_id = NEW.applicant_id) THEN
-            
-            -- First, create a comment and get its ID
-            INSERT INTO public.bpoc_comments (
-                comment,
-                comment_type,
-                created_by,
-                created_at,
-                updated_at
+            -- Create talent pool row first
+            INSERT INTO public.talent_pool (applicant_id, created_at, updated_at)
+            VALUES (NEW.applicant_id, NOW(), NOW())
+            RETURNING id INTO v_talent_pool_id;
+
+            -- Create comment linked to that talent pool row
+            INSERT INTO public.recruits_comments (
+                comment, comment_type, created_by, created_at, updated_at, talent_pool_id
             ) VALUES (
-                'Added to Talent Pool', -- Default comment
-                'activity', -- Comment type for talent pool entries
-                NULL, -- Will be set by application layer with actual user ID
-                NOW(),
-                NOW()
+                'Added to Talent Pool', 'activity', NULL, NOW(), NOW(), v_talent_pool_id
             );
-            
-            -- Then, insert into talent pool using the comment ID
-            INSERT INTO public.talent_pool (
-                applicant_id,
-                comment_id,
-                created_at,
-                updated_at
-            ) VALUES (
-                NEW.applicant_id,
-                currval('public.bpoc_comments_id_seq'), -- Get the ID of the comment we just created
-                NOW(),
-                NOW()
-            );
-            
+
             RAISE NOTICE 'Applicant % added to talent pool', NEW.applicant_id;
         ELSE
             RAISE NOTICE 'Applicant % already exists in talent pool', NEW.applicant_id;
         END IF;
-        
-    -- Handle status change FROM 'passed' to something else
-    ELSIF OLD.status = 'passed' AND NEW.status != 'passed' THEN
-        
-        -- Remove from talent pool
+
+    ELSIF OLD.status = 'passed' AND NEW.status <> 'passed' THEN
         DELETE FROM public.talent_pool WHERE applicant_id = NEW.applicant_id;
-        
         RAISE NOTICE 'Applicant % removed from talent pool (status changed to: %)', NEW.applicant_id, NEW.status;
-        
     END IF;
-    
+
     RETURN NEW;
 END;
 $function$
@@ -878,18 +860,18 @@ CREATE OR REPLACE FUNCTION public.decrypt_iv(bytea, bytea, bytea, text)
 AS '$libdir/pgcrypto', $function$pg_decrypt_iv$function$
 ;
 
--- DROP FUNCTION public.digest(text, text);
+-- DROP FUNCTION public.digest(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.digest(text, text)
+CREATE OR REPLACE FUNCTION public.digest(bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pg_digest$function$
 ;
 
--- DROP FUNCTION public.digest(bytea, text);
+-- DROP FUNCTION public.digest(text, text);
 
-CREATE OR REPLACE FUNCTION public.digest(bytea, text)
+CREATE OR REPLACE FUNCTION public.digest(text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -1033,17 +1015,45 @@ AS $function$
 DECLARE
     notification JSON;
 BEGIN
-    -- Create notification payload
-    notification = json_build_object(
-        'table', TG_TABLE_NAME,
-        'action', TG_OP,
-        'record', row_to_json(NEW),
-        'old_record', CASE WHEN TG_OP = 'UPDATE' THEN row_to_json(OLD) ELSE NULL END,
-        'timestamp', now()
-    );
-    
-    -- Send notification
-    PERFORM pg_notify('ticket_changes', notification::text);
+    -- Only send notifications for meaningful changes, not timestamp updates
+    IF TG_OP = 'UPDATE' THEN
+        -- Check if any meaningful fields changed (excluding updated_at)
+        IF (OLD.status IS DISTINCT FROM NEW.status) OR
+           (OLD.position IS DISTINCT FROM NEW.position) OR
+           (OLD.resolved_by IS DISTINCT FROM NEW.resolved_by) OR
+           (OLD.resolved_at IS DISTINCT FROM NEW.resolved_at) OR
+           (OLD.role_id IS DISTINCT FROM NEW.role_id) OR
+           (OLD.concern IS DISTINCT FROM NEW.concern) OR
+           (OLD.details IS DISTINCT FROM NEW.details) OR
+           (OLD.category_id IS DISTINCT FROM NEW.category_id) OR
+           (OLD.supporting_files IS DISTINCT FROM NEW.supporting_files) OR
+           (OLD.file_count IS DISTINCT FROM NEW.file_count) THEN
+            
+            -- Create notification payload
+            notification = json_build_object(
+                'table', TG_TABLE_NAME,
+                'action', TG_OP,
+                'record', row_to_json(NEW),
+                'old_record', row_to_json(OLD),
+                'timestamp', now()
+            );
+            
+            -- Send notification
+            PERFORM pg_notify('ticket_changes', notification::text);
+        END IF;
+    ELSE
+        -- For INSERT and DELETE, always send notification
+        notification = json_build_object(
+            'table', TG_TABLE_NAME,
+            'action', TG_OP,
+            'record', CASE WHEN TG_OP = 'DELETE' THEN row_to_json(OLD) ELSE row_to_json(NEW) END,
+            'old_record', CASE WHEN TG_OP = 'UPDATE' THEN row_to_json(OLD) ELSE NULL END,
+            'timestamp', now()
+        );
+        
+        -- Send notification
+        PERFORM pg_notify('ticket_changes', notification::text);
+    END IF;
     
     RETURN NEW;
 END;
@@ -1068,15 +1078,6 @@ CREATE OR REPLACE FUNCTION public.pgp_key_id(bytea)
 AS '$libdir/pgcrypto', $function$pgp_key_id_w$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text);
-
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text)
- RETURNS text
- LANGUAGE c
- IMMUTABLE PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
-;
-
 -- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text);
 
 CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text)
@@ -1095,13 +1096,13 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea)
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
+-- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
- RETURNS bytea
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text)
+ RETURNS text
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
+AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
 ;
 
 -- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text);
@@ -1122,18 +1123,27 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt(text, bytea, text);
+-- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
+ RETURNS bytea
+ LANGUAGE c
+ IMMUTABLE PARALLEL SAFE STRICT
+AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
+;
+
+-- DROP FUNCTION public.pgp_pub_encrypt(text, bytea);
+
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt(text, bytea);
+-- DROP FUNCTION public.pgp_pub_encrypt(text, bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
@@ -1212,18 +1222,18 @@ CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt(text, text)
 AS '$libdir/pgcrypto', $function$pgp_sym_encrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text);
+-- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_sym_encrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text);
+-- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT

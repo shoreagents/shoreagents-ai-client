@@ -53,7 +53,6 @@ interface Employee {
   hireDate?: string
   status: 'Active' | 'Inactive'
   avatar?: string
-  expPoints?: number
   departmentId?: number
   workEmail?: string
   birthday?: string
