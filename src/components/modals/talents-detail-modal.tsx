@@ -16,6 +16,7 @@ import { useTheme } from "next-themes"
 import { motion, AnimatePresence } from "framer-motion"
 import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Comment, CommentData } from "@/components/ui/comment"
 
 interface TalentsDetailModalProps {
   talent: TalentProfile | null
@@ -66,13 +67,7 @@ interface Project {
   url?: string
 }
 
-interface Comment {
-  id: string
-  comment: string
-  created_at: string
-  updated_at?: string
-  user_id?: string
-  user_name: string
+interface Comment extends CommentData {
   user_role: string
 }
 
@@ -118,29 +113,7 @@ const getStatusIcon = (status: string) => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return {
-    date: date.toLocaleDateString('en-US', { 
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    }),
-    time: date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }),
-    full: date.toLocaleDateString('en-US', { 
-      year: 'numeric',
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    })
-  }
-}
+
 
 export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailModalProps) {
   const { theme } = useTheme()
@@ -148,7 +121,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   const [isSubmittingComment, setIsSubmittingComment] = React.useState(false)
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
   const [commentsList, setCommentsList] = React.useState<Comment[]>(talent?.comments || [])
-  const [hoveredComment, setHoveredComment] = React.useState<string | null>(null)
+
   const [showDeleteModal, setShowDeleteModal] = React.useState(false)
   const [commentToDelete, setCommentToDelete] = React.useState<string | null>(null)
   const [activeTab, setActiveTab] = React.useState("information")
@@ -857,92 +830,14 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
                 {activityTab === 'comments' && (
                   <div className="space-y-4">
                     {commentsList && commentsList.length > 0 ? (
-                      commentsList.map((comment) => {
-                        const commentDate = formatDate(comment.created_at)
-                        
-                        return (
-                          <motion.div 
-                            key={comment.id} 
-                            className="rounded-lg p-4 bg-sidebar border"
-                            onHoverStart={() => setHoveredComment(comment.id)}
-                            onHoverEnd={() => setHoveredComment(null)}
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                  <AvatarFallback>{comment.user_name?.charAt(0) || 'U'}</AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm font-medium">{comment.user_name}</span>
-                              </div>
-                              
-                              <div className="relative">
-                                <AnimatePresence mode="wait">
-                                   {hoveredComment !== comment.id ? (
-                                     <motion.div 
-                                       key="date-time"
-                                       className="flex items-center gap-2 text-xs text-muted-foreground"
-                                       initial={{ opacity: 0, x: 20 }}
-                                       animate={{ opacity: 1, x: 0 }}
-                                       exit={{ opacity: 0, x: 20 }}
-                                       transition={{ duration: 0.2 }}
-                                     >
-                                       <span>{commentDate.date}</span>
-                                       <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
-                                       <span>{commentDate.time}</span>
-                                     </motion.div>
-                                   ) : (
-                                     <motion.div
-                                        key="clock-icon"
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="flex items-center gap-1"
-                                      >
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
-                                                <IconClock className="h-4 w-4 text-muted-foreground" />
-                                              </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="p-2">
-                                               <div className="text-center">
-                                                 <p className="text-xs font-medium">{commentDate.date}</p>
-                                                 <p className="text-xs text-muted-foreground">{commentDate.time}</p>
-                                               </div>
-                                             </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                        
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <div 
-                                                 className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                                                 onClick={() => handleDeleteComment(comment.id)}
-                                               >
-                                                 <IconTrash className="h-4 w-4 text-red-400" />
-                                               </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="p-2">
-                                              <div className="text-center">
-                                                <p className="text-sm font-medium text-red-400">Delete</p>
-                                              </div>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            </div>
-                            <div className="text-sm text-foreground leading-relaxed">
-                               {comment.comment}
-                             </div>
-                          </motion.div>
-                       )
-                     })
+                      commentsList.map((comment) => (
+                        <Comment
+                          key={comment.id}
+                          comment={comment}
+                          onDelete={handleDeleteComment}
+                          showDeleteButton={true}
+                        />
+                      ))
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <IconMessage className="h-12 w-12 mx-auto mb-2 opacity-50" />
