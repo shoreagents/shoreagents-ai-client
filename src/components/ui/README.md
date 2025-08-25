@@ -121,3 +121,4 @@ The component uses Tailwind CSS classes and follows the design system:
 ## Examples
 
 See `comment-example.tsx` for comprehensive usage examples.
+
