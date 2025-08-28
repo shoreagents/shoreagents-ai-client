@@ -13,9 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { PlusIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, CheckIcon, UserIcon, BuildingIcon, UsersIcon, Share2Icon, DollarSign, CalendarIcon, BriefcaseIcon, Sparkles } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+
 import { toast } from "sonner"
 import { LoaderCore, type LoadingState } from "@/components/ui/multi-step-loader"
+import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text"
+import { AnimatedGradientIcon } from "@/components/magicui/animated-gradient-icon"
+import { cn } from "@/lib/utils"
 
 interface JobRequestModalProps {
   open: boolean
@@ -129,6 +132,8 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiInfoOpen, setAiInfoOpen] = useState(false)
   const [aiSuccess, setAiSuccess] = useState(false)
+  const [showJobTitleRequiredModal, setShowJobTitleRequiredModal] = useState(false)
+  const [showContentGeneratedModal, setShowContentGeneratedModal] = useState(false)
   const { user } = useAuth()
   const companyUuid = (user as any)?.companyUuid ?? null
 
@@ -392,42 +397,44 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
               <p className="text-sm text-muted-foreground">Create a new job request in a few guided steps.</p>
             </div>
             <div className="mr-8">
-              <TooltipProvider>
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <span>
-                      <Button 
-                        size="sm" 
-                        onClick={onAiClick}
-                        disabled={aiGenerating || !form.jobTitle.trim()}
-                        className="flex items-center gap-2 bg-gradient-to-r from-teal-400 via-emerald-500 to-cyan-600 hover:from-teal-500 hover:via-emerald-600 hover:to-cyan-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {aiGenerating ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4" />
-                            AI Assistant
-                          </>
-                        )}
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {!form.jobTitle.trim() && (
-                    <TooltipContent side="left">We need to know the job title you’re looking for so the AI knows what to generate.</TooltipContent>
+              <div 
+                onClick={!form.jobTitle.trim() ? () => setShowJobTitleRequiredModal(true) : onAiClick}
+                className={`group relative flex items-center justify-center rounded-full px-4 py-1.5 shadow-[inset_0_-8px_10px_#8fdfff1f] transition-shadow duration-500 ease-out hover:shadow-[inset_0_-5px_10px_#8fdfff3f] cursor-pointer`}
+              >
+                <span
+                  className={cn(
+                    "absolute inset-0 block h-full w-full rounded-[inherit] bg-gradient-to-r from-[#ffaa40]/50 via-[#9c40ff]/50 to-[#ffaa40]/50 bg-[length:300%_100%] p-[1px]",
                   )}
-                </Tooltip>
-              </TooltipProvider>
+                  style={{
+                    WebkitMask:
+                      "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    WebkitMaskComposite: "destination-out",
+                    mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    maskComposite: "subtract",
+                    WebkitClipPath: "padding-box",
+                    animation: "gradient 3s linear infinite",
+                  }}
+                />
+                                        <div className="flex items-center gap-2 relative z-10">
+                          <AnimatedGradientIcon className="h-4 w-4">
+                            <Sparkles className="h-4 w-4 text-white" />
+                          </AnimatedGradientIcon>
+                          <AnimatedGradientText className="text-sm font-medium">
+                            AI Assistant
+                          </AnimatedGradientText>
+                        </div>
+              </div>
 
             </div>
-            <Dialog open={aiInfoOpen} onOpenChange={setAiInfoOpen}>
+            <Dialog open={aiInfoOpen && !aiSuccess} onOpenChange={(open) => {
+              if (!aiGenerating) {
+                setAiInfoOpen(open)
+              }
+            }}>
               <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[290px] overflow-hidden flex flex-col" hideClose>
-                {!aiGenerating && (
+                {!aiGenerating && !aiSuccess && (
                   <DialogHeader className="text-center sm:text-center">
-                    <DialogTitle>{aiSuccess ? "AI content generated" : "Want More Accurate Results?"}</DialogTitle>
+                    <DialogTitle>Want More Accurate Results?</DialogTitle>
                   </DialogHeader>
                 )}
                 {aiGenerating ? (
@@ -437,17 +444,6 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                     </div>
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-background to-transparent" />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent" />
-                  </div>
-                ) : aiSuccess ? (
-                  <div className="py-4">
-                    <div className="flex items-center justify-center gap-2 text-emerald-600 mb-2">
-                      <CheckIcon className="h-5 w-5" />
-                      <span className="font-medium">AI content generated</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground text-center">We filled in the form with the generated details. Review and continue.</p>
-                    <div className="flex justify-center gap-2 pt-4">
-                      <Button onClick={() => { setAiInfoOpen(false) }}>Done</Button>
-                    </div>
                   </div>
                 ) : (
                   <>
@@ -466,7 +462,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                       </ul>
                       <p className="text-muted-foreground">We’ll still generate results if these are empty, but adding them improves accuracy and relevance.</p>
                     </div>
-                    <div className="flex justify-center gap-2 pt-2">
+                    <div className="flex justify-center gap-2 pt-2 mt-auto">
                       <Button variant="soft" onClick={() => setAiInfoOpen(false)}>Add More Details</Button>
                       <Button onClick={() => { generateWithAI() }}>Continue</Button>
                     </div>
@@ -474,6 +470,45 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                 )}
               </DialogContent>
             </Dialog>
+
+            {/* Job Title Required Modal */}
+            <Dialog open={showJobTitleRequiredModal} onOpenChange={setShowJobTitleRequiredModal}>
+              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[180px] overflow-hidden flex flex-col" hideClose>
+                <DialogHeader className="text-center sm:text-center">
+                  <DialogTitle>Job Title is Required!</DialogTitle>
+                </DialogHeader>
+                <div className="text-sm space-y-2">
+                  <p className="text-muted-foreground">We need at least a job title to generate relevant content for your position.</p>
+                </div>
+                <div className="flex justify-center gap-2 pt-2 mt-auto">
+                  <Button onClick={() => setShowJobTitleRequiredModal(false)}>Okay</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Content Generated Modal */}
+            <Dialog open={aiSuccess} onOpenChange={(open) => {
+              setAiSuccess(open)
+              if (!open) {
+                setAiInfoOpen(false) // Close the main modal when success modal closes
+              }
+            }}>
+              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[180px] overflow-hidden flex flex-col" hideClose>
+                <DialogHeader className="text-center sm:text-center">
+                  <DialogTitle>Content Generated!</DialogTitle>
+                </DialogHeader>
+                <div className="text-sm space-y-2">
+                  <p className="text-muted-foreground">The AI has successfully generated comprehensive content for your job request.</p>
+                </div>
+                <div className="flex justify-center gap-2 pt-2 mt-auto">
+                  <Button onClick={() => { 
+                    setAiSuccess(false)
+                    setAiInfoOpen(false) // Close both modals
+                  }}>Review & Continue</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
           </div>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left stepper */}
