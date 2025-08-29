@@ -16,6 +16,7 @@ import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { NewHires } from "@/components/interactive/cards/new-hires"
 import { GrowthRateCard } from "@/components/interactive/cards/connect-globe"
 import { ActivityRankings } from "@/components/interactive/cards/activity-rankings"
+import { OrbitingCircles } from "@/components/magicui/orbiting-circles"
 import {
   Card,
   CardDescription,
@@ -363,17 +364,17 @@ export default function Dashboard() {
                     </CardHeader>
                   </Card>
 
-                  {/* 4. Pork (1x2) - Connect */}
+                  {/* 4. Pork (1x2) - Connect Globe */}
                   <GrowthRateCard className="lg:col-span-1 lg:row-span-2" />
 
-                  {/* 5. Edamame (2x1) - Top 3 Performers */}
+                  {/* 5. Edamame (2x3) - Top 3 Performers */}
                   <ActivityRankings 
                     leaderboardData={leaderboardData} 
-                    className="lg:col-span-2 lg:row-span-1"
+                    className="lg:col-span-2 lg:row-span-3"
                   />
 
-                  {/* 6. Tomato (1x1) - Stuck */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
+                  {/* 6. Tomato (1x2) - Stuck */}
+                  <Card className="lg:col-span-1 lg:row-span-2">
                     <CardHeader>
                       <CardTitle className="text-base">Stuck</CardTitle>
                       <CardDescription>{statusCounts.stuck} tickets</CardDescription>
@@ -388,12 +389,30 @@ export default function Dashboard() {
                     </CardHeader>
                   </Card>
 
-                  {/* 8. Tempura (2x1) - Actioned */}
-                  <Card className="lg:col-span-2 lg:row-span-1">
+                  {/* 8. Tempura (1x2) - Talent Pool */}
+                  <Card className="lg:col-span-1 lg:row-span-2 h-full">
                     <CardHeader>
-                      <CardTitle className="text-base">Actioned</CardTitle>
+                      <CardTitle className="text-base">Talent Pool</CardTitle>
                       <CardDescription>{statusCounts.actioned} tickets</CardDescription>
                     </CardHeader>
+                    <div className="flex-1 flex items-center justify-center p-4 relative min-h-[120px]">
+                      {/* Simple orbiting circles with 3 paths */}
+                      <div className="relative w-32 h-32">
+                        {/* Path 1 - Largest orbit */}
+                        <div className="absolute inset-0 border border-primary/20 rounded-full"></div>
+                        
+                        {/* Path 2 - Medium orbit */}
+                        <div className="absolute inset-0 border border-secondary/20 rounded-full" style={{margin: '20px'}}></div>
+                        
+                        {/* Path 3 - Smallest orbit */}
+                        <div className="absolute inset-0 border border-accent/20 rounded-full" style={{margin: '40px'}}></div>
+                        
+                        {/* Orbiting elements - positioned around the circle */}
+                        <div className="absolute top-0 left-1/2 w-3 h-3 bg-primary rounded-full animate-spin" style={{transform: 'translateX(-50%)'}}></div>
+                        <div className="absolute top-1/2 right-0 w-2.5 h-2.5 bg-secondary rounded-full animate-spin" style={{transform: 'translateY(-50%)', animationDuration: '3s'}}></div>
+                        <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-accent rounded-full animate-spin" style={{transform: 'translateX(-50%)', animationDuration: '2s'}}></div>
+                      </div>
+                    </div>
                   </Card>
 
                   {/* 9. Gyoza (1x1) - Approved */}

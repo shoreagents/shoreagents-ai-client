@@ -132,7 +132,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiInfoOpen, setAiInfoOpen] = useState(false)
   const [aiSuccess, setAiSuccess] = useState(false)
-  const [showJobTitleRequiredModal, setShowJobTitleRequiredModal] = useState(false)
+
   const [showContentGeneratedModal, setShowContentGeneratedModal] = useState(false)
   const { user } = useAuth()
   const companyUuid = (user as any)?.companyUuid ?? null
@@ -398,7 +398,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
             </div>
             <div className="mr-8">
               <div 
-                onClick={!form.jobTitle.trim() ? () => setShowJobTitleRequiredModal(true) : onAiClick}
+                onClick={onAiClick}
                 className={`group relative flex items-center justify-center rounded-full px-4 py-1.5 shadow-[inset_0_-8px_10px_#8fdfff1f] transition-shadow duration-500 ease-out hover:shadow-[inset_0_-5px_10px_#8fdfff3f] cursor-pointer`}
               >
                 <span
@@ -471,20 +471,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
               </DialogContent>
             </Dialog>
 
-            {/* Job Title Required Modal */}
-            <Dialog open={showJobTitleRequiredModal} onOpenChange={setShowJobTitleRequiredModal}>
-              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[180px] overflow-hidden flex flex-col" hideClose>
-                <DialogHeader className="text-center sm:text-center">
-                  <DialogTitle>Job Title is Required!</DialogTitle>
-                </DialogHeader>
-                <div className="text-sm space-y-2">
-                  <p className="text-muted-foreground">We need at least a job title to generate relevant content for your position.</p>
-                </div>
-                <div className="flex justify-center gap-2 pt-2 mt-auto">
-                  <Button onClick={() => setShowJobTitleRequiredModal(false)}>Okay</Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+
 
             {/* Content Generated Modal */}
             <Dialog open={aiSuccess} onOpenChange={(open) => {

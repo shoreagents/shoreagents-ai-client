@@ -14,6 +14,7 @@ module.exports = {
   		},
   		animation: {
   			'gradient': 'gradient 3s linear infinite',
+  			'orbit': 'orbit calc(var(--duration) * 1s) linear infinite',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
