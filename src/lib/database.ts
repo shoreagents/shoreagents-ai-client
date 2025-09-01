@@ -7,7 +7,7 @@ const pool = new Pool({
 })
 
 // BPOC database connection
-const poolBPOC = new Pool({
+const bpocPool = new Pool({
   connectionString: process.env.BPOC_DATABASE_URL,
   ssl: process.env.BPOC_DATABASE_URL?.includes("sslmode=require")
     ? undefined
@@ -15,7 +15,7 @@ const poolBPOC = new Pool({
 })
 
 export default pool
-export { poolBPOC }
+export { bpocPool }
 
 // Test database connection
 export async function testConnection() {
@@ -32,7 +32,7 @@ export async function testConnection() {
 // Test BPOC database connection
 export async function testBPOCConnection() {
   try {
-    const result = await poolBPOC.query('SELECT NOW()')
+    const result = await bpocPool.query('SELECT NOW()')
     console.log('BPOC Database connected successfully:', result.rows[0])
     return true
   } catch (error) {

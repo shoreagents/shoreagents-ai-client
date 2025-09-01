@@ -150,7 +150,7 @@ export default function BreaksPage() {
       case 'Morning':
         return <SunIcon className="h-4 w-4 text-orange-500" />
       case 'Lunch':
-        return <UtensilsIcon className="h-4 w-4 text-amber-500" />
+        return <UtensilsIcon className="h-4 w-4 text-green-500" />
       case 'Afternoon':
         return <MoonIcon className="h-4 w-4 text-blue-500" />
       default:
@@ -334,7 +334,7 @@ export default function BreaksPage() {
                           <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
                         </div>
                       </div>
-                      <UtensilsIcon className="h-6 w-6 text-amber-600" />
+                      <UtensilsIcon className="h-6 w-6 text-green-600" />
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
@@ -508,7 +508,7 @@ export default function BreaksPage() {
 
               {/* Break Type Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-4 lg:px-6">
-                                 <Card>
+                                 <Card className="bg-white dark:bg-card">
                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                      <div>
                        <CardDescription>Morning Break</CardDescription>
@@ -575,7 +575,7 @@ export default function BreaksPage() {
                   </CardContent>
                 </Card>
 
-                                 <Card>
+                                 <Card className="bg-white dark:bg-card">
                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                      <div>
                        <CardDescription>Lunch Break</CardDescription>
@@ -584,65 +584,65 @@ export default function BreaksPage() {
                          {breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length}
                        </div>
                      </div>
-                     <UtensilsIcon className="h-6 w-6 text-amber-600" />
-                   </CardHeader>
-                   <CardContent>
-                                                              <CardTitle className="text-sm font-medium">
-                       {getBreakStatusText(
-                         breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length,
-                         breakSessions.filter(session => session.break_type === 'Lunch').length
-                       )}
-                     </CardTitle>
-                                         <div className="border-t border-border mt-3 pt-3">
-                       <div className="space-y-2">
-                         <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
-                           <span>Name</span>
-                           <span>Started Time</span>
-                           <span>Elapsed Time</span>
-                         </div>
-                         <div className="max-h-48 overflow-y-auto space-y-2">
-                           {breakSessions
-                             .filter(session => session.break_type === 'Lunch' && !session.end_time)
-                             .map((session, index) => (
-                               <div key={session.id} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
-                                 <div className="flex items-center gap-2">
-                                   <Avatar className="h-6 w-6">
-                                     <AvatarImage src={session.profile_picture || undefined} alt={`${session.first_name} ${session.last_name}`} />
-                                     <AvatarFallback className="text-xs">
-                                       {session.first_name?.[0]}{session.last_name?.[0]}
-                                     </AvatarFallback>
-                                   </Avatar>
-                                   <span className="text-sm font-medium">
-                                     {session.first_name} {session.last_name}
-                                   </span>
-                                 </div>
-                                 {!session.end_time && (
-                                   <>
-                                     <span className="text-xs text-muted-foreground">
-                                       {formatTimeOnly(session.start_time)}
+                                          <UtensilsIcon className="h-6 w-6 text-green-600" />
+                     </CardHeader>
+                     <CardContent>
+                       <CardTitle className="text-sm font-medium">
+                         {getBreakStatusText(
+                           breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length,
+                           breakSessions.filter(session => session.break_type === 'Lunch').length
+                         )}
+                       </CardTitle>
+                       <div className="border-t border-border mt-3 pt-3">
+                         <div className="space-y-2">
+                           <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
+                             <span>Name</span>
+                             <span>Started Time</span>
+                             <span>Elapsed Time</span>
+                           </div>
+                           <div className="max-h-48 overflow-y-auto space-y-2">
+                             {breakSessions
+                               .filter(session => session.break_type === 'Lunch' && !session.end_time)
+                               .map((session, index) => (
+                                 <div key={session.id} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
+                                   <div className="flex items-center gap-2">
+                                     <Avatar className="h-6 w-6">
+                                       <AvatarImage src={session.profile_picture || undefined} alt={`${session.first_name} ${session.last_name}`} />
+                                       <AvatarFallback className="text-xs">
+                                         {session.first_name?.[0]}{session.last_name?.[0]}
+                                       </AvatarFallback>
+                                     </Avatar>
+                                     <span className="text-sm font-medium">
+                                       {session.first_name} {session.last_name}
                                      </span>
-                                      <div className="flex flex-col items-end">
-                                        <span className="text-xs font-mono text-primary">
-                                          {getElapsedTime(session)}
-                                        </span>
-                                        {getPausedForText(session) && (
-                                          <span className="text-[10px] text-muted-foreground">{getPausedForText(session)}</span>
-                                        )}
-                                      </div>
+                                   </div>
+                                   {!session.end_time && (
+                                     <>
+                                       <span className="text-xs text-muted-foreground">
+                                         {formatTimeOnly(session.start_time)}
+                                       </span>
+                                        <div className="flex flex-col items-end">
+                                          <span className="text-xs font-mono text-primary">
+                                            {getElapsedTime(session)}
+                                          </span>
+                                          {getPausedForText(session) && (
+                                            <span className="text-[10px] text-muted-foreground">{getPausedForText(session)}</span>
+                                          )}
+                                        </div>
                                    </>
-                                 )}
-                               </div>
-                             ))}
-                           {breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length === 0 && (
-                             <p className="text-xs text-muted-foreground">No lunch break sessions</p>
-                           )}
+                                   )}
+                                 </div>
+                               ))}
+                             {breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length === 0 && (
+                               <p className="text-xs text-muted-foreground">No lunch break sessions</p>
+                             )}
+                           </div>
                          </div>
                        </div>
-                     </div>
-                  </CardContent>
-                </Card>
+                     </CardContent>
+                   </Card>
 
-                                 <Card>
+                                 <Card className="bg-white dark:bg-card">
                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                      <div>
                        <CardDescription>Afternoon Break</CardDescription>

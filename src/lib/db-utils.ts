@@ -1,4 +1,4 @@
-import pool, { poolBPOC } from './database'
+import pool, { bpocPool} from './database'
 
 export type TicketStatus = 'On Hold' | 'In Progress' | 'Approved' | 'Stuck' | 'Actioned' | 'Closed'
 
@@ -549,7 +549,7 @@ export async function resolveCompanyId(companyParam: string | null): Promise<str
   if (!companyParam) return null
   if (isUuid(companyParam)) return companyParam
   if (isNumeric(companyParam)) {
-    const r = await poolBPOC.query(
+    const r = await bpocPool.query(
       'SELECT company_id FROM public.members WHERE id = $1 LIMIT 1',
       [Number(companyParam)]
     )
@@ -579,7 +579,7 @@ export async function getJobRequestsForCompany(companyParam: string | null) {
   const companyId = await resolveCompanyId(companyParam)
   const where = companyId ? 'WHERE company_id = $1' : ''
   const params = companyId ? [companyId] : []
-  const { rows } = await poolBPOC.query(
+  const { rows } = await bpocPool.query(
     `SELECT id, company_id, job_title, work_arrangement, status, applicants, views, created_at,
             salary_min, salary_max, job_description, requirements, responsibilities,
             benefits, skills, experience_level, application_deadline, industry, department
@@ -626,7 +626,7 @@ export async function insertJobRequest(data: JobRequestInsert) {
     'inactive',
   ]
 
-  const { rows } = await poolBPOC.query(q, params)
+  const { rows } = await bpocPool.query(q, params)
   return rows[0]
 }
 
@@ -721,7 +721,7 @@ export async function listTalentPool(search: string, category: string, sortBy: s
           WHERE u.id = $1
         `
 
-        const userResult = await poolBPOC.query(userQuery, [row.applicant_id])
+        const userResult = await bpocPool.query(userQuery, [row.applicant_id])
         const userData = userResult.rows[0] || {}
 
         let comments: any[] = []
@@ -915,7 +915,7 @@ export async function getAiAnalysisByTalentPoolId(talentId: string) {
     WHERE user_id = $1
     LIMIT 1
   `
-  const analysisResult = await poolBPOC.query(analysisQuery, [applicantId])
+  const analysisResult = await bpocPool.query(analysisQuery, [applicantId])
   if (analysisResult.rows.length === 0) {
     return { hasAnalysis: false as const, analysis: null }
   }
@@ -1815,4 +1815,397 @@ export async function getBasicUserInfoById(userId: string) {
   `
   const r = await pool.query(q, [userId])
   return r.rows[0] || null
+}
+
+export async function getApplicants({ status, diagnose = false }: { status?: string | null; diagnose?: boolean }) {
+  if (!pool) throw new Error('Main database is not configured')
+  let applicantsQuery = `
+    SELECT 
+      r.id,
+      r.bpoc_application_ids,
+      r.applicant_id,
+      r.job_ids,
+      r.resume_slug,
+      r.status,
+      r.created_at,
+      r.updated_at,
+      r.video_introduction_url,
+      r.current_salary,
+      r.expected_monthly_salary,
+      r.shift,
+      COALESCE(r.position, 0) as position
+    FROM public.bpoc_recruits r
+  `
+  const params: any[] = []
+  if (status) {
+    applicantsQuery += ` WHERE r.status = $1`
+    params.push(status)
+  }
+  applicantsQuery += ` ORDER BY COALESCE(r.position, 0), r.created_at DESC LIMIT 500`
+  const { rows: applicants } = await pool.query(applicantsQuery, params)
+  
+  console.log('�� getApplicants: Raw applicants from database:', applicants.length)
+  console.log('🔍 getApplicants: Sample applicant:', applicants[0])
+  console.log('🔍 getApplicants: BPOC pool available:', !!bpocPool)
+
+  let enrichedData = applicants
+  if (diagnose) {
+    enrichedData = enrichedData.map((app: any) => ({
+      ...app,
+      _diagnostic: {
+        job_ids_length: app.job_ids ? app.job_ids.length : 0,
+        bpoc_app_ids_length: app.bpoc_application_ids ? app.bpoc_application_ids.length : 0,
+        has_duplicates: (app.job_ids && app.job_ids.length > 1) || (app.bpoc_application_ids && app.bpoc_application_ids.length > 1)
+      }
+    }))
+  }
+  if (!bpocPool) {
+    console.log('🔍 getApplicants: No BPOC pool, returning basic data')
+    return enrichedData
+  }
+
+  try {
+    const applicationIds = applicants.flatMap((app: any) => app.bpoc_application_ids || []).filter(Boolean)
+    const jobIds = applicants.flatMap((app: any) => app.job_ids || []).filter(Boolean)
+    
+    console.log('🔍 getApplicants: Application IDs for enrichment:', applicationIds)
+    console.log('�� getApplicants: Job IDs for enrichment:', jobIds)
+    
+    let enrichmentData: any[] = []
+    let jobData: any[] = []
+    if (applicationIds.length > 0) {
+      // Fetch applications from bpoc_application_ids (original approach)
+      const enrichmentQuery = `
+        SELECT a.id::text, a.user_id::text, u.first_name, u.last_name, u.full_name, u.avatar_url, u.position,
+               p.job_title, m.company AS company_name, a.job_id, a.status::text as application_status,
+               a.created_at as application_created_at
+        FROM public.applications a
+        JOIN public.users u ON u.id = a.user_id
+        LEFT JOIN public.processed_job_requests p ON p.id = a.job_id
+        LEFT JOIN public.members m ON m.company_id = p.company_id
+        WHERE a.id IN (${applicationIds.map((_, i) => `$${i + 1}`).join(',')})
+      `
+      console.log('🔍 getApplicants: Enrichment query:', enrichmentQuery)
+      const { rows } = await bpocPool.query(enrichmentQuery, applicationIds)
+      enrichmentData = rows
+      console.log('🔍 getApplicants: Enrichment data fetched:', enrichmentData.length)
+    }
+    if (jobIds.length > 0) {
+      const jobQuery = `
+        SELECT p.id as job_id, p.job_title, m.company AS company_name
+        FROM public.processed_job_requests p
+        LEFT JOIN public.members m ON m.company_id = p.company_id
+        WHERE p.id IN (${jobIds.map((_, i) => `$${i + 1}`).join(',')})
+      `
+      const { rows } = await bpocPool.query(jobQuery, jobIds)
+      jobData = rows
+    }
+    
+    // CRITICAL: Fetch current application statuses for all applicants to get accurate statuses
+    let currentJobStatuses: any[] = []
+    if (bpocPool) {
+      try {
+        // Get all applicant IDs
+        const applicantIds = applicants.map(a => a.applicant_id).filter(Boolean)
+        if (applicantIds.length > 0) {
+          // CRITICAL FIX: Fetch statuses by both user_id AND job_id to ensure proper mapping
+          const statusQuery = `
+            SELECT a.job_id, a.status::text as current_status, a.created_at, a.user_id, a.id as application_id
+            FROM public.applications a
+            WHERE a.user_id IN (${applicantIds.map((_, i) => `$${i + 1}`).join(',')})
+            ORDER BY a.user_id, a.created_at DESC
+          `
+          const { rows } = await bpocPool.query(statusQuery, applicantIds)
+          currentJobStatuses = rows
+          console.log('🔍 getApplicants: Current job statuses fetched by applicant ID:', currentJobStatuses.length)
+          console.log('🔍 getApplicants: Sample current statuses:', currentJobStatuses.slice(0, 3))
+        }
+      } catch (error) {
+        console.warn('Failed to fetch current job statuses:', error)
+      }
+    }
+                // First, fetch skills data and summary for all applicants
+        const skillsMap = new Map<string, any>()
+        const originalSkillsMap = new Map<string, any>()
+        const summaryMap = new Map<string, string>()
+        const emailMap = new Map<string, string>()
+        const phoneMap = new Map<string, string>()
+        const addressMap = new Map<string, string>()
+        const aiAnalysisMap = new Map<string, any>() // Added for AI analysis
+        
+        if (bpocPool) {
+          try {
+            const userIds = enrichmentData
+              .map((e: any) => e.user_id)
+              .filter(Boolean)
+              .filter((id: string, index: number, arr: string[]) => arr.indexOf(id) === index) // unique IDs
+            
+            if (userIds.length > 0) {
+              const skillsResult = await bpocPool.query(
+                `SELECT rg.user_id, rg.generated_resume_data FROM resumes_generated rg WHERE rg.user_id = ANY($1::uuid[])`,
+                [userIds]
+              )
+              
+              for (const row of skillsResult.rows) {
+                const resumeData = row.generated_resume_data
+                originalSkillsMap.set(row.user_id, resumeData)
+                
+                // Extract summary from the resume data
+                if (resumeData.summary && typeof resumeData.summary === 'string') {
+                  summaryMap.set(row.user_id, resumeData.summary)
+                }
+                
+                // Extract skills from different formats
+                let allSkills: string[] = []
+                if (resumeData.skills && typeof resumeData.skills === 'object') {
+                  if (Array.isArray(resumeData.skills.technical)) allSkills = allSkills.concat(resumeData.skills.technical)
+                  if (Array.isArray(resumeData.skills.soft)) allSkills = allSkills.concat(resumeData.skills.soft)
+                  if (Array.isArray(resumeData.skills.languages)) allSkills = allSkills.concat(resumeData.skills.languages)
+                } else if (Array.isArray(resumeData.skills)) {
+                  allSkills = resumeData.skills
+                } else if (resumeData.sections && resumeData.sections.skills) {
+                  allSkills = resumeData.sections.skills
+                }
+                skillsMap.set(row.user_id, allSkills)
+              }
+              
+              // Fetch email, phone, and location data for all users
+              if (userIds.length > 0) {
+                const userResult = await bpocPool.query(
+                  `SELECT u.id, u.email, u.phone, u.location FROM users u WHERE u.id = ANY($1::uuid[])`,
+                  [userIds]
+                )
+                
+                for (const row of userResult.rows) {
+                  if (row.email) {
+                    emailMap.set(row.id, row.email)
+                  }
+                  if (row.phone) {
+                    phoneMap.set(row.id, row.phone)
+                  }
+                  if (row.location) {
+                    addressMap.set(row.id, row.location)
+                  }
+                }
+              }
+              
+              // Fetch AI analysis data for all users
+              if (userIds.length > 0) {
+                console.log('🔍 Fetching AI analysis for user IDs:', userIds)
+                const aiResult = await bpocPool.query(
+                  `SELECT user_id, overall_score, key_strengths, strengths_analysis, improvements, recommendations, improved_summary, salary_analysis, career_path, section_analysis FROM ai_analysis_results WHERE user_id = ANY($1::uuid[])`,
+                  [userIds]
+                )
+                
+                console.log('🔍 AI analysis query result:', aiResult.rows)
+                
+                for (const row of aiResult.rows) {
+                  aiAnalysisMap.set(row.user_id, {
+                    overall_score: row.overall_score,
+                    key_strengths: row.key_strengths,
+                    strengths_analysis: row.strengths_analysis,
+                    improvements: row.improvements,
+                    recommendations: row.recommendations,
+                    improved_summary: row.improved_summary,
+                    salary_analysis: row.salary_analysis,
+                    career_path: row.career_path,
+                    section_analysis: row.section_analysis
+                  })
+                }
+                
+                console.log('🔍 AI analysis map populated:', aiAnalysisMap)
+              }
+                    }
+          } catch (e) {
+            // Skills fetching failed, continue without skills
+          }
+        }
+    
+    enrichedData = applicants.map((applicant: any) => {
+      // CRITICAL FIX: Filter applications by job_id, not by application ID
+      // The enrichmentData contains applications with job_id field, not application ID
+              const applicantApplications = enrichmentData.filter((e: any) => 
+          applicant.job_ids?.includes(e.job_id) && e.company_name // Only include jobs from member companies
+        )
+      const applicantJobs = jobData.filter((j: any) => 
+        applicant.job_ids?.includes(j.job_id) && j.company_name // Only include jobs from member companies
+      )
+      const firstApplication = applicantApplications[0] || enrichmentData.find((e: any) => e.user_id === applicant.applicant_id)
+      const applicationJobPairs = applicantApplications
+        .filter((app: any) => app.job_title)
+        .map((app: any) => ({
+          job_title: app.job_title,
+          company_name: app.company_name || null,
+          application_status: app.application_status || 'submitted',
+          application_created_at: app.application_created_at,
+        }))
+      const directJobPairs = applicantJobs
+        .filter((job: any) => job.job_title)
+        .map((job: any) => ({
+          job_title: job.job_title,
+          company_name: job.company_name || null,
+          application_status: 'submitted',
+          application_created_at: null,
+        }))
+      // CRITICAL: Maintain exact 1:1 mapping with main database arrays
+      // Map each job_id to its corresponding BPOC data, preserving order and length
+      const allJobTitles: string[] = []
+      const allCompanies: (string | null)[] = []
+      const allJobStatuses: string[] = []
+      const allJobTimestamps: (string | null)[] = []
+      
+      // CRITICAL: Create a map of job_id -> status for efficient lookup
+      const jobStatusMap = new Map<string, { status: string, timestamp: string | null }>()
+      if (currentJobStatuses.length > 0) {
+        currentJobStatuses.forEach(statusData => {
+          if (statusData.user_id === applicant.applicant_id) {
+            const key = String(statusData.job_id)
+            jobStatusMap.set(key, {
+              status: statusData.current_status,
+              timestamp: statusData.created_at
+            })
+          }
+        })
+      }
+      
+      console.log(`�� Created job status map for applicant ${applicant.applicant_id}:`, 
+        Array.from(jobStatusMap.entries()).map(([jobId, data]) => `${jobId}: ${data.status}`)
+      )
+      
+              // Filter job_ids to only include jobs from member companies
+        const memberJobIds = applicant.job_ids?.filter((jobId: number) => {
+          const matchingJob = jobData.find((j: any) => j.job_id === jobId)
+          return matchingJob && matchingJob.company_name // Only include jobs from member companies
+        }) || []
+      
+      // Ensure arrays have the same length as filtered job_ids array
+      if (memberJobIds && memberJobIds.length > 0) {
+        for (let i = 0; i < memberJobIds.length; i++) {
+          const jobId = memberJobIds[i]
+          const jobIdString = String(jobId)
+          
+          // Find corresponding job data
+          const matchingJob = jobData.find((j: any) => j.job_id === jobId)
+          
+          // Find corresponding application data (if exists)
+          const applicationData = applicantApplications.find(app => app.job_id === jobId)
+          
+          // CRITICAL FIX: Use the pre-built map for exact job_id matching
+          console.log(`�� Processing job ${i + 1}: ID ${jobId} (string: ${jobIdString})`)
+          
+          // Look up status in the map by exact job_id string match
+          const statusData = jobStatusMap.get(jobIdString)
+          
+          if (statusData) {
+            console.log(`🔍 Found status for job ${jobId}:`, statusData.status)
+            allJobStatuses.push(statusData.status)
+            allJobTimestamps.push(statusData.timestamp)
+          } else {
+            console.log(`🔍 No status found for job ${jobId}, using fallback:`, applicant.status)
+            // Fallback to main database status
+            const mainDbStatus = applicant.status || 'submitted'
+            allJobStatuses.push(mainDbStatus)
+            allJobTimestamps.push(null)
+          }
+          
+          // Use application data if available, otherwise fall back to job data
+          if (applicationData) {
+            allJobTitles.push(applicationData.job_title || 'Unknown Job')
+            allCompanies.push(applicationData.company_name || null)
+          } else if (matchingJob) {
+            allJobTitles.push(matchingJob.job_title || 'Unknown Job')
+            allCompanies.push(matchingJob.company_name || null)
+          } else {
+            // Fallback for missing data
+            allJobTitles.push('Unknown Job')
+            allCompanies.push(null)
+          }
+        }
+      }
+      
+      // Get skills data, summary, email, phone, and address for this applicant 
+      const userId = firstApplication?.user_id || applicant.applicant_id
+      const skillsData = skillsMap.get(userId) || null
+      const originalSkillsData = originalSkillsMap.get(userId) || null
+      const summaryData = summaryMap.get(userId) || null
+      const emailData = emailMap.get(userId) || null
+      const phoneData = phoneMap.get(userId) || null
+      const addressData = addressMap.get(userId) || null
+      const aiAnalysisData = aiAnalysisMap.get(userId) || null // Added for AI analysis
+      
+      console.log('🔍 Applicant enrichment data:', { 
+        applicantId: applicant.id, 
+        userId, 
+        hasSkills: !!skillsData,
+        hasSummary: !!summaryData,
+        hasEmail: !!emailData,
+        hasPhone: !!phoneData,
+        hasAddress: !!addressData,
+        hasAiAnalysis: !!aiAnalysisData,
+        aiAnalysisMapSize: aiAnalysisMap.size,
+        // Debug job status mapping
+        jobIds: applicant.job_ids,
+        bpocApplicationIds: applicant.bpoc_application_ids,
+        allJobTitles,
+        allJobStatuses,
+        allJobTimestamps,
+        enrichmentDataLength: enrichmentData.length,
+        applicationDataSample: enrichmentData.slice(0, 2),
+        currentJobStatusesCount: currentJobStatuses.length,
+        currentJobStatusesSample: currentJobStatuses.slice(0, 2),
+        // Debug current statuses for this applicant
+        applicantCurrentStatuses: currentJobStatuses.filter(s => s.user_id === applicant.applicant_id),
+        // CRITICAL: Debug array alignment
+        arraysAligned: {
+          jobIdsLength: applicant.job_ids?.length || 0,
+          titlesLength: allJobTitles.length,
+          companiesLength: allCompanies.length,
+          statusesLength: allJobStatuses.length,
+          timestampsLength: allJobTimestamps.length,
+          allEqual: (applicant.job_ids?.length || 0) === allJobTitles.length && 
+                   allJobTitles.length === allCompanies.length && 
+                   allCompanies.length === allJobStatuses.length && 
+                   allJobStatuses.length === allJobTimestamps.length
+        },
+        // CRITICAL: Debug job status mapping accuracy
+        jobStatusMapping: {
+          jobStatusMapSize: jobStatusMap.size,
+          jobStatusMapEntries: Array.from(jobStatusMap.entries()),
+          mappedJobIds: applicant.job_ids?.map((id: number) => ({
+            jobId: id,
+            jobIdString: String(id),
+            hasStatus: jobStatusMap.has(String(id)),
+            status: jobStatusMap.get(String(id))?.status || 'fallback'
+          })) || []
+        }
+      })
+      
+              return {
+          ...applicant,
+          user_id: userId,
+          first_name: firstApplication?.first_name || null,
+          last_name: firstApplication?.last_name || null,
+          full_name: firstApplication?.full_name || null,
+          profile_picture: firstApplication?.avatar_url || null,
+          email: emailData,
+          job_title: firstApplication?.position || null,
+          company_name: null,
+          job_ids: memberJobIds, // Use filtered job_ids (only from member companies)
+          all_job_titles: allJobTitles,
+          all_companies: allCompanies,
+          all_job_statuses: allJobStatuses,
+          all_job_timestamps: allJobTimestamps,
+          skills: skillsData,
+          originalSkillsData: originalSkillsData,
+          summary: summaryData,
+          phone: phoneData,
+          address: addressData,
+          aiAnalysis: aiAnalysisData, // Added AI analysis data
+        }
+    })
+  } catch (e) {
+    // fall back to basic data
+    return enrichedData
+  }
+  return enrichedData
 }

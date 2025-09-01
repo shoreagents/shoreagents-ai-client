@@ -264,7 +264,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
       setAiSuccess(true)
     } catch (error: any) {
       console.error("AI generation error:", error)
-      toast.error("Failed to generate AI content", { description: error?.message })
+      toast.error("Failed to Generate AI Content")
     } finally {
       setAiGenerating(false)
     }
@@ -273,7 +273,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
   const shouldShowAiInfo = () => {
     const industryValue = form.industry === "Others" ? otherIndustry : form.industry
     const departmentValue = form.department === "Others" ? otherDepartment : form.department
-    return !form.jobDescription.trim() || !industryValue || !departmentValue
+    return !form.jobTitle.trim() || !form.jobDescription.trim() || !industryValue || !departmentValue
   }
 
   const onAiClick = () => {
@@ -288,6 +288,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
 
 
   // Determine which fields are missing for AI guidance
+  const missingJobTitle = !form.jobTitle.trim()
   const missingIndustry = !(form.industry === "Others" ? otherIndustry : form.industry)
   const missingDepartment = !(form.department === "Others" ? otherDepartment : form.department)
   const missingJobDescription = !form.jobDescription.trim()
@@ -360,7 +361,6 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
         throw new Error(`Request failed (${res.status}): ${detail}`)
       }
       const data = await res.json()
-      toast.success("Job Request Created")
       // Close first to avoid any UI race conditions, then reset immediately after
       onOpenChange(false)
       setTimeout(() => {
@@ -369,7 +369,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
     } catch (e: any) {
       console.error(e)
       setSubmitted(null)
-      toast.error("Failed to submit job request", { description: e?.message || "Please try again." })
+      toast.error("Failed to Submit Job Request")
     }
   }
 
@@ -426,12 +426,16 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
               </div>
 
             </div>
-            <Dialog open={aiInfoOpen && !aiSuccess} onOpenChange={(open) => {
+                        {/* Combined AI Modal */}
+            <Dialog open={aiInfoOpen} onOpenChange={(open) => {
               if (!aiGenerating) {
                 setAiInfoOpen(open)
+                if (!open) {
+                  setAiSuccess(false)
+                }
               }
             }}>
-              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[290px] overflow-hidden flex flex-col" hideClose>
+              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[320px] overflow-hidden flex flex-col" hideClose>
                 {!aiGenerating && !aiSuccess && (
                   <DialogHeader className="text-center sm:text-center">
                     <DialogTitle>Want More Accurate Results?</DialogTitle>
@@ -445,54 +449,64 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-background to-transparent" />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent" />
                   </div>
+                ) : aiSuccess ? (
+                  <>
+                    <DialogHeader className="text-center sm:text-center">
+                      <DialogTitle>Content Generated!</DialogTitle>
+                    </DialogHeader>
+                    <div className="text-sm space-y-2">
+                      <p className="text-muted-foreground">The AI has successfully generated comprehensive content for your job request.</p>
+                    </div>
+                    <div className="flex justify-center gap-2 pt-2 mt-auto">
+                      <Button onClick={() => { 
+                        setAiSuccess(false)
+                        setAiInfoOpen(false)
+                      }}>Review & Continue</Button>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div className="text-sm space-y-2">
                       <p className="text-muted-foreground">The AI Assistant works best when you provide:</p>
                       <ul className="space-y-1">
-                        {missingIndustry && (
-                          <li className="flex items-center gap-2"><BuildingIcon className="h-4 w-4 text-muted-foreground" /> Industry</li>
-                        )}
-                        {missingDepartment && (
-                          <li className="flex items-center gap-2"><UsersIcon className="h-4 w-4 text-muted-foreground" /> Department</li>
+                        {missingJobTitle && (
+                          <li className="flex items-center gap-2">
+                            <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>Job Title <span style={{ color: 'rgb(239, 68, 68)' }}>(Required)</span></span>
+                          </li>
                         )}
                         {missingJobDescription && (
-                          <li className="flex items-center gap-2"><BriefcaseIcon className="h-4 w-4 text-muted-foreground" /> Job Description</li>
+                          <li className="flex items-center gap-2">
+                            <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>Job Description <span style={{ color: 'rgb(239, 68, 68)' }}>(Required)</span></span>
+                          </li>
+                        )}
+                        {missingIndustry && (
+                          <li className="flex items-center gap-2">
+                            <BuildingIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>Industry <span className="text-muted-foreground">(Recommended)</span></span>
+                          </li>
+                        )}
+                        {missingDepartment && (
+                          <li className="flex items-center gap-2">
+                            <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                            <span>Department <span className="text-muted-foreground">(Recommended)</span></span>
+                          </li>
                         )}
                       </ul>
-                      <p className="text-muted-foreground">We’ll still generate results if these are empty, but adding them improves accuracy and relevance.</p>
+                      <p className="text-muted-foreground">We'll still generate results if these are empty, but adding them improves accuracy and relevance.</p>
                     </div>
                     <div className="flex justify-center gap-2 pt-2 mt-auto">
                       <Button variant="soft" onClick={() => setAiInfoOpen(false)}>Add More Details</Button>
-                      <Button onClick={() => { generateWithAI() }}>Continue</Button>
+                      <Button 
+                        onClick={() => { generateWithAI() }} 
+                        disabled={missingJobTitle || missingJobDescription}
+                      >
+                        Continue
+                      </Button>
                     </div>
                   </>
                 )}
-              </DialogContent>
-            </Dialog>
-
-
-
-            {/* Content Generated Modal */}
-            <Dialog open={aiSuccess} onOpenChange={(open) => {
-              setAiSuccess(open)
-              if (!open) {
-                setAiInfoOpen(false) // Close the main modal when success modal closes
-              }
-            }}>
-              <DialogContent className="sm:max-w-[380px] w-[90vw] rounded-xl h-[180px] overflow-hidden flex flex-col" hideClose>
-                <DialogHeader className="text-center sm:text-center">
-                  <DialogTitle>Content Generated!</DialogTitle>
-                </DialogHeader>
-                <div className="text-sm space-y-2">
-                  <p className="text-muted-foreground">The AI has successfully generated comprehensive content for your job request.</p>
-                </div>
-                <div className="flex justify-center gap-2 pt-2 mt-auto">
-                  <Button onClick={() => { 
-                    setAiSuccess(false)
-                    setAiInfoOpen(false) // Close both modals
-                  }}>Review & Continue</Button>
-                </div>
               </DialogContent>
             </Dialog>
 
