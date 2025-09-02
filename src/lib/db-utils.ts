@@ -1155,7 +1155,8 @@ export async function getBreakSessions(memberId: string, date: string) {
 }
 
 export async function getBreakStats(memberId: string, date: string) {
-  const query = memberId === 'all' ? `
+  // Get break session stats
+  const breakQuery = memberId === 'all' ? `
     SELECT 
       COUNT(*) as total_sessions,
       COUNT(CASE WHEN end_time IS NULL THEN 1 END) as active_sessions,
@@ -1174,14 +1175,37 @@ export async function getBreakStats(memberId: string, date: string) {
     LEFT JOIN agents a ON bs.agent_user_id = a.user_id
     WHERE a.member_id = $1 AND bs.break_date = $2
   `
-  const params = memberId === 'all' ? [date] : [memberId, date]
-  const result = await pool.query(query, params)
-  const stats = result.rows[0] || { total_sessions: 0, active_sessions: 0, today_sessions: 0, average_duration: 0 }
+  
+  // Get total agent count for the member
+  const agentQuery = memberId === 'all' ? `
+    SELECT COUNT(*) as total_agents
+    FROM agents a
+    INNER JOIN users u ON a.user_id = u.id
+    WHERE u.user_type = 'Agent'
+  ` : `
+    SELECT COUNT(*) as total_agents
+    FROM agents a
+    INNER JOIN users u ON a.user_id = u.id
+    WHERE a.member_id = $1 AND u.user_type = 'Agent'
+  `
+  
+  const breakParams = memberId === 'all' ? [date] : [memberId, date]
+  const agentParams = memberId === 'all' ? [] : [memberId]
+  
+  const [breakResult, agentResult] = await Promise.all([
+    pool.query(breakQuery, breakParams),
+    pool.query(agentQuery, agentParams)
+  ])
+  
+  const breakStats = breakResult.rows[0] || { total_sessions: 0, active_sessions: 0, today_sessions: 0, average_duration: 0 }
+  const agentStats = agentResult.rows[0] || { total_agents: 0 }
+  
   return {
-    total: parseInt(stats.total_sessions) || 0,
-    active: parseInt(stats.active_sessions) || 0,
-    today: parseInt(stats.today_sessions) || 0,
-    averageDuration: Math.round(parseFloat(stats.average_duration) || 0)
+    total: parseInt(breakStats.total_sessions) || 0,
+    active: parseInt(breakStats.active_sessions) || 0,
+    today: parseInt(breakStats.today_sessions) || 0,
+    averageDuration: Math.round(parseFloat(breakStats.average_duration) || 0),
+    totalAgents: parseInt(agentStats.total_agents) || 0
   }
 }
 

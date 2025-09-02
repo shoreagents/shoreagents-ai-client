@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
+import { useRealtimeBreaks, BreakSession as RealtimeBreakSession } from "@/hooks/use-realtime-breaks"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,7 +49,7 @@ import {
 interface BreakSession {
   id: number
   agent_user_id: number
-  break_type: 'Morning' | 'Lunch' | 'Afternoon'
+  break_type: 'Morning' | 'Lunch' | 'Afternoon' | 'NightFirst' | 'NightMeal' | 'NightSecond'
   start_time: string
   end_time: string | null
   duration_minutes: number | null
@@ -75,9 +76,75 @@ export default function BreaksPage() {
     total: 0,
     active: 0,
     today: 0,
-    averageDuration: 0
+    averageDuration: 0,
+    totalAgents: 0
   })
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Real-time updates for break sessions
+  const { isConnected: isRealtimeConnected } = useRealtimeBreaks({
+    onBreakSessionCreated: (newBreakSession) => {
+      console.log('🔄 Real-time: New break session created:', newBreakSession)
+      
+      // Add null check for newBreakSession
+      if (!newBreakSession || !newBreakSession.id) {
+        console.warn('🔄 Invalid break session creation received:', newBreakSession)
+        return
+      }
+      
+      setBreakSessions(prevSessions => {
+        // Check if session already exists (avoid duplicates)
+        const exists = prevSessions.some(session => session.id === newBreakSession.id)
+        if (exists) {
+          console.log('🔄 Break session already exists, skipping duplicate')
+          return prevSessions
+        }
+        
+        // Add new session to the list (database now provides joined data)
+        const sessionWithDefaults: BreakSession = {
+          ...newBreakSession,
+        }
+        const updatedSessions = [...prevSessions, sessionWithDefaults]
+        console.log('🔄 Added new break session to list:', updatedSessions.length)
+        return updatedSessions
+      })
+    },
+    onBreakSessionUpdated: (updatedBreakSession, oldBreakSession) => {
+      console.log('🔄 Real-time: Break session updated:', { updatedBreakSession, oldBreakSession })
+      
+      // Add null check for updatedBreakSession
+      if (!updatedBreakSession || !updatedBreakSession.id) {
+        console.warn('🔄 Invalid break session update received:', updatedBreakSession)
+        return
+      }
+      
+      setBreakSessions(prevSessions => {
+        return prevSessions.map(session => {
+          if (session.id === updatedBreakSession.id) {
+            // Database now provides complete joined data
+            const sessionWithDefaults: BreakSession = {
+              ...updatedBreakSession,
+            }
+            return sessionWithDefaults
+          }
+          return session
+        })
+      })
+    },
+    onBreakSessionDeleted: (deletedBreakSession) => {
+      console.log('🔄 Real-time: Break session deleted:', deletedBreakSession)
+      
+      // Add null check for deletedBreakSession
+      if (!deletedBreakSession || !deletedBreakSession.id) {
+        console.warn('🔄 Invalid break session deletion received:', deletedBreakSession)
+        return
+      }
+      
+      setBreakSessions(prevSessions => {
+        return prevSessions.filter(session => session.id !== deletedBreakSession.id)
+      })
+    }
+  })
 
   // Update current time every second for timers
   useEffect(() => {
@@ -109,7 +176,8 @@ export default function BreaksPage() {
       try {
         console.log('📡 Making API request to /api/breaks')
         const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        const today = new Date().toISOString().split('T')[0] // Get today's date in YYYY-MM-DD format
+        // Get today's date in Asia/Manila timezone to match database calculations
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) // YYYY-MM-DD format
         const response = await fetch(`/api/breaks?memberId=${memberId}&date=${today}`)
         
         console.log('📊 Response status:', response.status)
@@ -128,7 +196,8 @@ export default function BreaksPage() {
           total: data.stats.total,
           active: data.stats.active,
           today: data.stats.today,
-          averageDuration: data.stats.averageDuration
+          averageDuration: data.stats.averageDuration,
+          totalAgents: data.stats.totalAgents
         })
         setError(null) // Clear any previous errors
       } catch (err) {
@@ -153,6 +222,12 @@ export default function BreaksPage() {
         return <UtensilsIcon className="h-4 w-4 text-green-500" />
       case 'Afternoon':
         return <MoonIcon className="h-4 w-4 text-blue-500" />
+      case 'NightFirst':
+        return <MoonIcon className="h-4 w-4 text-purple-500" />
+      case 'NightMeal':
+        return <UtensilsIcon className="h-4 w-4 text-indigo-500" />
+      case 'NightSecond':
+        return <MoonIcon className="h-4 w-4 text-violet-500" />
       default:
         return <ClockIcon className="h-4 w-4 text-gray-500" />
     }
@@ -166,16 +241,23 @@ export default function BreaksPage() {
         return 'bg-amber-100 text-amber-800 border-amber-200'
       case 'Afternoon':
         return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'NightFirst':
+        return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'NightMeal':
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200'
+      case 'NightSecond':
+        return 'bg-violet-100 text-violet-800 border-violet-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
   const getStatusBadge = (session: BreakSession) => {
-    if (session.end_time) {
-      return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Used</Badge>
-    } else if (session.pause_time && !session.resume_time) {
+    // Check if paused first - this takes priority over other statuses
+    if (session.pause_time && !session.resume_time) {
       return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Paused</Badge>
+    } else if (session.end_time) {
+      return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Used</Badge>
     } else {
       return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Started</Badge>
     }
@@ -193,14 +275,16 @@ export default function BreaksPage() {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Asia/Manila'
     })
   }
 
   const formatTimeOnly = (dateTime: string) => {
     return new Date(dateTime).toLocaleString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Asia/Manila'
     })
   }
 
@@ -247,10 +331,18 @@ export default function BreaksPage() {
     return null
   }
 
-  const getBreakStatusText = (activeCount: number, totalCount: number) => {
-    if (totalCount === 0) return "No one is currently on break."
+  const getBreakStatusText = (activeCount: number, totalAgents: number) => {
+    // If no one is currently on break
+    if (activeCount === 0) return "No one is currently on break."
     
-    const percentage = (activeCount / totalCount) * 100
+    // If no agents data available, fallback to simple count
+    if (totalAgents === 0) {
+      if (activeCount === 1) return "1 team member is currently on break."
+      return `${activeCount} team members are currently on break.`
+    }
+    
+    // Calculate percentage based on actual team size
+    const percentage = (activeCount / totalAgents) * 100
     
     if (percentage === 0) return "No one is currently on break."
     if (percentage > 0 && percentage < 20) return "A few team members are currently on break."
@@ -275,11 +367,14 @@ export default function BreaksPage() {
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 <div className="px-4 lg:px-6">
                   <div className="mb-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">Breaks</h1>
-                      <p className="text-sm text-muted-foreground">
-                        Monitor real-time break activity and track employee break sessions across morning, lunch, and afternoon periods.
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-2xl font-bold">Breaks</h1>
+                        <p className="text-sm text-muted-foreground">
+                          Monitor real-time break activity and track employee break sessions across morning, lunch, and afternoon periods.
+                        </p>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -305,8 +400,8 @@ export default function BreaksPage() {
                           <div className="space-y-2">
                             <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                               <span>Name</span>
-                              <span>Started Time</span>
-                              <span>Elapsed Time</span>
+                              <span className="text-center">Started Time</span>
+                              <span className="text-right">Elapsed Time</span>
                             </div>
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
@@ -314,7 +409,7 @@ export default function BreaksPage() {
                                   <div className="h-6 w-6 rounded-full bg-gray-200 animate-pulse"></div>
                                   <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
                                 </div>
-                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12"></div>
+                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12 mx-auto"></div>
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
@@ -343,8 +438,8 @@ export default function BreaksPage() {
                           <div className="space-y-2">
                             <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                               <span>Name</span>
-                              <span>Started Time</span>
-                              <span>Elapsed Time</span>
+                              <span className="text-center">Started Time</span>
+                              <span className="text-right">Elapsed Time</span>
                             </div>
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
@@ -352,7 +447,7 @@ export default function BreaksPage() {
                                   <div className="h-6 w-6 rounded-full bg-gray-200 animate-pulse"></div>
                                   <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
                                 </div>
-                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12"></div>
+                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12 mx-auto"></div>
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
@@ -381,8 +476,8 @@ export default function BreaksPage() {
                           <div className="space-y-2">
                             <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                               <span>Name</span>
-                              <span>Started Time</span>
-                              <span>Elapsed Time</span>
+                              <span className="text-center">Started Time</span>
+                              <span className="text-right">Elapsed Time</span>
                             </div>
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
@@ -390,7 +485,7 @@ export default function BreaksPage() {
                                   <div className="h-6 w-6 rounded-full bg-gray-200 animate-pulse"></div>
                                   <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
                                 </div>
-                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12"></div>
+                                <div className="h-3 bg-gray-200 rounded animate-pulse w-12 mx-auto"></div>
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
@@ -454,11 +549,14 @@ export default function BreaksPage() {
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 <div className="px-4 lg:px-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">Break Sessions</h1>
-                      <p className="text-sm text-muted-foreground">
-                        Monitor and manage employee break times
-                      </p>
+                    <div className="flex items-center justify-between w-full">
+                      <div>
+                        <h1 className="text-2xl font-bold">Break Sessions</h1>
+                        <p className="text-sm text-muted-foreground">
+                          Monitor and manage employee break times
+                        </p>
+                      </div>
+
                     </div>
                     <Button>
                       <PlusIcon className="mr-2 h-4 w-4" />
@@ -495,11 +593,14 @@ export default function BreaksPage() {
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <div className="px-4 lg:px-6">
                 <div className="mb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">Breaks</h1>
-                    <p className="text-sm text-muted-foreground">
-                      Monitor real-time break activity and track employee break sessions across morning, lunch, and afternoon periods.
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-bold">Breaks</h1>
+                      <p className="text-sm text-muted-foreground">
+                        Monitor real-time break activity and track employee break sessions across morning, lunch, and afternoon periods.
+                      </p>
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -523,15 +624,15 @@ export default function BreaksPage() {
                                                               <CardTitle className="text-sm font-medium">
                        {getBreakStatusText(
                          breakSessions.filter(session => session.break_type === 'Morning' && !session.end_time).length,
-                         breakSessions.filter(session => session.break_type === 'Morning').length
+                         stats.totalAgents
                        )}
                      </CardTitle>
                                          <div className="border-t border-border mt-3 pt-3">
                        <div className="space-y-2">
                          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                            <span>Name</span>
-                           <span>Started Time</span>
-                           <span>Elapsed Time</span>
+                           <span className="text-center">Started Time</span>
+                           <span className="text-right">Elapsed Time</span>
                          </div>
                          <div className="max-h-48 overflow-y-auto space-y-2">
                            {breakSessions
@@ -551,7 +652,7 @@ export default function BreaksPage() {
                                  </div>
                                  {!session.end_time && (
                                    <>
-                                     <span className="text-xs text-muted-foreground">
+                                     <span className="text-xs text-muted-foreground text-center">
                                        {formatTimeOnly(session.start_time)}
                                      </span>
                                       <div className="flex flex-col items-end">
@@ -590,15 +691,15 @@ export default function BreaksPage() {
                        <CardTitle className="text-sm font-medium">
                          {getBreakStatusText(
                            breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length,
-                           breakSessions.filter(session => session.break_type === 'Lunch').length
+                           stats.totalAgents
                          )}
                        </CardTitle>
                        <div className="border-t border-border mt-3 pt-3">
                          <div className="space-y-2">
                            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                              <span>Name</span>
-                             <span>Started Time</span>
-                             <span>Elapsed Time</span>
+                             <span className="text-center">Started Time</span>
+                             <span className="text-right">Elapsed Time</span>
                            </div>
                            <div className="max-h-48 overflow-y-auto space-y-2">
                              {breakSessions
@@ -618,7 +719,7 @@ export default function BreaksPage() {
                                    </div>
                                    {!session.end_time && (
                                      <>
-                                       <span className="text-xs text-muted-foreground">
+                                       <span className="text-xs text-muted-foreground text-center">
                                          {formatTimeOnly(session.start_time)}
                                        </span>
                                         <div className="flex flex-col items-end">
@@ -657,15 +758,15 @@ export default function BreaksPage() {
                                                               <CardTitle className="text-sm font-medium">
                        {getBreakStatusText(
                          breakSessions.filter(session => session.break_type === 'Afternoon' && !session.end_time).length,
-                         breakSessions.filter(session => session.break_type === 'Afternoon').length
+                         stats.totalAgents
                        )}
                      </CardTitle>
                                          <div className="border-t border-border mt-3 pt-3">
                        <div className="space-y-2">
                          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
                            <span>Name</span>
-                           <span>Started Time</span>
-                           <span>Elapsed Time</span>
+                           <span className="text-center">Started Time</span>
+                           <span className="text-right">Elapsed Time</span>
                          </div>
                          <div className="max-h-48 overflow-y-auto space-y-2">
                            {breakSessions
@@ -685,7 +786,7 @@ export default function BreaksPage() {
                                  </div>
                                  {!session.end_time && (
                                    <>
-                                     <span className="text-xs text-muted-foreground">
+                                     <span className="text-xs text-muted-foreground text-center">
                                        {formatTimeOnly(session.start_time)}
                                      </span>
                                       <div className="flex flex-col items-end">
@@ -760,7 +861,7 @@ export default function BreaksPage() {
                                               <p>{formatTimeOnly(morningSession.start_time)} - {formatTimeOnly(morningSession.end_time)}</p>
                                             </>
                                           ) : morningSession.pause_time && !morningSession.resume_time ? (
-                                            <p>Paused since {formatTimeOnly(morningSession.pause_time)}</p>
+                                            <p>Since {formatTimeOnly(morningSession.pause_time)}</p>
                                           ) : (
                                             <p>{formatTimeOnly(morningSession.start_time)}</p>
                                           )}
@@ -787,7 +888,7 @@ export default function BreaksPage() {
                                               <p>{formatTimeOnly(lunchSession.start_time)} - {formatTimeOnly(lunchSession.end_time)}</p>
                                             </>
                                           ) : lunchSession.pause_time && !lunchSession.resume_time ? (
-                                            <p>Paused since {formatTimeOnly(lunchSession.pause_time)}</p>
+                                            <p>Since {formatTimeOnly(lunchSession.pause_time)}</p>
                                           ) : (
                                             <p>{formatTimeOnly(lunchSession.start_time)}</p>
                                           )}
@@ -814,7 +915,7 @@ export default function BreaksPage() {
                                               <p>{formatTimeOnly(afternoonSession.start_time)} - {formatTimeOnly(afternoonSession.end_time)}</p>
                                             </>
                                           ) : afternoonSession.pause_time && !afternoonSession.resume_time ? (
-                                            <p>Paused since {formatTimeOnly(afternoonSession.pause_time)}</p>
+                                            <p>Since {formatTimeOnly(afternoonSession.pause_time)}</p>
                                           ) : (
                                             <p>{formatTimeOnly(afternoonSession.start_time)}</p>
                                           )}

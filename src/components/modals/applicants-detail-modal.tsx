@@ -15,6 +15,8 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverItem } from "@/componen
 import { useTheme } from "next-themes"
 import { useRealtimeApplicants } from "@/hooks/use-realtime-applicants"
 import { useRealtimeBpocJobStatus } from "@/hooks/use-realtime-bpoc-job-status"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 
 import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -237,12 +239,15 @@ const formatDate = (dateString: string) => {
 
 export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext = 'bpoc-recruits' }: ApplicantsDetailModalProps) {
   const { theme } = useTheme()
+  const { user } = useAuth()
   const [comment, setComment] = useState("")
   const [currentStatus, setCurrentStatus] = useState<string>('')
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [comments, setComments] = useState<Comment[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(false)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const [isExpressingInterest, setIsExpressingInterest] = useState(false)
+  const [interestStatus, setInterestStatus] = useState<'none' | 'interested' | 'already_interested'>('none')
 
   const [activeTab, setActiveTab] = useState("information")
   
@@ -399,9 +404,48 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
       setInputValues(initialValues)
       setOriginalValues(initialValues)
       setCurrentStatus(applicant.status)
-
+      
+      // Reset interest status when applicant changes
+      setInterestStatus('none')
     }
   }, [applicant])
+
+  // Check if user has already expressed interest when modal opens
+  useEffect(() => {
+    const checkExistingInterest = async () => {
+      if (!localApplicant || !user || user.userType !== 'client') return
+
+      try {
+        // Get the Supabase session token
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const response = await fetch('/api/bpoc/interest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            applicantId: localApplicant.applicant_id || localApplicant.id
+          })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.alreadyInterested) {
+          setInterestStatus('already_interested')
+        }
+      } catch (error) {
+        console.error('Error checking existing interest:', error)
+        // Don't show error to user for this background check
+      }
+    }
+
+    if (isOpen && localApplicant && user) {
+      checkExistingInterest()
+    }
+  }, [isOpen, localApplicant, user])
 
 
 
@@ -661,6 +705,57 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
 
 
 
+  // Handle expressing interest in candidate
+  const handleExpressInterest = async () => {
+    if (!localApplicant || !user || isExpressingInterest) return
+
+    // Check if user is a client
+    if (user.userType !== 'client') {
+      alert('Only clients can express interest in candidates.')
+      return
+    }
+
+    setIsExpressingInterest(true)
+
+    try {
+      // Get the Supabase session token
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('No valid session found')
+      }
+
+      const response = await fetch('/api/bpoc/interest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          applicantId: localApplicant.applicant_id || localApplicant.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        if (data.alreadyInterested) {
+          setInterestStatus('already_interested')
+          alert('You have already expressed interest in this candidate.')
+        } else {
+          setInterestStatus('interested')
+          alert('Interest expressed successfully!')
+        }
+      } else {
+        throw new Error(data.error || 'Failed to express interest')
+      }
+    } catch (error) {
+      console.error('Error expressing interest:', error)
+      alert(`Failed to express interest: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsExpressingInterest(false)
+    }
+  }
+
   // Simple close handler
   const handleClose = () => {
     console.log('🔒 handleClose called:', { 
@@ -727,9 +822,20 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                   {/* Column 2: Interest Button */}
                   <div className="flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground mb-3">Are you interested in this candidate?</p>
-                    <Button className="w-fit">
-                      I'm Interested
+                    <Button 
+                      className="w-fit"
+                      onClick={handleExpressInterest}
+                      disabled={isExpressingInterest || user?.userType !== 'client'}
+                      variant={interestStatus === 'interested' || interestStatus === 'already_interested' ? 'secondary' : 'default'}
+                    >
+                      {isExpressingInterest ? 'Processing...' : 
+                       interestStatus === 'interested' ? 'Interested ✓' :
+                       interestStatus === 'already_interested' ? 'Already Interested ✓' :
+                       'I\'m Interested'}
                     </Button>
+                    {user?.userType !== 'client' && (
+                      <p className="text-xs text-muted-foreground mt-1">Only clients can express interest</p>
+                    )}
                   </div>
                 </div>
                 
@@ -929,58 +1035,57 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                         </div>
                         <div className="rounded-lg border border-[#cecece99] dark:border-border overflow-hidden">
                           {/* Shift */}
-                          <DataFieldRow
-                            icon={<IconClockHour4 className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Shift Period"
-                            fieldName="shift"
-                            value={inputValues.shift || ''}
-                            onSave={() => {}}
-                            customInput={
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <div 
-                                    className="h-[33px] w-full text-sm border-0 bg-transparent dark:bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none shadow-none justify-start text-left font-normal cursor-pointer select-none flex items-center"
-                                    style={{ backgroundColor: 'transparent' }}
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ' ') {
-                                        e.preventDefault()
-                                      }
-                                    }}
-                                  >
-                                    {inputValues.shift || '-'}
-                                  </div>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-32 p-1" align="start" side="bottom" sideOffset={4}>
-                                  {[
-                                    { value: 'Day', icon: <IconSun className="h-4 w-4 text-muted-foreground" /> },
-                                    { value: 'Night', icon: <IconMoon className="h-4 w-4 text-muted-foreground" /> }
-                                  ].map((shiftOption) => (
-                                      <PopoverItem
-                                        key={shiftOption.value}
-                                        isSelected={inputValues.shift === shiftOption.value}
-                                        onClick={() => {
-                                          console.log(`🔄 Shift changing from "${inputValues.shift}" to "${shiftOption.value}"`)
-                                          console.log(`🔍 Original value: "${originalValues.shift}"`)
-                                          console.log(`🔍 Current value: "${inputValues.shift}"`)
-                                          console.log(`🔍 New value: "${shiftOption.value}"`)
-                                          
-                                          // Update the input values first
-                                          setInputValues(prev => ({ ...prev, shift: shiftOption.value }))
-                                          
-                                          // Save immediately with the new value
-                                          const newValue = shiftOption.value
-                                          console.log(`💾 Saving shift with new value: "${newValue}"`)
-                                        }}
-                                      >
-                                        <span className="text-sm">{shiftOption.icon}</span>
-                                        <span className="text-sm font-medium">{shiftOption.value}</span>
-                                      </PopoverItem>
-                                    ))}
-                                </PopoverContent>
-                              </Popover>
-                            }
-                          />
+                          <div className="flex items-center gap-3 py-3 px-4 border-b border-border/50 last:border-b-0">
+                            <IconClockHour4 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1">
+                              <label className="text-sm font-medium text-muted-foreground">Shift Period</label>
+                              <div className="mt-1">
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <div 
+                                      className="h-[33px] w-full text-sm border-0 bg-transparent dark:bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none shadow-none justify-start text-left font-normal cursor-pointer select-none flex items-center"
+                                      style={{ backgroundColor: 'transparent' }}
+                                      tabIndex={0}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.preventDefault()
+                                        }
+                                      }}
+                                    >
+                                      {inputValues.shift || '-'}
+                                    </div>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-32 p-1" align="start" side="bottom" sideOffset={4}>
+                                    {[
+                                      { value: 'Day', icon: <IconSun className="h-4 w-4 text-muted-foreground" /> },
+                                      { value: 'Night', icon: <IconMoon className="h-4 w-4 text-muted-foreground" /> }
+                                    ].map((shiftOption) => (
+                                        <PopoverItem
+                                          key={shiftOption.value}
+                                          isSelected={inputValues.shift === shiftOption.value}
+                                          onClick={() => {
+                                            console.log(`🔄 Shift changing from "${inputValues.shift}" to "${shiftOption.value}"`)
+                                            console.log(`🔍 Original value: "${originalValues.shift}"`)
+                                            console.log(`🔍 Current value: "${inputValues.shift}"`)
+                                            console.log(`🔍 New value: "${shiftOption.value}"`)
+                                            
+                                            // Update the input values first
+                                            setInputValues(prev => ({ ...prev, shift: shiftOption.value }))
+                                            
+                                            // Save immediately with the new value
+                                            const newValue = shiftOption.value
+                                            console.log(`💾 Saving shift with new value: "${newValue}"`)
+                                          }}
+                                        >
+                                          <span className="text-sm">{shiftOption.icon}</span>
+                                          <span className="text-sm font-medium">{shiftOption.value}</span>
+                                        </PopoverItem>
+                                      ))}
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
+                            </div>
+                          </div>
                           
                           {/* Current Salary */}
                           <DataFieldRow
@@ -1336,31 +1441,47 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                               </div>
                                             </div>
                                           )}
-                                          {project.impact && (
-                                            <div className="mt-3">
-                                              <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                                                <IconAward className="h-4 w-4" />
-                                                Impact:
-                                              </p>
-                                              {Array.isArray(project.impact) ? (
-                                                <ul className="space-y-1">
-                                                  {project.impact.map((impactItem: string, impactIndex: number) => (
-                                                    <li key={impactIndex} className="text-sm text-foreground flex items-center gap-2">
+                                          {(() => {
+                                            // Check if impact has meaningful content
+                                            if (!project.impact) return null;
+                                            
+                                            let hasContent = false;
+                                            if (Array.isArray(project.impact)) {
+                                              hasContent = project.impact.length > 0 && project.impact.some((item: any) => String(item).trim());
+                                            } else {
+                                              hasContent = String(project.impact).trim().length > 0;
+                                            }
+                                            
+                                            if (!hasContent) return null;
+                                            
+                                            return (
+                                              <div className="mt-3">
+                                                <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                                                  <IconAward className="h-4 w-4" />
+                                                  Impact:
+                                                </p>
+                                                {Array.isArray(project.impact) ? (
+                                                  <ul className="space-y-1">
+                                                    {project.impact
+                                                      .filter((item: any) => String(item).trim()) // Filter out empty items
+                                                      .map((impactItem: string, impactIndex: number) => (
+                                                        <li key={impactIndex} className="text-sm text-foreground flex items-center gap-2">
+                                                          <span className="text-primary flex-shrink-0">•</span>
+                                                          <span>{impactItem}</span>
+                                                        </li>
+                                                      ))}
+                                                  </ul>
+                                                ) : (
+                                                  <ul className="space-y-1">
+                                                    <li className="text-sm text-foreground flex items-center gap-2">
                                                       <span className="text-primary flex-shrink-0">•</span>
-                                                      <span>{impactItem}</span>
+                                                      <span>{project.impact}</span>
                                                     </li>
-                                                  ))}
-                                                </ul>
-                                              ) : String(project.impact).trim() ? (
-                                                <ul className="space-y-1">
-                                                  <li className="text-sm text-foreground flex items-center gap-2">
-                                                    <span className="text-primary flex-shrink-0">•</span>
-                                                    <span>{project.impact}</span>
-                                                  </li>
-                                                </ul>
-                                              ) : null}
-                                            </div>
-                                          )}
+                                                  </ul>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
                                           {project.url && String(project.url).trim() && (
                                             <div className="mt-3">
                                               <a 
@@ -1482,7 +1603,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                         <ol className="list-decimal ml-4 space-y-1">
                                           {topStrengthsData.map((item: any, idx: number) => (
                                             <li key={idx}>
-                                              {typeof item === 'string' ? item : item?.title || item?.name || item?.description || 'Item'}
+                                              {typeof item === 'string' ? item : (item as any)?.title || (item as any)?.name || (item as any)?.description || 'Item'}
                                             </li>
                                           ))}
                                         </ol>
@@ -1512,7 +1633,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                       <ol className="list-decimal ml-4 space-y-1">
                                         {keyStrengthsData.map((strength: any, idx: number) => (
                                           <li key={idx}>
-                                            {typeof strength === 'string' ? strength : strength?.title || strength?.name || 'Strength'}
+                                            {typeof strength === 'string' ? strength : (strength as any)?.title || (strength as any)?.name || 'Strength'}
                                           </li>
                                         ))}
                                       </ol>
@@ -1551,7 +1672,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                           <ol className="list-decimal ml-4 space-y-1">
                                             {data.map((item: any, idx: number) => (
                                               <li key={idx}>
-                                                {typeof item === 'string' ? item : item?.title || item?.name || item?.description || 'Item'}
+                                                {typeof item === 'string' ? item : (item as any)?.title || (item as any)?.name || (item as any)?.description || 'Item'}
                                               </li>
                                             ))}
                                           </ol>
