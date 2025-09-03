@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconCircle, IconAlertCircle, IconInfoCircle, IconVideo, IconCash, IconClockHour4, IconExternalLink, IconSun, IconMoon, IconAward, IconCode, IconSparkles } from "@tabler/icons-react"
+import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconAlertCircle, IconInfoCircle, IconVideo, IconCash, IconExternalLink, IconAward, IconCode, IconSparkles } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { EditableField, DataFieldRow } from "@/components/ui/fields"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Popover, PopoverContent, PopoverTrigger, PopoverItem } from "@/components/ui/popover"
+
 import { useTheme } from "next-themes"
 import { useRealtimeApplicants } from "@/hooks/use-realtime-applicants"
 import { useRealtimeBpocJobStatus } from "@/hooks/use-realtime-bpoc-job-status"
@@ -37,12 +37,7 @@ interface ApplicantsDetailModalProps {
   pageContext?: 'talent-pool' | 'bpoc-recruits' | 'applicants-records'
 }
 
-interface StatusOption {
-  value: string
-  label: string
-  icon: string
-  color: string
-}
+
 
 interface Applicant {
   id: string
@@ -127,91 +122,7 @@ interface Comment {
   };
 }
 
-const getStatusColor = (status: string, isJobStatus: boolean = false) => {
-  // For job statuses, "passed" should be gray
-  if (isJobStatus && status.toLowerCase() === 'passed') {
-    return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
-  }
-  
-  switch (status.toLowerCase()) {
-    case "rejected":
-      return "text-rose-700 dark:text-white border-rose-600/20 bg-rose-50 dark:bg-rose-600/20"
-    case "submitted":
-      return "text-blue-700 dark:text-white border-blue-600/20 bg-blue-50 dark:bg-blue-600/20"
-    case "for verification":
-      return "text-teal-700 dark:text-white border-teal-600/20 bg-teal-50 dark:bg-teal-600/20"
-    case "verified":
-      return "text-purple-700 dark:text-white border-purple-600/20 bg-purple-50 dark:bg-purple-600/20"
-    case "initial interview":
-      return "text-amber-700 dark:text-white border-amber-600/20 bg-amber-50 dark:bg-amber-600/20"
-    case "passed":
-      return "text-green-700 dark:text-white border-green-600/20 bg-green-50 dark:bg-green-600/20"
-    case "hired":
-      return "text-pink-700 dark:text-white border-pink-600/20 bg-pink-50 dark:bg-pink-600/20"
-    case "failed":
-      return "text-red-700 dark:text-white border-red-600/20 bg-red-50 dark:bg-red-600/20"
-    case "withdrawn":
-      return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
-    case "qualified":
-      return "text-green-700 dark:text-white border-green-600/20 bg-green-50 dark:bg-green-600/20"
-    case "final interview":
-      return "text-blue-700 dark:text-white border-blue-600/20 bg-blue-50 dark:bg-blue-600/20"
-    case "not qualified":
-      return "text-red-700 dark:text-white border-red-600/20 bg-red-50 dark:bg-red-600/20"
-    default:
-      return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
-  }
-}
 
-const getStatusIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "rejected":
-      return <IconCircle className="h-4 w-4 fill-rose-500 stroke-none" />
-    case "submitted":
-      return <IconCircle className="h-4 w-4 fill-blue-500 stroke-none" />
-    case "for verification":
-      return <IconCircle className="h-4 w-4 fill-teal-500 stroke-none" />
-    case "verified":
-      return <IconCircle className="h-4 w-4 fill-purple-500 stroke-none" />
-    case "initial interview":
-      return <IconCircle className="h-4 w-4 fill-amber-500 stroke-none" />
-    case "passed":
-      return <IconCircle className="h-4 w-4 fill-green-500 stroke-none" />
-    case "hired":
-      return <IconCircle className="h-4 w-4 fill-pink-500 stroke-none" />
-    case "failed":
-      return <IconCircle className="h-4 w-4 fill-red-500 stroke-none" />
-    case "withdrawn":
-      return <IconCircle className="h-4 w-4 fill-gray-500 stroke-none" />
-    default:
-      return <IconCircle className="h-4 w-4 fill-gray-500 stroke-none" />
-  }
-}
-
-// Get status display label based on status value
-const getStatusLabel = (status: string, isJobStatus: boolean = false) => {
-  // For job statuses, "passed" should show as "Set Status"
-  if (isJobStatus && status.toLowerCase() === 'passed') {
-    return 'Set Status'
-  }
-  
-  const statusOptions = [
-    { value: 'rejected', label: 'Reject' },
-    { value: 'submitted', label: 'New' },
-    { value: 'for verification', label: 'For Verification' },
-    { value: 'verified', label: 'Verified' },
-    { value: 'initial interview', label: 'Initial Interview' },
-    { value: 'passed', label: 'For Sale' },
-    { value: 'hired', label: 'Hired' },
-    { value: 'failed', label: 'Failed' },
-    { value: 'withdrawn', label: 'Withdrawn' },
-    { value: 'qualified', label: 'Qualified' },
-    { value: 'final interview', label: 'Client Interview' },
-    { value: 'not qualified', label: 'Not Qualified' }
-  ]
-  const statusOption = statusOptions.find(option => option.value === status.toLowerCase())
-  return statusOption ? statusOption.label : status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
-}
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -241,13 +152,13 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
   const { theme } = useTheme()
   const { user } = useAuth()
   const [comment, setComment] = useState("")
-  const [currentStatus, setCurrentStatus] = useState<string>('')
-  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
+
   const [comments, setComments] = useState<Comment[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(false)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
-  const [isExpressingInterest, setIsExpressingInterest] = useState(false)
+
   const [interestStatus, setInterestStatus] = useState<'none' | 'interested' | 'already_interested'>('none')
+  const [hasCheckedInterest, setHasCheckedInterest] = useState(false)
 
   const [activeTab, setActiveTab] = useState("information")
   
@@ -256,14 +167,10 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
   
   // Editable input values
   const [inputValues, setInputValues] = useState<Record<string, string>>({
-    shift: '',
-    current_salary: '',
     expected_monthly_salary: '',
     video_introduction_url: ''
   })
   const [originalValues, setOriginalValues] = useState<Record<string, string>>({
-    shift: '',
-    current_salary: '',
     expected_monthly_salary: '',
     video_introduction_url: ''
   })
@@ -304,8 +211,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
         
         // Update input values to reflect the new data
         const newValues = {
-          shift: String(updatedApplicant.shift || ''),
-          current_salary: String(updatedApplicant.current_salary || ''),
           expected_monthly_salary: String(updatedApplicant.expected_monthly_salary || ''),
           video_introduction_url: String(updatedApplicant.video_introduction_url || '')
         }
@@ -317,10 +222,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
         // Update original values to reflect the new data
         setOriginalValues(newValues)
         
-        // Update current status if it changed
-        if (updatedApplicant.status !== currentStatus) {
-          setCurrentStatus(updatedApplicant.status)
-        }
+
 
       } else {
         console.log('🔄 Real-time: Update not for current applicant, skipping')
@@ -396,40 +298,26 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
       setLocalApplicant(applicant)
       // Reset input values when applicant changes
       const initialValues = {
-        shift: String(applicant.shift || ''),
-        current_salary: String(applicant.current_salary || ''),
         expected_monthly_salary: String(applicant.expected_monthly_salary || ''),
         video_introduction_url: String(applicant.video_introduction_url || '')
       }
       setInputValues(initialValues)
       setOriginalValues(initialValues)
-      setCurrentStatus(applicant.status)
       
       // Reset interest status when applicant changes
       setInterestStatus('none')
+      setHasCheckedInterest(false)
     }
   }, [applicant])
 
   // Check if user has already expressed interest when modal opens
   useEffect(() => {
     const checkExistingInterest = async () => {
-      if (!localApplicant || !user) return
+      if (!localApplicant || !user || hasCheckedInterest) return
 
       try {
-        // Get the Supabase session token
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) return
-
-        const response = await fetch('/api/bpoc/interest', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            applicantId: localApplicant.applicant_id || localApplicant.id
-          })
-        })
+        setHasCheckedInterest(true) // Mark as checked to prevent duplicate calls
+        const response = await fetch(`/api/bpoc/interest?applicantId=${localApplicant.applicant_id || localApplicant.id}&userId=${user?.id}`)
 
         const data = await response.json()
 
@@ -438,14 +326,16 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
         }
       } catch (error) {
         console.error('Error checking existing interest:', error)
+        setHasCheckedInterest(false) // Reset on error so it can be retried
         // Don't show error to user for this background check
       }
     }
 
-    if (isOpen && localApplicant && user) {
+    // Only check interest when modal opens and we have the necessary data
+    if (isOpen && localApplicant && user && !hasCheckedInterest) {
       checkExistingInterest()
     }
-  }, [isOpen, localApplicant, user])
+  }, [isOpen, localApplicant?.id, user?.id, hasCheckedInterest])
 
 
 
@@ -522,48 +412,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
     }
   }
 
-  // Define status options for applicants based on page context
-  const getStatusOptions = (): StatusOption[] => {
-    if (pageContext === 'talent-pool') {
-      // Talent pool page - limited status options
-      return [
-        { value: 'rejected', label: 'Reject', icon: 'rose', color: 'rose' },
-        { value: 'passed', label: 'For Sale', icon: 'green', color: 'green' },
-        { value: 'hired', label: 'Hired', icon: 'pink', color: 'pink' },
-        { value: 'withdrawn', label: 'Withdrawn', icon: 'gray', color: 'gray' }
-      ]
-    } else if (pageContext === 'applicants-records') {
-      // Applicants records page - full status options including Hired
-      return [
-        { value: 'rejected', label: 'Reject', icon: 'rose', color: 'rose' },
-        { value: 'submitted', label: 'New', icon: 'blue', color: 'blue' },
-        { value: 'for verification', label: 'For Verification', icon: 'teal', color: 'teal' },
-        { value: 'verified', label: 'Verified', icon: 'purple', color: 'purple' },
-        { value: 'initial interview', label: 'Initial Interview', icon: 'amber', color: 'amber' },
-        { value: 'passed', label: 'For Sale', icon: 'green', color: 'green' },
-        { value: 'hired', label: 'Hired', icon: 'pink', color: 'pink' },
-        { value: 'failed', label: 'Failed', icon: 'red', color: 'red' },
-        { value: 'withdrawn', label: 'Withdrawn', icon: 'gray', color: 'gray' }
-      ]
-    } else {
-      // BPOC recruits page - full status options (NO Hired status)
-      return [
-        { value: 'rejected', label: 'Reject', icon: 'rose', color: 'rose' },
-        { value: 'submitted', label: 'New', icon: 'blue', color: 'blue' },
-        { value: 'for verification', label: 'For Verification', icon: 'teal', color: 'teal' },
-        { value: 'verified', label: 'Verified', icon: 'purple', color: 'purple' },
-        { value: 'initial interview', label: 'Initial Interview', icon: 'amber', color: 'amber' },
-        { value: 'passed', label: 'For Sale', icon: 'green', color: 'green' },
-        { value: 'failed', label: 'Failed', icon: 'red', color: 'red' },
-        { value: 'withdrawn', label: 'Withdrawn', icon: 'gray', color: 'gray' }
-      ]
-    }
-  }
 
-  React.useEffect(() => {
-    // Set status options when component mounts
-    setStatusOptions(getStatusOptions())
-  }, [])
 
   // Prevent body scroll when modal is open
   React.useEffect(() => {
@@ -614,7 +463,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
     console.log(`🔄 Input change for ${fieldName}:`, value)
     
     // For salary fields, only allow numbers
-    if (fieldName === 'current_salary' || fieldName === 'expected_monthly_salary') {
+    if (fieldName === 'expected_monthly_salary') {
       // Remove all non-numeric characters except decimal point (including commas)
       let numericValue = value.replace(/[^0-9.]/g, '')
       console.log(`🔢 Filtered numeric value:`, numericValue)
@@ -639,10 +488,19 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
       
       // Also update the local applicant state for instant feedback
       if (localApplicant) {
-        setLocalApplicant(prev => ({
-          ...prev!,
-          [fieldName]: numericValue
-        }))
+        setLocalApplicant(prev => {
+          if (!prev) return prev
+          if (fieldName === 'expected_monthly_salary') {
+            return {
+              ...prev,
+              expected_monthly_salary: parseFloat(numericValue) || null
+            }
+          }
+          return {
+            ...prev,
+            [fieldName]: numericValue
+          }
+        })
       }
     } else {
       // For non-salary fields, allow any input
@@ -666,7 +524,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
 
   // Format number with commas and hide unnecessary decimals
   const formatNumber = (value: string | number | null): string => {
-    if (value === null || value === undefined || value === '') return ''
+    if (value === null || value === undefined || value === '' || value === 0) return ''
     
     const numValue = typeof value === 'string' ? parseFloat(value) : value
     if (isNaN(numValue)) return String(value)
@@ -707,9 +565,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
 
   // Handle expressing interest in candidate
   const handleExpressInterest = async () => {
-    if (!localApplicant || !user || isExpressingInterest) return
-
-    setIsExpressingInterest(true)
+    if (!localApplicant || !user) return
 
     try {
       // Get the Supabase session token
@@ -721,32 +577,35 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
       const response = await fetch('/api/bpoc/interest', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          applicantId: localApplicant.applicant_id || localApplicant.id
+          applicantId: localApplicant.applicant_id || localApplicant.id,
+          userId: user?.id
         })
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        if (data.alreadyInterested) {
+        // Handle toggle behavior based on API response
+        if (data.action === 'added') {
           setInterestStatus('already_interested')
-          alert('You have already expressed interest in this candidate.')
+        } else if (data.action === 'removed') {
+          setInterestStatus('none')
         } else {
-          setInterestStatus('interested')
-          alert('Interest expressed successfully!')
+          // Fallback for existing behavior
+          if (data.alreadyInterested) {
+            setInterestStatus('already_interested')
+          } else {
+            setInterestStatus('already_interested')
+          }
         }
       } else {
         throw new Error(data.error || 'Failed to express interest')
       }
     } catch (error) {
       console.error('Error expressing interest:', error)
-      alert(`Failed to express interest: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setIsExpressingInterest(false)
     }
   }
 
@@ -789,131 +648,61 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
 
               {/* Applicant Header */}
               <div className="px-6 py-5">
-                {/* User Info - 2 Column Layout */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  {/* Column 1: Avatar, Name, Position */}
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage src={localApplicant.profile_picture || "/avatars/shadcn.svg"} alt="Applicant Avatar" />
-                      <AvatarFallback className="text-2xl">
-                        {localApplicant.first_name && localApplicant.last_name 
-                          ? `${localApplicant.first_name[0]}${localApplicant.last_name[0]}`
-                          : String(localApplicant.user_id).slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="text-2xl font-semibold">
-                        {localApplicant.full_name || (localApplicant.first_name && localApplicant.last_name 
-                          ? `${localApplicant.first_name} ${localApplicant.last_name}`
-                          : `User ${localApplicant.user_id}`)}
+                {/* User Info - Single Column Layout */}
+                <div className="mb-6">
+                  {/* Avatar, Name, Position, and Interest Button */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16">
+                        <AvatarImage src={localApplicant.profile_picture || "/avatars/shadcn.svg"} alt="Applicant Avatar" />
+                        <AvatarFallback className="text-2xl">
+                          {localApplicant.first_name && localApplicant.last_name 
+                            ? `${localApplicant.first_name[0]}${localApplicant.last_name[0]}`
+                            : String(localApplicant.user_id).slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="text-2xl font-semibold">
+                          {localApplicant.full_name || (localApplicant.first_name && localApplicant.last_name 
+                            ? `${localApplicant.first_name} ${localApplicant.last_name}`
+                            : `User ${localApplicant.user_id}`)}
+                        </div>
+                        <p className="text-base text-muted-foreground">
+                          {localApplicant.job_title || 'No Position'}
+                        </p>
                       </div>
-                      <p className="text-base text-muted-foreground">
-                        {localApplicant.job_title || 'No Position'}
-                      </p>
                     </div>
-                  </div>
-                  
-                  {/* Column 2: Interest Button */}
-                  <div className="flex flex-col justify-center">
-                    <p className="text-sm text-muted-foreground mb-3">Are you interested in this candidate?</p>
-                    <Button 
-                      className="w-fit"
-                      onClick={handleExpressInterest}
-                      disabled={isExpressingInterest}
-                      variant={interestStatus === 'interested' || interestStatus === 'already_interested' ? 'secondary' : 'default'}
-                    >
-                      {isExpressingInterest ? 'Processing...' : 
-                       interestStatus === 'interested' ? 'Interested ✓' :
-                       interestStatus === 'already_interested' ? 'Already Interested ✓' :
-                       'I\'m Interested'}
-                    </Button>
+                    
+                    {/* Interest Button */}
+                    <div className="flex flex-col items-end">
+                      <p className="text-sm text-muted-foreground mb-2">Are you interested in this candidate?</p>
+                      <Button 
+                        className="w-fit"
+                        onClick={handleExpressInterest}
+                        variant={interestStatus === 'already_interested' ? 'secondary' : 'default'}
+                      >
+                        {interestStatus === 'already_interested' ? 'Interested ✓' :
+                         'I\'m Interested'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Applicant Metadata Grid */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {/* Email */}
-                  {localApplicant.email && (
-                    <div className="flex items-center gap-2">
-                      <IconMail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Email:</span>
-                      <span className="font-medium">{localApplicant.email}</span>
-                    </div>
-                  )}
-                  
-                  {/* Phone */}
-                  {localApplicant.phone && (
-                    <div className="flex items-center gap-2">
-                      <IconPhone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Phone:</span>
-                      <span className="font-medium">{localApplicant.phone}</span>
-                    </div>
-                  )}
-                  
-                  {/* Address */}
-                  {localApplicant.address && (
-                    <div className="flex items-center gap-2">
-                      <IconMapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Address:</span>
-                      <span className="font-medium">{localApplicant.address}</span>
-                    </div>
-                  )}
-                  
-                  {/* Status - Moved to last */}
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(currentStatus || localApplicant.status)}
-                    <span className="text-muted-foreground">Status:</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Badge 
-                          variant="outline" 
-                          className={`${getStatusColor(currentStatus || localApplicant.status)} px-3 py-1 font-medium cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center`}
-                        >
-                          {getStatusLabel(currentStatus || localApplicant.status)}
-                        </Badge>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-2">
-                        {statusOptions.map((option) => {
-                            const isCurrentStatus = (currentStatus || localApplicant.status) === option.value;
-                            return (
-                              <PopoverItem
-                                key={option.value}
-                                variant="primary"
-                                isSelected={isCurrentStatus}
-                                onClick={() => setCurrentStatus(option.value)}
-                              >
-                                {option.icon === 'rose' ? (
-                                  <div className="w-3 h-3 rounded-full bg-rose-500"></div>
-                                ) : option.icon === 'blue' ? (
-                                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                                ) : option.icon === 'teal' ? (
-                                  <div className="w-3 h-3 rounded-full bg-teal-500"></div>
-                                ) : option.icon === 'purple' ? (
-                                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                                ) : option.icon === 'amber' ? (
-                                  <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                                ) : option.icon === 'green' ? (
-                                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                ) : option.icon === 'pink' ? (
-                                  <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                                ) : option.icon === 'red' ? (
-                                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                ) : option.icon === 'gray' ? (
-                                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                                ) : (
-                                  <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                                )}
-                                <span className="text-sm font-medium">{option.label}</span>
-                              </PopoverItem>
-                            );
-                          })}
-                      </PopoverContent>
-                    </Popover>
+                {/* Tabs Row */}
+                <div className="flex-shrink-0">
+                  <div className={`rounded-xl p-1 w-fit ${
+                    theme === 'dark' 
+                      ? 'bg-white/5 border border-white/10' 
+                      : 'bg-gray-100/80 border border-gray-200'
+                  }`}>
+                    <AnimatedTabs
+                      tabs={[
+                        { title: "Summary", value: "information" },
+                        { title: "AI Analysis", value: "ai-analysis" }
+                      ]}
+                      containerClassName="grid grid-cols-2 w-fit"
+                      onTabChange={(tab) => setActiveTab(tab.value)}
+                    />
                   </div>
-
-                  
-
-
                 </div>
               </div>
               
@@ -990,22 +779,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                     </div>
                   )}
 
-                  <div className="mb-6 flex-shrink-0">
-                    <div className={`rounded-xl p-1 w-fit ${
-                      theme === 'dark' 
-                        ? 'bg-white/5 border border-white/10' 
-                        : 'bg-gray-100/80 border border-gray-200'
-                    }`}>
-                      <AnimatedTabs
-                        tabs={[
-                          { title: "Summary", value: "information" },
-                          { title: "AI Analysis", value: "ai-analysis" }
-                        ]}
-                        containerClassName="grid grid-cols-2 w-fit"
-                        onTabChange={(tab) => setActiveTab(tab.value)}
-                      />
-                    </div>
-                  </div>
+
 
                   {/* Information Tab */}
                   <TabsContent value="information" className="space-y-6">
@@ -1025,86 +799,28 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                           <h3 className="text-lg font-medium text-muted-foreground">Additional Information</h3>
                         </div>
                         <div className="rounded-lg border border-[#cecece99] dark:border-border overflow-hidden">
-                          {/* Shift */}
-                          <div className="flex items-center gap-3 py-3 px-4 border-b border-border/50 last:border-b-0">
-                            <IconClockHour4 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <div className="flex-1">
-                              <label className="text-sm font-medium text-muted-foreground">Shift Period</label>
-                              <div className="mt-1">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <div 
-                                      className="h-[33px] w-full text-sm border-0 bg-transparent dark:bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none shadow-none justify-start text-left font-normal cursor-pointer select-none flex items-center"
-                                      style={{ backgroundColor: 'transparent' }}
-                                      tabIndex={0}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                          e.preventDefault()
-                                        }
-                                      }}
-                                    >
-                                      {inputValues.shift || '-'}
-                                    </div>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-32 p-1" align="start" side="bottom" sideOffset={4}>
-                                    {[
-                                      { value: 'Day', icon: <IconSun className="h-4 w-4 text-muted-foreground" /> },
-                                      { value: 'Night', icon: <IconMoon className="h-4 w-4 text-muted-foreground" /> }
-                                    ].map((shiftOption) => (
-                                        <PopoverItem
-                                          key={shiftOption.value}
-                                          isSelected={inputValues.shift === shiftOption.value}
-                                          onClick={() => {
-                                            console.log(`🔄 Shift changing from "${inputValues.shift}" to "${shiftOption.value}"`)
-                                            console.log(`🔍 Original value: "${originalValues.shift}"`)
-                                            console.log(`🔍 Current value: "${inputValues.shift}"`)
-                                            console.log(`🔍 New value: "${shiftOption.value}"`)
-                                            
-                                            // Update the input values first
-                                            setInputValues(prev => ({ ...prev, shift: shiftOption.value }))
-                                            
-                                            // Save immediately with the new value
-                                            const newValue = shiftOption.value
-                                            console.log(`💾 Saving shift with new value: "${newValue}"`)
-                                          }}
-                                        >
-                                          <span className="text-sm">{shiftOption.icon}</span>
-                                          <span className="text-sm font-medium">{shiftOption.value}</span>
-                                        </PopoverItem>
-                                      ))}
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
-                            </div>
-                          </div>
+
                           
-                          {/* Current Salary */}
-                          <DataFieldRow
-                            icon={<IconCash className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Current Salary"
-                            fieldName="current_salary"
-                            value={formatNumber(inputValues.current_salary)}
-                            onSave={handleInputChange}
-                          />
-                          
-                          {/* Expected Salary */}
-                          <DataFieldRow
-                            icon={<IconCash className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Expected Salary"
-                            fieldName="expected_monthly_salary"
-                            value={formatNumber(inputValues.expected_monthly_salary)}
-                            onSave={handleInputChange}
-                          />
-                          
-                          {/* Video Introduction */}
-                          <DataFieldRow
-                            icon={<IconVideo className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Video Introduction"
-                            fieldName="video_introduction_url"
-                            value={inputValues.video_introduction_url || ''}
-                            onSave={handleInputChange}
-                            isLast={true}
-                          />
+                                                     {/* Expected Salary */}
+                           <DataFieldRow
+                             icon={<IconCash className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                             label="Expected Salary"
+                             fieldName="expected_monthly_salary"
+                             value={formatNumber(localApplicant.expected_monthly_salary ?? '')}
+                             onSave={() => {}} // Empty function since it's read-only
+                             readOnly={true}
+                           />
+                           
+                           {/* Video Introduction */}
+                           <DataFieldRow
+                             icon={<IconVideo className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                             label="Video Introduction"
+                             fieldName="video_introduction_url"
+                             value={localApplicant.video_introduction_url || ''}
+                             onSave={() => {}} // Empty function since it's read-only
+                             readOnly={true}
+                             isLast={true}
+                           />
                         </div>
                       </div>
 

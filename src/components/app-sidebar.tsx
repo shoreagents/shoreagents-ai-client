@@ -11,7 +11,6 @@ import {
   TrophyIcon,
   ClockIcon,
   CoffeeIcon,
-  ActivityIcon,
   BriefcaseIcon,
   ShoppingCartIcon
 } from "lucide-react"
@@ -76,11 +75,6 @@ const data = {
       title: "Breaks",
       url: "/breaks/",
       icon: CoffeeIcon,
-    },
-    {
-      title: "Activities",
-      url: "/activities/",
-      icon: ActivityIcon,
     },
   ],
   navJobs: [
