@@ -353,7 +353,7 @@ export default function EmployeesPage() {
                   <Card className="overflow-hidden">
                     <Table>
                         <TableHeader>
-                          <TableRow>
+                          <TableRow variant="no-hover">
                             <TableHead 
                               onClick={() => handleSort('firstName')} 
                               className={`cursor-pointer ${sortField === 'firstName' ? 'text-primary font-medium bg-accent/50' : ''}`}

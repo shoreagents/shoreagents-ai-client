@@ -579,12 +579,12 @@ export default function LeaderboardPage() {
                         View team rankings based on productivity scores and activity metrics.
                       </p>
                     </div>
-                    <Card>
+                    <Card className="overflow-hidden">
                       <CardContent className="p-0">
                         <div className="">
                           <Table>
                             <TableHeader>
-                              <TableRow className="h-12">
+                              <TableRow variant="no-hover" className="h-12">
                                 <TableHead 
                                   className={`w-16 cursor-pointer ${sortField === 'rank' ? 'text-primary font-medium bg-accent/50' : ''}`}
                                   onClick={() => handleSort('rank')}

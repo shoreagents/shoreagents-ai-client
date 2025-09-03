@@ -57,18 +57,18 @@ export function GrowthRateCard({ className }: GrowthRateCardProps) {
             alt="Growth Globe"
             width={520}
             height={520}
-            className="pointer-events-none select-none w-[90%] h-auto object-contain mb-[-250px]"
+            className="pointer-events-none select-none w-[110%] h-auto object-contain mb-[-250px]"
           />
-        </div>
-        {/* Centered badge overlay */}
-        <div className="col-start-1 row-start-1 place-self-center">
-          <Badge variant="outline" className="rounded-full text-sm px-3 py-1 bg-white/80 backdrop-blur-sm border-border text-black">
-            Coming Soon
-          </Badge>
         </div>
       </CardContent>
       <CardFooter className="flex-col items-start gap-1 text-sm">
       </CardFooter>
+      {/* Bottom aligned badge overlay */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+        <Badge variant="outline" className="rounded-full text-sm px-3 py-1 bg-white/80 backdrop-blur-sm border-border text-black">
+          Coming Soon
+        </Badge>
+      </div>
     </Card>
   )
 }

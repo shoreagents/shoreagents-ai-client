@@ -97,7 +97,7 @@ export function ActivityRankings({
 
   return (
     <Card 
-      className={`${className} bg-gradient-to-br from-white/30 via-violet-500/20 to-violet-600/30 dark:from-violet-500/30 dark:via-black/35 dark:to-black/50 cursor-pointer transition-all duration-200 hover:shadow-lg group`} 
+      className={`${className} bg-gradient-to-br from-white/60 via-white/10 to-violet-500/30 dark:from-black/70 dark:via-black/20 dark:to-violet-400/40 cursor-pointer transition-all duration-200 group`} 
       onClick={handleCardClick}
     >
       <CardHeader>
@@ -113,7 +113,7 @@ export function ActivityRankings({
             <img 
               src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/trophy-leaderboard.png"
               alt="Trophy Leaderboard"
-              className="w-full h-auto max-w-[200px] object-contain opacity-50 transition-opacity duration-600 group-hover:opacity-80"
+              className="w-full h-auto max-w-[200px] object-contain opacity-70 dark:opacity-50 transition-opacity duration-600 group-hover:opacity-90 dark:group-hover:opacity-80"
             />
           </div>
           

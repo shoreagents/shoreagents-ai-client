@@ -26,6 +26,7 @@ import {
   PauseIcon,
   UtensilsIcon
 } from "lucide-react"
+import { IconArrowUp, IconArrowDown } from "@tabler/icons-react"
 import {
   Table,
   TableBody,
@@ -99,6 +100,10 @@ export default function BreaksPage() {
     totalAgents: 0
   })
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Sorting state
+  const [sortField, setSortField] = useState<'name' | 'department' | 'position'>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Real-time updates for break sessions
   const { isConnected: isRealtimeConnected } = useRealtimeBreaks({
@@ -414,6 +419,52 @@ export default function BreaksPage() {
       session.agent_user_id.toString() === employeeId
     )
   }
+
+  // Sorting functions
+  const handleSort = (field: 'name' | 'department' | 'position') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const getSortIcon = (field: 'name' | 'department' | 'position') => {
+    if (sortField !== field) {
+      return null
+    }
+    return sortDirection === 'asc' ? 
+      <IconArrowUp className="h-4 w-4 text-primary" /> : 
+      <IconArrowDown className="h-4 w-4 text-primary" />
+  }
+
+  // Sort employees based on current sort settings
+  const sortedEmployees = [...employees].sort((a, b) => {
+    let aValue: string
+    let bValue: string
+
+    switch (sortField) {
+      case 'name':
+        aValue = `${a.firstName} ${a.lastName}`.toLowerCase()
+        bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
+        break
+      case 'department':
+        aValue = a.department.toLowerCase()
+        bValue = b.department.toLowerCase()
+        break
+      case 'position':
+        aValue = a.position.toLowerCase()
+        bValue = b.position.toLowerCase()
+        break
+      default:
+        return 0
+    }
+
+    return sortDirection === 'asc' ? 
+      aValue.localeCompare(bValue) : 
+      bValue.localeCompare(aValue)
+  })
 
 
 
@@ -871,12 +922,20 @@ export default function BreaksPage() {
 
               {/* Employee Break Sessions Table */}
               <div className="px-4 lg:px-6">
-                <Card>
+                <Card className="overflow-hidden">
                   <CardContent className="p-0">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Employee</TableHead>
+                        <TableRow variant="no-hover">
+                          <TableHead 
+                            className={`cursor-pointer ${sortField === 'name' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            onClick={() => handleSort('name')}
+                          >
+                            <div className="flex items-center gap-1">
+                              Employee
+                              {getSortIcon('name')}
+                            </div>
+                          </TableHead>
                             <TableHead className="text-center">Morning Break</TableHead>
                             <TableHead className="text-center">Lunch Break</TableHead>
                             <TableHead className="text-center">Afternoon Break</TableHead>
@@ -886,7 +945,7 @@ export default function BreaksPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {employees.map((employee) => (
+                        {sortedEmployees.map((employee) => (
                           <TableRow key={employee.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">

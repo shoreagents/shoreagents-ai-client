@@ -390,27 +390,84 @@ export default function Dashboard() {
                   </Card>
 
                   {/* 8. Tempura (1x2) - Talent Pool */}
-                  <Card className="lg:col-span-1 lg:row-span-2 h-full">
+                  <Card className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-white/60 via-white/20 to-blue-500/30 dark:from-black/70 dark:via-black/30 dark:to-blue-400/40 relative overflow-hidden">
                     <CardHeader>
-                      <CardTitle className="text-base">Talent Pool</CardTitle>
-                      <CardDescription>{statusCounts.actioned} tickets</CardDescription>
+                      <CardTitle>Talent Pool</CardTitle>
+                      <CardDescription>Explore and discover skilled candidates available for your team.</CardDescription>
                     </CardHeader>
-                    <div className="flex-1 flex items-center justify-center p-4 relative min-h-[120px]">
-                      {/* Simple orbiting circles with 3 paths */}
-                      <div className="relative w-32 h-32">
-                        {/* Path 1 - Largest orbit */}
-                        <div className="absolute inset-0 border border-primary/20 rounded-full"></div>
+                    <div className="absolute bottom-0 left-0 right-0 h-[60px]">
+                      <div className="relative flex h-full w-full items-center justify-center">
+                        {/* Inner ring - 155px */}
+                        <div>
+                          <div className="pointer-events-none absolute inset-0" style={{width: '155px', height: '155px', left: 'calc(50% - 77.5px)', top: 'calc(50% - 77.5px)', opacity: 1, transform: 'none'}}>
+                            <div className="size-full rounded-full border border-white/20 bg-gradient-radial from-white/10 via-white/5 to-transparent"></div>
+                          </div>
+                        </div>
                         
-                        {/* Path 2 - Medium orbit */}
-                        <div className="absolute inset-0 border border-secondary/20 rounded-full" style={{margin: '20px'}}></div>
+                        {/* Orbiting elements on inner ring */}
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 0, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 120, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 240, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
                         
-                        {/* Path 3 - Smallest orbit */}
-                        <div className="absolute inset-0 border border-accent/20 rounded-full" style={{margin: '40px'}}></div>
+                        {/* Middle ring - 215px */}
+                        <div>
+                          <div className="pointer-events-none absolute inset-0" style={{width: '215px', height: '215px', left: 'calc(50% - 107.5px)', top: 'calc(50% - 107.5px)', opacity: 1, transform: 'none'}}>
+                            <div className="size-full rounded-full border border-white/30 bg-gradient-radial from-white/15 via-white/8 to-transparent"></div>
+                          </div>
+                        </div>
                         
-                        {/* Orbiting elements - positioned around the circle */}
-                        <div className="absolute top-0 left-1/2 w-3 h-3 bg-primary rounded-full animate-spin" style={{transform: 'translateX(-50%)'}}></div>
-                        <div className="absolute top-1/2 right-0 w-2.5 h-2.5 bg-secondary rounded-full animate-spin" style={{transform: 'translateY(-50%)', animationDuration: '3s'}}></div>
-                        <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-accent rounded-full animate-spin" style={{transform: 'translateX(-50%)', animationDuration: '2s'}}></div>
+                        {/* Orbiting elements on middle ring */}
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 0, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 120, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 240, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Outer ring - 275px */}
+                        <div>
+                          <div className="pointer-events-none absolute inset-0" style={{width: '275px', height: '275px', left: 'calc(50% - 137.5px)', top: 'calc(50% - 137.5px)', opacity: 1, transform: 'none'}}>
+                            <div className="size-full rounded-full border border-white/40 bg-gradient-radial from-white/20 via-white/10 to-transparent"></div>
+                          </div>
+                        </div>
+                        
+                        {/* Orbiting elements on outer ring */}
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 0, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 120, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 240, '--icon-size': '20px'}}>
+                          <div style={{opacity: 1, transform: 'none'}}>
+                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </Card>
