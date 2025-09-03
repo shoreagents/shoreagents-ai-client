@@ -25,8 +25,10 @@ import {
   EyeIcon,
   EditIcon,
   TrashIcon,
-  TrendingUpIcon
+  TrendingUpIcon,
+  SearchIcon
 } from "lucide-react"
+import { IconArrowUp, IconArrowDown, IconArrowsSort } from "@tabler/icons-react"
 import {
   Table,
   TableBody,
@@ -41,6 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
 interface Employee {
   id: string
@@ -71,45 +74,126 @@ export default function EmployeesPage() {
     departments: 0
   })
 
+  // Sort state
+  const [sortField, setSortField] = useState<keyof Employee | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
   // removed department filter state and memo
 
-  // Fetch employees data without additional filters
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      console.log('🔍 Fetching employees for memberId:', user?.memberId)
-      setError(null)
-      setLoading(true)
+  // Sort function
+  const handleSort = (field: keyof Employee) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1) // Reset to first page when sorting
+  }
 
-      if (!user?.memberId && user?.userType !== 'Internal') {
-        setError('User member ID not found')
-        setLoading(false)
-        return
-      }
+  // Get sort icon for a field
+  const getSortIcon = (field: keyof Employee) => {
+    if (sortField !== field) {
+      return null
+    }
+    return sortDirection === 'asc' 
+      ? <IconArrowUp className="h-4 w-4 text-primary" />
+      : <IconArrowDown className="h-4 w-4 text-primary" />
+  }
 
-      try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        const params = new URLSearchParams({ memberId: String(memberId) })
+  // Remove client-side filtering since it's now server-side
+  const displayedEmployees = employees
 
-        const response = await fetch(`/api/team/employees?${params.toString()}`)
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(`Failed to fetch employees: ${response.status} ${errorText}`)
-        }
-        const data = await response.json()
-        setEmployees(data.employees)
-        setStats({ total: data.stats.total, departments: data.stats.departments })
-      } catch (err) {
-        console.error('❌ Fetch error:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch employees')
-      } finally {
-        setLoading(false)
-      }
+  // Fetch employees data with pagination and search
+  const fetchEmployees = async () => {
+    console.log('🔍 Fetching employees for memberId:', user?.memberId)
+    setError(null)
+    setLoading(true)
+
+    if (!user?.memberId && user?.userType !== 'Internal') {
+      setError('User member ID not found')
+      setLoading(false)
+      return
     }
 
+    try {
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      const params = new URLSearchParams({ 
+        memberId: String(memberId),
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
+      })
+
+      // Add search parameter if there's a search query
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim())
+      }
+
+      // Add sort parameters if sorting is active
+      if (sortField) {
+        params.append('sortField', sortField)
+        params.append('sortDirection', sortDirection)
+      }
+
+      const response = await fetch(`/api/team/employees?${params.toString()}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch employees: ${response.status} ${errorText}`)
+      }
+      const data = await response.json()
+      
+      // Handle paginated response
+      if (data.employees && data.pagination) {
+        setEmployees(data.employees)
+        setTotalCount(data.pagination.totalCount)
+        setTotalPages(data.pagination.totalPages)
+        setStats({ total: data.stats.total, departments: data.stats.departments })
+      } else {
+        // Fallback for non-paginated response
+        setEmployees(data.employees || data)
+        setTotalCount(data.employees?.length || data.length)
+        setTotalPages(Math.ceil((data.employees?.length || data.length) / itemsPerPage))
+        setStats({ total: data.stats?.total || data.length, departments: data.stats?.departments || 0 })
+      }
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch employees')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
     if (user) {
       fetchEmployees()
     }
   }, [user])
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  // Debounced search and pagination effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (user) {
+        fetchEmployees()
+      }
+    }, 500) // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [searchQuery, currentPage, sortField, sortDirection])
 
   if (loading) {
     return (
@@ -201,10 +285,9 @@ export default function EmployeesPage() {
               </div>
 
                 {/* Stats Cards */}
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  <Card className="@container/card relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/10 via-blue-400/5 to-transparent"></div>
-                    <CardHeader className="relative">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 lg:px-6">
+                  <Card className="@container/card">
+                    <CardHeader>
                       <CardDescription>Total Employees</CardDescription>
                       <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
                         <div className="flex items-center gap-2">
@@ -221,9 +304,8 @@ export default function EmployeesPage() {
                     </CardFooter>
                   </Card>
 
-                  <Card className="@container/card relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tl from-orange-500/10 via-orange-400/5 to-transparent"></div>
-                    <CardHeader className="relative">
+                  <Card className="@container/card">
+                    <CardHeader>
                       <CardDescription>Departments</CardDescription>
                       <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
                         <div className="flex items-center gap-2">
@@ -243,26 +325,84 @@ export default function EmployeesPage() {
                   <NewHires employees={employees} />
                 </div>
 
+                {/* Search Section */}
+                <div className="px-4 lg:px-6">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                      <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search employees by name, email, position, department, or phone..."
+                        className="pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    {searchQuery && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-[hsl(var(--sidebar-background))] rounded-lg border">
+                        <div className="text-sm font-medium text-muted-foreground">Results:</div>
+                        <div className="text-sm font-semibold text-sidebar-accent-foreground">
+                          {totalCount} employees found
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Employees Table */}
                 <div className="px-4 lg:px-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Team Members</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
+                  <Card className="overflow-hidden">
+                    <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Position</TableHead>
-                            <TableHead>Department</TableHead>
-                            <TableHead>Contact</TableHead>
-                            <TableHead>Hire Date</TableHead>
-                            <TableHead className="text-center">Actions</TableHead>
+                            <TableHead 
+                              onClick={() => handleSort('firstName')} 
+                              className={`cursor-pointer ${sortField === 'firstName' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                Name
+                                {getSortIcon('firstName')}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              onClick={() => handleSort('position')} 
+                              className={`cursor-pointer ${sortField === 'position' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                Position
+                                {getSortIcon('position')}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              onClick={() => handleSort('department')} 
+                              className={`cursor-pointer ${sortField === 'department' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                Department
+                                {getSortIcon('department')}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              onClick={() => handleSort('email')} 
+                              className={`cursor-pointer ${sortField === 'email' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                Contact
+                                {getSortIcon('email')}
+                              </div>
+                            </TableHead>
+                            <TableHead 
+                              onClick={() => handleSort('hireDate')} 
+                              className={`cursor-pointer ${sortField === 'hireDate' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                            >
+                              <div className="flex items-center gap-1">
+                                Hire Date
+                                {getSortIcon('hireDate')}
+                              </div>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {employees.map((employee) => (
+                          {displayedEmployees.map((employee) => (
                             <TableRow key={employee.id}>
                               <TableCell>
                                 <div className="flex items-center gap-3">
@@ -298,35 +438,60 @@ export default function EmployeesPage() {
                                   {employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : 'N/A'}
                                 </div>
                               </TableCell>
-                              <TableCell className="text-center">
-                                <div className="flex justify-center">
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex items-center justify-center rounded-lg gap-0">
-                                        <MoreHorizontalIcon className="h-4 w-4 flex-shrink-0" />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-32 p-0" align="end">
-                                      <div className="flex flex-col p-1 space-y-1">
-                                        <Button variant="ghost" size="sm" className="justify-start h-8 px-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-                                          <EyeIcon className="mr-2 h-4 w-4" />
-                                          View
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="justify-start h-8 px-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-                                          <EditIcon className="mr-2 h-4 w-4" />
-                                          Edit
-                                        </Button>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </div>
-                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
-                    </CardContent>
                   </Card>
+                  
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-6">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} Employees
+                      </div>
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(prev => Math.max(prev - 1, 1))
+                              }}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                          
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setCurrentPage(page)
+                                }}
+                                isActive={currentPage === page}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setCurrentPage(prev => Math.min(prev + 1, totalPages))
+                              }}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

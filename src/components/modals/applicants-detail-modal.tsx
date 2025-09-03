@@ -413,7 +413,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
   // Check if user has already expressed interest when modal opens
   useEffect(() => {
     const checkExistingInterest = async () => {
-      if (!localApplicant || !user || user.userType !== 'client') return
+      if (!localApplicant || !user) return
 
       try {
         // Get the Supabase session token
@@ -709,12 +709,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
   const handleExpressInterest = async () => {
     if (!localApplicant || !user || isExpressingInterest) return
 
-    // Check if user is a client
-    if (user.userType !== 'client') {
-      alert('Only clients can express interest in candidates.')
-      return
-    }
-
     setIsExpressingInterest(true)
 
     try {
@@ -825,7 +819,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                     <Button 
                       className="w-fit"
                       onClick={handleExpressInterest}
-                      disabled={isExpressingInterest || user?.userType !== 'client'}
+                      disabled={isExpressingInterest}
                       variant={interestStatus === 'interested' || interestStatus === 'already_interested' ? 'secondary' : 'default'}
                     >
                       {isExpressingInterest ? 'Processing...' : 
@@ -833,9 +827,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                        interestStatus === 'already_interested' ? 'Already Interested ✓' :
                        'I\'m Interested'}
                     </Button>
-                    {user?.userType !== 'client' && (
-                      <p className="text-xs text-muted-foreground mt-1">Only clients can express interest</p>
-                    )}
                   </div>
                 </div>
                 

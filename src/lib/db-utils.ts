@@ -2233,3 +2233,63 @@ export async function getApplicants({ status, diagnose = false }: { status?: str
   }
   return enrichedData
 }
+
+// =============================
+// Activities Data
+// =============================
+
+export async function getActivitiesByDate(memberId: string, startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      ad.id,
+      ad.user_id,
+      ad.today_date,
+      ad.today_active_seconds,
+      ad.today_inactive_seconds,
+      ad.is_currently_active,
+      ad.last_session_start,
+      ad.created_at,
+      ad.updated_at,
+      pi.first_name,
+      pi.last_name,
+      u.email,
+      pi.profile_picture,
+      d.name as department_name
+    FROM activity_data ad
+    JOIN users u ON ad.user_id = u.id
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    WHERE ad.today_date BETWEEN $1 AND $2
+      AND ($3 = 'all' OR u.id IN (
+        SELECT user_id FROM agents WHERE member_id = $3::int
+      ))
+    ORDER BY ad.today_date DESC, ad.today_active_seconds DESC
+  `
+  
+  const result = await pool.query(query, [startDate, endDate, memberId])
+  return result.rows
+}
+
+export async function getActivityStats(memberId: string, startDate: string, endDate: string) {
+  const query = `
+    SELECT 
+      COUNT(DISTINCT ad.user_id) as total_users,
+      COUNT(DISTINCT ad.today_date) as total_days,
+      SUM(ad.today_active_seconds) as total_active_seconds,
+      SUM(ad.today_inactive_seconds) as total_inactive_seconds,
+      AVG(ad.today_active_seconds) as avg_active_seconds,
+      AVG(ad.today_inactive_seconds) as avg_inactive_seconds,
+      MAX(ad.today_active_seconds) as max_active_seconds,
+      MIN(ad.today_active_seconds) as min_active_seconds
+    FROM activity_data ad
+    JOIN users u ON ad.user_id = u.id
+    WHERE ad.today_date BETWEEN $1 AND $2
+      AND ($3 = 'all' OR u.id IN (
+        SELECT user_id FROM agents WHERE member_id = $3::int
+      ))
+  `
+  
+  const result = await pool.query(query, [startDate, endDate, memberId])
+  return result.rows[0] || {}
+}

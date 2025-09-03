@@ -79,9 +79,8 @@ const data = {
     },
     {
       title: "Activities",
-      url: "/track/activities/",
+      url: "/activities/",
       icon: ActivityIcon,
-      disabled: true,
     },
   ],
   navJobs: [

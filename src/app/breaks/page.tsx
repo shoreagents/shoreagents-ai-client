@@ -67,9 +67,28 @@ interface BreakSession {
   department_name: string | null
 }
 
+interface Employee {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  department: string
+  position: string
+  hireDate?: string
+  avatar?: string
+  departmentId?: number
+  workEmail?: string
+  birthday?: string
+  city?: string
+  address?: string
+  gender?: string
+}
+
 export default function BreaksPage() {
   const { user } = useAuth()
   const [breakSessions, setBreakSessions] = useState<BreakSession[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({
@@ -154,6 +173,34 @@ export default function BreaksPage() {
 
     return () => clearInterval(timer)
   }, [])
+
+  // Fetch employees data
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!user?.memberId && user?.userType !== 'Internal') {
+        return
+      }
+
+      try {
+        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+        const response = await fetch(`/api/team/employees?memberId=${memberId}`)
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch employees: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setEmployees(data.employees)
+      } catch (err) {
+        console.error('❌ Employees fetch error:', err)
+        // Don't set error state for employees fetch failure, just log it
+      }
+    }
+
+    if (user) {
+      fetchEmployees()
+    }
+  }, [user])
 
   // Fetch break sessions data
   useEffect(() => {
@@ -259,7 +306,7 @@ export default function BreaksPage() {
     } else if (session.end_time) {
       return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Used</Badge>
     } else {
-      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Started</Badge>
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">Active</Badge>
     }
   }
 
@@ -354,6 +401,20 @@ export default function BreaksPage() {
     return "No one is currently on break."
   }
 
+  // Helper function to get break session for a specific employee and break type
+  const getEmployeeBreakSession = (employeeId: string, breakType: string) => {
+    return breakSessions.find(session => 
+      session.agent_user_id.toString() === employeeId && session.break_type === breakType
+    )
+  }
+
+  // Helper function to get all break sessions for an employee
+  const getEmployeeBreakSessions = (employeeId: string) => {
+    return breakSessions.filter(session => 
+      session.agent_user_id.toString() === employeeId
+    )
+  }
+
 
 
   if (loading) {
@@ -396,13 +457,9 @@ export default function BreaksPage() {
                     <CardContent>
                       <div className="space-y-3">
                         <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                        <div className="border-t border-border pt-3">
+                        <div className="border-t border-border mt-3 pt-3">
                           <div className="space-y-2">
-                            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
-                              <span>Name</span>
-                              <span className="text-center">Started Time</span>
-                              <span className="text-right">Elapsed Time</span>
-                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-2">
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                                 <div className="flex items-center gap-2">
@@ -413,6 +470,7 @@ export default function BreaksPage() {
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -434,13 +492,9 @@ export default function BreaksPage() {
                     <CardContent>
                       <div className="space-y-3">
                         <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                        <div className="border-t border-border pt-3">
+                        <div className="border-t border-border mt-3 pt-3">
                           <div className="space-y-2">
-                            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
-                              <span>Name</span>
-                              <span className="text-center">Started Time</span>
-                              <span className="text-right">Elapsed Time</span>
-                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-2">
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                                 <div className="flex items-center gap-2">
@@ -451,6 +505,7 @@ export default function BreaksPage() {
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -472,13 +527,9 @@ export default function BreaksPage() {
                     <CardContent>
                       <div className="space-y-3">
                         <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                        <div className="border-t border-border pt-3">
+                        <div className="border-t border-border mt-3 pt-3">
                           <div className="space-y-2">
-                            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
-                              <span>Name</span>
-                              <span className="text-center">Started Time</span>
-                              <span className="text-right">Elapsed Time</span>
-                            </div>
+                            <div className="max-h-48 overflow-y-auto space-y-2">
                             {[...Array(3)].map((_, i) => (
                               <div key={i} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                                 <div className="flex items-center gap-2">
@@ -489,6 +540,7 @@ export default function BreaksPage() {
                                 <div className="h-3 bg-gray-200 rounded animate-pulse w-16"></div>
                               </div>
                             ))}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -497,24 +549,27 @@ export default function BreaksPage() {
                  </div>
                </div>
 
-               {/* Break Sessions Table Skeleton */}
+               {/* Employee Break Sessions Table Skeleton */}
                <div className="px-4 lg:px-6">
                  <Card>
                    <CardHeader>
-                     <CardTitle>Break Sessions</CardTitle>
+                     <CardTitle>Employee Break Sessions</CardTitle>
                    </CardHeader>
                    <CardContent>
                      <div className="space-y-4">
                        {/* Table Header Skeleton */}
-                       <div className="grid grid-cols-4 gap-4 pb-2 border-b text-xs text-muted-foreground font-medium">
+                       <div className="grid grid-cols-7 gap-4 pb-2 border-b text-xs text-muted-foreground font-medium">
                          <span>Employee</span>
                          <span className="text-center">Morning Break</span>
                          <span className="text-center">Lunch Break</span>
                          <span className="text-center">Afternoon Break</span>
+                         <span className="text-center">Night First</span>
+                         <span className="text-center">Night Meal</span>
+                         <span className="text-center">Night Second</span>
                        </div>
                        {/* Table Rows Skeleton */}
                        {[...Array(5)].map((_, i) => (
-                         <div key={i} className="grid grid-cols-4 gap-4 items-center py-2">
+                         <div key={i} className="grid grid-cols-7 gap-4 items-center py-2">
                            <div className="flex items-center gap-3">
                              <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
                              <div className="space-y-1">
@@ -522,6 +577,9 @@ export default function BreaksPage() {
                                <div className="h-3 bg-gray-200 rounded animate-pulse w-32"></div>
                              </div>
                            </div>
+                           <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
+                           <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
+                           <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
                            <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
                            <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
                            <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
@@ -551,9 +609,9 @@ export default function BreaksPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center justify-between w-full">
                       <div>
-                        <h1 className="text-2xl font-bold">Break Sessions</h1>
+                        <h1 className="text-2xl font-bold">Employee Breaks</h1>
                         <p className="text-sm text-muted-foreground">
-                          Monitor and manage employee break times
+                          Monitor all employees and their break session status
                         </p>
                       </div>
 
@@ -595,9 +653,9 @@ export default function BreaksPage() {
                 <div className="mb-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h1 className="text-2xl font-bold">Breaks</h1>
+                      <h1 className="text-2xl font-bold">Employee Breaks</h1>
                       <p className="text-sm text-muted-foreground">
-                        Monitor real-time break activity and track employee break sessions across morning, lunch, and afternoon periods.
+                        Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
                       </p>
                     </div>
 
@@ -627,6 +685,7 @@ export default function BreaksPage() {
                          stats.totalAgents
                        )}
                      </CardTitle>
+                                                                                  {breakSessions.filter(session => session.break_type === 'Morning' && !session.end_time).length > 0 && (
                                          <div className="border-t border-border mt-3 pt-3">
                        <div className="space-y-2">
                          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
@@ -667,12 +726,11 @@ export default function BreaksPage() {
                                  )}
                                </div>
                              ))}
-                           {breakSessions.filter(session => session.break_type === 'Morning' && !session.end_time).length === 0 && (
-                             <p className="text-xs text-muted-foreground">No morning break sessions</p>
-                           )}
+
                          </div>
                        </div>
                      </div>
+                                         )}
                   </CardContent>
                 </Card>
 
@@ -694,6 +752,7 @@ export default function BreaksPage() {
                            stats.totalAgents
                          )}
                        </CardTitle>
+                       {breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length > 0 && (
                        <div className="border-t border-border mt-3 pt-3">
                          <div className="space-y-2">
                            <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
@@ -734,12 +793,11 @@ export default function BreaksPage() {
                                    )}
                                  </div>
                                ))}
-                             {breakSessions.filter(session => session.break_type === 'Lunch' && !session.end_time).length === 0 && (
-                               <p className="text-xs text-muted-foreground">No lunch break sessions</p>
-                             )}
+
                            </div>
                          </div>
                        </div>
+                       )}
                      </CardContent>
                    </Card>
 
@@ -761,6 +819,7 @@ export default function BreaksPage() {
                          stats.totalAgents
                        )}
                      </CardTitle>
+                                                                                  {breakSessions.filter(session => session.break_type === 'Afternoon' && !session.end_time).length > 0 && (
                                          <div className="border-t border-border mt-3 pt-3">
                        <div className="space-y-2">
                          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
@@ -801,23 +860,19 @@ export default function BreaksPage() {
                                  )}
                                </div>
                              ))}
-                           {breakSessions.filter(session => session.break_type === 'Afternoon' && !session.end_time).length === 0 && (
-                             <p className="text-xs text-muted-foreground">No afternoon break sessions</p>
-                           )}
+
                          </div>
                        </div>
                      </div>
+                                         )}
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Break Sessions Table */}
+              {/* Employee Break Sessions Table */}
               <div className="px-4 lg:px-6">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Break Sessions</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-0">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -825,29 +880,32 @@ export default function BreaksPage() {
                             <TableHead className="text-center">Morning Break</TableHead>
                             <TableHead className="text-center">Lunch Break</TableHead>
                             <TableHead className="text-center">Afternoon Break</TableHead>
+                          <TableHead className="text-center">Night First</TableHead>
+                          <TableHead className="text-center">Night Meal</TableHead>
+                          <TableHead className="text-center">Night Second</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {breakSessions.map((session) => (
-                          <TableRow key={session.id}>
+                        {employees.map((employee) => (
+                          <TableRow key={employee.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-8 w-8">
-                                   <AvatarImage src={session.profile_picture || undefined} alt={`${session.first_name} ${session.last_name}`} />
+                                  <AvatarImage src={employee.avatar || undefined} alt={`${employee.firstName} ${employee.lastName}`} />
                                   <AvatarFallback>
-                                    {session.first_name?.[0]}{session.last_name?.[0]}
+                                    {employee.firstName?.[0]}{employee.lastName?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="font-medium">{session.first_name} {session.last_name}</div>
-                                  <div className="text-sm text-muted-foreground">{session.email}</div>
+                                  <div className="font-medium">{employee.firstName} {employee.lastName}</div>
                                 </div>
                               </div>
                             </TableCell>
                              
+                            {/* Morning Break */}
                              <TableCell className="text-center">
                                {(() => {
-                                 const morningSession = breakSessions.find(s => s.agent_user_id === session.agent_user_id && s.break_type === 'Morning');
+                                const morningSession = getEmployeeBreakSession(employee.id, 'Morning');
                                  if (!morningSession) return <span className="text-muted-foreground text-sm">-</span>;
                                  return (
                                    <TooltipProvider>
@@ -855,15 +913,40 @@ export default function BreaksPage() {
                                        <TooltipTrigger>
                                          {getStatusBadge(morningSession)}
                                        </TooltipTrigger>
-                                        <TooltipContent>
+                                        <TooltipContent className="w-auto">
                                           {morningSession.end_time ? (
-                                            <>
-                                              <p>{formatTimeOnly(morningSession.start_time)} - {formatTimeOnly(morningSession.end_time)}</p>
-                                            </>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(morningSession.start_time)} - {formatTimeOnly(morningSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(morningSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
                                           ) : morningSession.pause_time && !morningSession.resume_time ? (
-                                            <p>Since {formatTimeOnly(morningSession.pause_time)}</p>
-                                          ) : (
-                                            <p>{formatTimeOnly(morningSession.start_time)}</p>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused Since:</span>
+                                              <span className="font-bold">{formatTimeOnly(morningSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(morningSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(morningSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(morningSession)}</span>
+                                            </div>
+                                          </div>
                                           )}
                                         </TooltipContent>
                                      </Tooltip>
@@ -872,9 +955,10 @@ export default function BreaksPage() {
                                })()}
                             </TableCell>
                              
+                            {/* Lunch Break */}
                              <TableCell className="text-center">
                                {(() => {
-                                 const lunchSession = breakSessions.find(s => s.agent_user_id === session.agent_user_id && s.break_type === 'Lunch');
+                                const lunchSession = getEmployeeBreakSession(employee.id, 'Lunch');
                                  if (!lunchSession) return <span className="text-muted-foreground text-sm">-</span>;
                                  return (
                                    <TooltipProvider>
@@ -882,15 +966,40 @@ export default function BreaksPage() {
                                        <TooltipTrigger>
                                          {getStatusBadge(lunchSession)}
                                        </TooltipTrigger>
-                                        <TooltipContent>
+                                        <TooltipContent className="w-auto">
                                           {lunchSession.end_time ? (
-                                            <>
-                                              <p>{formatTimeOnly(lunchSession.start_time)} - {formatTimeOnly(lunchSession.end_time)}</p>
-                                            </>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(lunchSession.start_time)} - {formatTimeOnly(lunchSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(lunchSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
                                           ) : lunchSession.pause_time && !lunchSession.resume_time ? (
-                                            <p>Since {formatTimeOnly(lunchSession.pause_time)}</p>
-                                          ) : (
-                                            <p>{formatTimeOnly(lunchSession.start_time)}</p>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused Since:</span>
+                                              <span className="font-bold">{formatTimeOnly(lunchSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(lunchSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(lunchSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(lunchSession)}</span>
+                                            </div>
+                                          </div>
                                           )}
                                         </TooltipContent>
                                      </Tooltip>
@@ -899,9 +1008,10 @@ export default function BreaksPage() {
                                })()}
                             </TableCell>
                              
+                            {/* Afternoon Break */}
                             <TableCell className="text-center">
                                {(() => {
-                                 const afternoonSession = breakSessions.find(s => s.agent_user_id === session.agent_user_id && s.break_type === 'Afternoon');
+                                const afternoonSession = getEmployeeBreakSession(employee.id, 'Afternoon');
                                  if (!afternoonSession) return <span className="text-muted-foreground text-sm">-</span>;
                                  return (
                                    <TooltipProvider>
@@ -909,15 +1019,199 @@ export default function BreaksPage() {
                                        <TooltipTrigger>
                                          {getStatusBadge(afternoonSession)}
                                        </TooltipTrigger>
-                                        <TooltipContent>
+                                        <TooltipContent className="w-auto">
                                           {afternoonSession.end_time ? (
-                                            <>
-                                              <p>{formatTimeOnly(afternoonSession.start_time)} - {formatTimeOnly(afternoonSession.end_time)}</p>
-                                            </>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(afternoonSession.start_time)} - {formatTimeOnly(afternoonSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(afternoonSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
                                           ) : afternoonSession.pause_time && !afternoonSession.resume_time ? (
-                                            <p>Since {formatTimeOnly(afternoonSession.pause_time)}</p>
-                                          ) : (
-                                            <p>{formatTimeOnly(afternoonSession.start_time)}</p>
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused Since:</span>
+                                              <span className="font-bold">{formatTimeOnly(afternoonSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(afternoonSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(afternoonSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(afternoonSession)}</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
+                            </TableCell>
+                            
+                            {/* Night First Break */}
+                            <TableCell className="text-center">
+                              {(() => {
+                                const nightFirstSession = getEmployeeBreakSession(employee.id, 'NightFirst');
+                                if (!nightFirstSession) return <span className="text-muted-foreground text-sm">-</span>;
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                      <TooltipTrigger>
+                                        {getStatusBadge(nightFirstSession)}
+                                      </TooltipTrigger>
+                                      <TooltipContent className="w-auto">
+                                        {nightFirstSession.end_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightFirstSession.start_time)} - {formatTimeOnly(nightFirstSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(nightFirstSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
+                                        ) : nightFirstSession.pause_time && !nightFirstSession.resume_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused Since:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightFirstSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightFirstSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightFirstSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(nightFirstSession)}</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
+                            </TableCell>
+                            
+                            {/* Night Meal Break */}
+                            <TableCell className="text-center">
+                              {(() => {
+                                const nightMealSession = getEmployeeBreakSession(employee.id, 'NightMeal');
+                                if (!nightMealSession) return <span className="text-muted-foreground text-sm">-</span>;
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                      <TooltipTrigger>
+                                        {getStatusBadge(nightMealSession)}
+                                      </TooltipTrigger>
+                                      <TooltipContent className="w-auto">
+                                        {nightMealSession.end_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightMealSession.start_time)} - {formatTimeOnly(nightMealSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(nightMealSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
+                                        ) : nightMealSession.pause_time && !nightMealSession.resume_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused since:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightMealSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightMealSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightMealSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(nightMealSession)}</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                );
+                              })()}
+                            </TableCell>
+                            
+                            {/* Night Second Break */}
+                            <TableCell className="text-center">
+                              {(() => {
+                                const nightSecondSession = getEmployeeBreakSession(employee.id, 'NightSecond');
+                                if (!nightSecondSession) return <span className="text-muted-foreground text-sm">-</span>;
+                                return (
+                                  <TooltipProvider>
+                                    <Tooltip delayDuration={300}>
+                                      <TooltipTrigger>
+                                        {getStatusBadge(nightSecondSession)}
+                                      </TooltipTrigger>
+                                                                            <TooltipContent className="w-auto">
+                                        {nightSecondSession.end_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Completed:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightSecondSession.start_time)} - {formatTimeOnly(nightSecondSession.end_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Duration:</span>
+                                              <span className="font-bold">{formatDuration(nightSecondSession.duration_minutes)}</span>
+                                            </div>
+                                          </div>
+                                        ) : nightSecondSession.pause_time && !nightSecondSession.resume_time ? (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Paused Since:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightSecondSession.pause_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightSecondSession.start_time)}</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Started:</span>
+                                              <span className="font-bold">{formatTimeOnly(nightSecondSession.start_time)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
+                                              <span>Elapsed:</span>
+                                              <span className="font-bold">{getElapsedTime(nightSecondSession)}</span>
+                                            </div>
+                                          </div>
                                           )}
                                         </TooltipContent>
                                      </Tooltip>

@@ -16,6 +16,7 @@ import {
   CrownIcon,
   CalendarIcon
 } from "lucide-react"
+import { IconArrowUp, IconArrowDown } from "@tabler/icons-react"
 import {
   Table,
   TableBody,
@@ -98,6 +99,10 @@ export default function LeaderboardPage() {
   const [trendDaily, setTrendDaily] = useState<DailyTrendPoint[]>([])
   const [trendLoading, setTrendLoading] = useState(false)
   const [trendError, setTrendError] = useState<string | null>(null)
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<'rank' | 'name' | 'points' | 'activeTime'>('rank')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Fetch productivity scores data
   useEffect(() => {
@@ -199,6 +204,63 @@ export default function LeaderboardPage() {
     const minutes = Math.floor((seconds % 3600) / 60)
     return `${hours}h ${minutes}m`
   }
+
+  // Sorting logic
+  const handleSort = (field: 'rank' | 'name' | 'points' | 'activeTime') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const getSortIcon = (field: 'rank' | 'name' | 'points' | 'activeTime') => {
+    if (sortField !== field) {
+      return null
+    }
+    return sortDirection === 'asc' ? 
+      <IconArrowUp className="h-4 w-4 text-primary" /> : 
+      <IconArrowDown className="h-4 w-4 text-primary" />
+  }
+
+  const sortedLeaderboardData = [...leaderboardData].sort((a, b) => {
+    let aValue: string | number
+    let bValue: string | number
+
+    switch (sortField) {
+      case 'rank':
+        aValue = a.rank
+        bValue = b.rank
+        break
+      case 'name':
+        aValue = `${a.first_name} ${a.last_name}`.toLowerCase()
+        bValue = `${b.first_name} ${b.last_name}`.toLowerCase()
+        break
+      case 'points':
+        aValue = a.total_active_seconds
+        bValue = b.total_active_seconds
+        break
+      case 'activeTime':
+        aValue = a.total_active_seconds
+        bValue = b.total_active_seconds
+        break
+      default:
+        return 0
+    }
+
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortDirection === 'asc' ? 
+        aValue.localeCompare(bValue) : 
+        bValue.localeCompare(aValue)
+    }
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    }
+
+    return 0
+  })
   
   
 
@@ -518,37 +580,61 @@ export default function LeaderboardPage() {
                       </p>
                     </div>
                     <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          Ranking
-                        </CardTitle>
-                        <CardDescription>
-                          View team rankings based on productivity scores and activity metrics.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
+                      <CardContent className="p-0">
                         <div className="">
                           <Table>
                             <TableHeader>
                               <TableRow className="h-12">
-                                <TableHead className="w-16">Rank</TableHead>
-                                <TableHead>Team Member</TableHead>
-                                <TableHead className="text-center">Points</TableHead>
-                                <TableHead className="text-center">Active Time</TableHead>
+                                <TableHead 
+                                  className={`w-16 cursor-pointer ${sortField === 'rank' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  onClick={() => handleSort('rank')}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Rank
+                                    {sortField === 'rank' && getSortIcon('rank')}
+                                  </div>
+                                </TableHead>
+                                <TableHead 
+                                  className={`cursor-pointer ${sortField === 'name' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  onClick={() => handleSort('name')}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    Team Member
+                                    {sortField === 'name' && getSortIcon('name')}
+                                  </div>
+                                </TableHead>
+                                <TableHead 
+                                  className={`text-center cursor-pointer ${sortField === 'points' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  onClick={() => handleSort('points')}
+                                >
+                                  <div className="flex items-center justify-center gap-1">
+                                    Points
+                                    {sortField === 'points' && getSortIcon('points')}
+                                  </div>
+                                </TableHead>
+                                <TableHead 
+                                  className={`text-center cursor-pointer ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  onClick={() => handleSort('activeTime')}
+                                >
+                                  <div className="flex items-center justify-center gap-1">
+                                    Active Time
+                                    {sortField === 'activeTime' && getSortIcon('activeTime')}
+                                  </div>
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {leaderboardData.map((entry, index) => (
+                              {sortedLeaderboardData.map((entry, index) => (
                                 <TableRow key={entry.id} className={`h-14 ${index < 3 ? "bg-muted/50" : ""}`}>
                                   <TableCell className="font-medium">
                                     <span className={`text-sm font-medium ${
-                                      index + 1 === 1 ? 'text-yellow-500' :
-                                      index + 1 === 2 ? 'text-gray-500' :
-                                      index + 1 === 3 ? 'text-amber-600' :
-                                      index + 1 === 4 ? 'text-blue-500' :
-                                      index + 1 === 5 ? 'text-purple-500' :
+                                      entry.rank === 1 ? 'text-yellow-500' :
+                                      entry.rank === 2 ? 'text-gray-500' :
+                                      entry.rank === 3 ? 'text-amber-600' :
+                                      entry.rank === 4 ? 'text-blue-500' :
+                                      entry.rank === 5 ? 'text-purple-500' :
                                       'text-muted-foreground'
-                                    }`}>#{index + 1}</span>
+                                    }`}>#{entry.rank}</span>
                                   </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-3">
@@ -561,7 +647,7 @@ export default function LeaderboardPage() {
                                       <div>
                                         <div className="font-medium flex items-center gap-2">
                                           {entry.first_name} {entry.last_name}
-                                          {getRankIcon(index + 1)}
+                                          {getRankIcon(entry.rank)}
                                         </div>
                                       </div>
                                     </div>
