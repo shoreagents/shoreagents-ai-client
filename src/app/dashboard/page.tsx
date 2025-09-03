@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { TrendingDownIcon, TrendingUpIcon, TicketIcon } from "lucide-react"
 import NumberFlow from '@number-flow/react'
+import { useRouter } from "next/navigation"
 
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -17,6 +18,7 @@ import { NewHires } from "@/components/interactive/cards/new-hires"
 import { GrowthRateCard } from "@/components/interactive/cards/connect-globe"
 import { ActivityRankings } from "@/components/interactive/cards/activity-rankings"
 import { OrbitingCircles } from "@/components/magicui/orbiting-circles"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
   CardDescription,
@@ -91,6 +93,12 @@ export default function Dashboard() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [newHireStats, setNewHireStats] = useState<CountStats | null>(null)
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
+  const router = useRouter()
+  const [isTalentPoolHovered, setIsTalentPoolHovered] = useState(false)
+
+  const handleTalentPoolClick = () => {
+    router.push('/talent-pool')
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -390,82 +398,158 @@ export default function Dashboard() {
                   </Card>
 
                   {/* 8. Tempura (1x2) - Talent Pool */}
-                  <Card className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-white/60 via-white/20 to-blue-500/30 dark:from-black/70 dark:via-black/30 dark:to-blue-400/40 relative overflow-hidden">
+                  <Card 
+                    className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-white/60 via-white/20 to-blue-500/30 dark:from-black/70 dark:via-black/30 dark:to-blue-400/40 relative overflow-hidden group cursor-pointer" 
+                    onClick={handleTalentPoolClick}
+                    onMouseEnter={() => setIsTalentPoolHovered(true)}
+                    onMouseLeave={() => setIsTalentPoolHovered(false)}
+                  >
                     <CardHeader>
                       <CardTitle>Talent Pool</CardTitle>
                       <CardDescription>Explore and discover skilled candidates available for your team.</CardDescription>
                     </CardHeader>
-                    <div className="absolute bottom-0 left-0 right-0 h-[60px]">
+                    <div className="absolute bottom-0 left-0 right-0 h-[100px]">
                       <div className="relative flex h-full w-full items-center justify-center">
-                        {/* Inner ring - 155px */}
+                        {/* Inner ring - 150px */}
                         <div>
-                          <div className="pointer-events-none absolute inset-0" style={{width: '155px', height: '155px', left: 'calc(50% - 77.5px)', top: 'calc(50% - 77.5px)', opacity: 1, transform: 'none'}}>
-                            <div className="size-full rounded-full border border-white/20 bg-gradient-radial from-white/10 via-white/5 to-transparent"></div>
+                          <div className="absolute inset-0" style={{width: '150px', height: '150px', left: 'calc(50% - 75px)', top: 'calc(50% - 75px)', opacity: 1, transform: 'none'}}>
+                            <motion.div 
+                              className="size-full rounded-full border border-white/10 bg-gradient-radial from-white/10 via-white/5 to-transparent"
+                              animate={isTalentPoolHovered ? {
+                                borderColor: "rgba(255, 255, 255, 0.4)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%)"
+                              } : {
+                                borderColor: "rgba(255, 255, 255, 0.1)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)"
+                              }}
+                              transition={isTalentPoolHovered ? 
+                                { duration: 0.6, delay: 0 } : 
+                                { duration: 0.6, delay: 0.4 }
+                              }
+                            ></motion.div>
                           </div>
+                        </div>
+                        
+                        {/* Center circle */}
+                        <div className="absolute flex items-center justify-center" style={{width: '40px', height: '40px', left: 'calc(50% - 20px)', top: 'calc(50% - 20px)'}}>
+                          <div className="w-10 h-10 rounded-full bg-primary/80 border-2 border-white/30"></div>
                         </div>
                         
                         {/* Orbiting elements on inner ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 0, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Anne.jpg" alt="Anne" />
+                              <AvatarFallback className="text-xs">A</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 120, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Arelle.jpg" alt="Arelle" />
+                              <AvatarFallback className="text-xs">Ar</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 20, '--radius': 77, '--angle': 240, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Jineva.jpg" alt="Jineva" />
+                              <AvatarFallback className="text-xs">J</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
                         
-                        {/* Middle ring - 215px */}
+                        {/* Middle ring - 210px */}
                         <div>
-                          <div className="pointer-events-none absolute inset-0" style={{width: '215px', height: '215px', left: 'calc(50% - 107.5px)', top: 'calc(50% - 107.5px)', opacity: 1, transform: 'none'}}>
-                            <div className="size-full rounded-full border border-white/30 bg-gradient-radial from-white/15 via-white/8 to-transparent"></div>
+                          <div className="absolute inset-0" style={{width: '210px', height: '210px', left: 'calc(50% - 105px)', top: 'calc(50% - 105px)', opacity: 1, transform: 'none'}}>
+                            <motion.div 
+                              className="size-full rounded-full border border-white/15 bg-gradient-radial from-white/15 via-white/8 to-transparent"
+                              animate={isTalentPoolHovered ? {
+                                borderColor: "rgba(255, 255, 255, 0.45)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)"
+                              } : {
+                                borderColor: "rgba(255, 255, 255, 0.15)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%)"
+                              }}
+                              transition={isTalentPoolHovered ? 
+                                { duration: 0.6, delay: 0.2 } : 
+                                { duration: 0.6, delay: 0.2 }
+                              }
+                            ></motion.div>
                           </div>
                         </div>
                         
                         {/* Orbiting elements on middle ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 0, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Joshua.jpg" alt="Joshua" />
+                              <AvatarFallback className="text-xs">Jo</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 120, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Kevin.jpg" alt="Kevin" />
+                              <AvatarFallback className="text-xs">K</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 40, '--radius': 107, '--angle': 240, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Klein.jpg" alt="Klein" />
+                              <AvatarFallback className="text-xs">Kl</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
                         
-                        {/* Outer ring - 275px */}
+                        {/* Outer ring - 270px */}
                         <div>
-                          <div className="pointer-events-none absolute inset-0" style={{width: '275px', height: '275px', left: 'calc(50% - 137.5px)', top: 'calc(50% - 137.5px)', opacity: 1, transform: 'none'}}>
-                            <div className="size-full rounded-full border border-white/40 bg-gradient-radial from-white/20 via-white/10 to-transparent"></div>
+                          <div className="absolute inset-0" style={{width: '270px', height: '270px', left: 'calc(50% - 135px)', top: 'calc(50% - 135px)', opacity: 1, transform: 'none'}}>
+                            <motion.div 
+                              className="size-full rounded-full border border-white/20 bg-gradient-radial from-white/20 via-white/10 to-transparent"
+                              animate={isTalentPoolHovered ? {
+                                borderColor: "rgba(255, 255, 255, 0.5)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 50%, transparent 100%)"
+                              } : {
+                                borderColor: "rgba(255, 255, 255, 0.2)",
+                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)"
+                              }}
+                              transition={isTalentPoolHovered ? 
+                                { duration: 0.6, delay: 0.4 } : 
+                                { duration: 0.6, delay: 0 }
+                              }
+                            ></motion.div>
                           </div>
                         </div>
                         
                         {/* Orbiting elements on outer ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 0, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Lovell.jpg" alt="Lovell" />
+                              <AvatarFallback className="text-xs">L</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 120, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Naomi.jpg" alt="Naomi" />
+                              <AvatarFallback className="text-xs">N</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 40, '--radius': 137, '--angle': 240, '--icon-size': '20px'}}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
-                            <div className="w-5 h-5 bg-primary rounded-full"></div>
+                            <Avatar className="w-6 h-6">
+                              <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Marc.jpg" alt="Marc" />
+                              <AvatarFallback className="text-xs">M</AvatarFallback>
+                            </Avatar>
                           </div>
                         </div>
                       </div>

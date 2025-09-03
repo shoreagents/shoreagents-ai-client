@@ -2,6 +2,9 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { motion } from "framer-motion"
+import { useTheme } from "next-themes"
+import { useState } from "react"
 import { 
   MedalIcon, 
   AwardIcon,
@@ -54,6 +57,8 @@ export function ActivityRankings({
   visibleRows = 3,
 }: ActivityRankingsProps) {
   const router = useRouter()
+  const { theme } = useTheme()
+  const [isCardHovered, setIsCardHovered] = useState(false)
 
   const handleCardClick = () => {
     router.push('/leaderboard')
@@ -99,6 +104,8 @@ export function ActivityRankings({
     <Card 
       className={`${className} bg-gradient-to-br from-white/60 via-white/10 to-violet-500/30 dark:from-black/70 dark:via-black/20 dark:to-violet-400/40 cursor-pointer transition-all duration-200 group`} 
       onClick={handleCardClick}
+      onMouseEnter={() => setIsCardHovered(true)}
+      onMouseLeave={() => setIsCardHovered(false)}
     >
       <CardHeader>
         <CardTitle>{title}</CardTitle>
@@ -110,10 +117,19 @@ export function ActivityRankings({
         <div className="flex gap-1">
           {/* First Column - Trophy Image */}
           <div className="w-[35%] flex items-end justify-start">
-            <img 
-              src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/trophy-leaderboard.png"
+            <motion.img 
+              src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/leaderboards/trophy-leaderboard.png"
               alt="Trophy Leaderboard"
-              className="w-full h-auto max-w-[200px] object-contain opacity-70 dark:opacity-50 transition-opacity duration-600 group-hover:opacity-90 dark:group-hover:opacity-80"
+              className="w-full h-auto max-w-[200px] object-contain"
+              initial={{
+                opacity: theme === 'dark' ? 0.5 : 0.6
+              }}
+              animate={isCardHovered ? {
+                opacity: theme === 'dark' ? 0.8 : 0.9
+              } : {
+                opacity: theme === 'dark' ? 0.5 : 0.6
+              }}
+              transition={{ duration: 0.6 }}
             />
           </div>
           
