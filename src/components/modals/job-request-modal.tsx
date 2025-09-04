@@ -393,8 +393,11 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
         <div className="px-6 pt-6 pb-6">
           <div className="mb-6 flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">Job Request</h2>
-              <p className="text-sm text-muted-foreground">Create a new job request in a few guided steps.</p>
+              <div className="flex items-center gap-3">
+                <Badge className="text-xs h-6 flex items-center rounded-[6px]">
+                  Job Request
+                </Badge>
+              </div>
             </div>
             <div className="mr-8">
               <div 
@@ -518,7 +521,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                   <div className="space-y-4 w-full">
                     <div className="text-left">
                       <h3 className="text-lg font-semibold text-foreground">Steps</h3>
-                      <p className="text-xs text-muted-foreground">Follow the steps below to create your job request</p>
+
                     </div>
                     {steps.map((s, i) => {
                       const ActiveIcon = s.icon as any
@@ -534,7 +537,7 @@ export function JobRequestModal({ open, onOpenChange }: JobRequestModalProps) {
                           </div>
                           <div className="flex-1">
                             <div className={`${active ? 'text-foreground' : 'text-foreground/90'} font-semibold`}>{s.title}</div>
-                            <div className="text-xs text-muted-foreground">{s.subtitle}</div>
+                            <div className="text-sm text-muted-foreground">{s.subtitle}</div>
                           </div>
                         </div>
                       )

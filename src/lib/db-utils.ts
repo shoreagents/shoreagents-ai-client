@@ -1251,12 +1251,14 @@ export async function getEmployees(memberId: string, search: string | null, depa
       ji.job_title,
       ji.employment_status,
       ji.start_date,
-      ji.work_email
+      ji.work_email,
+      m.shift
     FROM users u
     LEFT JOIN personal_info pi ON u.id = pi.user_id
     LEFT JOIN agents a ON u.id = a.user_id
     LEFT JOIN departments d ON a.department_id = d.id
     LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    LEFT JOIN members m ON a.member_id = m.id
     ${whereClause}
     ORDER BY pi.last_name, pi.first_name
   `
@@ -1296,6 +1298,7 @@ export async function getEmployees(memberId: string, search: string | null, depa
     city: row.city,
     address: row.address,
     gender: row.gender,
+    shift: row.shift,
   }))
 
   const stats = statsResult.rows[0] || { total_departments: 0, total_agents: 0 }

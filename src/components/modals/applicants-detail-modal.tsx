@@ -59,8 +59,6 @@ interface Applicant {
   station_id: string | null
   profile_picture: string | null
   first_name: string | null
-  last_name: string | null
-  full_name?: string | null
   employee_id: string | null
   resolver_first_name?: string | null
   resolver_last_name?: string | null
@@ -656,16 +654,14 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                       <Avatar className="h-16 w-16">
                         <AvatarImage src={localApplicant.profile_picture || "/avatars/shadcn.svg"} alt="Applicant Avatar" />
                         <AvatarFallback className="text-2xl">
-                          {localApplicant.first_name && localApplicant.last_name 
-                            ? `${localApplicant.first_name[0]}${localApplicant.last_name[0]}`
+                          {localApplicant.first_name 
+                            ? localApplicant.first_name[0].toUpperCase()
                             : String(localApplicant.user_id).slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="text-2xl font-semibold">
-                          {localApplicant.full_name || (localApplicant.first_name && localApplicant.last_name 
-                            ? `${localApplicant.first_name} ${localApplicant.last_name}`
-                            : `User ${localApplicant.user_id}`)}
+                          {localApplicant.first_name || `User ${localApplicant.user_id}`}
                         </div>
                         <p className="text-base text-muted-foreground">
                           {localApplicant.job_title || 'No Position'}

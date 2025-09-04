@@ -12,7 +12,8 @@ import {
   ClockIcon,
   CoffeeIcon,
   BriefcaseIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  ActivityIcon
 } from "lucide-react"
 import { ScanTextIcon } from "@/components/icons/scan-text-icon"
 import { HistoryIcon } from "@/components/ui/history"
@@ -75,6 +76,11 @@ const data = {
       title: "Breaks",
       url: "/breaks/",
       icon: CoffeeIcon,
+    },
+    {
+      title: "Activities",
+      url: "/activities/",
+      icon: ActivityIcon,
     },
   ],
   navJobs: [

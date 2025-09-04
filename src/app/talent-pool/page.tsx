@@ -51,8 +51,6 @@ interface Applicant {
   station_id: string | null
   profile_picture: string | null
   first_name: string | null
-  last_name: string | null
-  full_name?: string | null
   employee_id: string | null
   resolver_first_name?: string | null
   resolver_last_name?: string | null
@@ -140,8 +138,6 @@ export default function TalentPoolPage() {
       station_id: rawData.station_id || null,
       profile_picture: rawData.profile_picture || null,
       first_name: rawData.first_name || null,
-      last_name: rawData.last_name || null,
-      full_name: rawData.full_name || null,
       employee_id: rawData.employee_id || null,
       resolver_first_name: rawData.resolver_first_name || null,
       resolver_last_name: rawData.resolver_last_name || null,
@@ -281,7 +277,7 @@ export default function TalentPoolPage() {
       firstApplicant: applicants[0] ? {
         id: applicants[0].id,
         status: applicants[0].status,
-        full_name: applicants[0].full_name,
+        first_name: applicants[0].first_name,
         skills: applicants[0].skills?.length || 0
       } : null
     })
@@ -335,7 +331,7 @@ export default function TalentPoolPage() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(applicant => 
-        applicant.full_name?.toLowerCase().includes(query) ||
+        applicant.first_name?.toLowerCase().includes(query) ||
         applicant.job_title?.toLowerCase().includes(query) ||
         applicant.company_name?.toLowerCase().includes(query) ||
         applicant.skills?.some(skill => skill.toLowerCase().includes(query)) ||
@@ -360,7 +356,7 @@ export default function TalentPoolPage() {
         case "experience":
           return (b.all_job_titles?.length || 0) - (a.all_job_titles?.length || 0)
         case "name":
-          return (a.full_name || '').localeCompare(b.full_name || '')
+          return (a.first_name || '').localeCompare(b.first_name || '')
         default:
           return 0
       }
@@ -517,16 +513,16 @@ export default function TalentPoolPage() {
                             <CardHeader className="pb-4">
                               <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
-                                  <Avatar className="h-12 w-12">
-                                    <AvatarImage src={talent.profile_picture || ""} alt={talent.full_name || "Talent"} />
-                                    <AvatarFallback>
-                                      {talent.full_name ? talent.full_name.split(' ').map((n: string) => n[0]).join('') : 'U'}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-lg leading-tight">
-                                      {talent.full_name || talent.job_title || "Talent"}
-                                    </h3>
+                                                                      <Avatar className="h-12 w-12">
+                                      <AvatarImage src={talent.profile_picture || ""} alt={talent.first_name || "Talent"} />
+                                      <AvatarFallback>
+                                        {talent.first_name ? talent.first_name[0].toUpperCase() : 'U'}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-lg leading-tight">
+                                        {talent.first_name || talent.job_title || "Talent"}
+                                      </h3>
                                     <div className="flex items-center gap-1 mt-1">
                                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                                       <span className="text-sm font-medium">{talent.aiAnalysis?.overall_score || 0}</span>
