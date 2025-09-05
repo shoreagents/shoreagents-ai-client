@@ -563,22 +563,17 @@ export default function LeaderboardPage() {
 
               {/* Two Column Layout */}
               <div className="px-4 lg:px-6">
-                {/* Mobile-only header (title/description) */}
-                                  <div className="mb-4 lg:hidden">
-                    <h1 className="text-2xl font-bold">Ranking</h1>
-                    <p className="text-sm text-muted-foreground">
-                      View team rankings based on productivity scores and activity metrics.
-                    </p>
-                  </div>
+                {/* Single responsive header */}
+                <div className="mb-4 lg:mb-6">
+                  <h1 className="text-2xl font-bold">Ranking</h1>
+                  <p className="text-sm text-muted-foreground">
+                    View team rankings based on productivity scores and activity metrics.
+                  </p>
+                </div>
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Column 1: Fixed-height header + Activity Rankings */}
+                  {/* Column 1: Activity Rankings */}
                   <div className="order-3 lg:order-1">
-                    <div className="mb-4 min-h-[72px] hidden lg:block">
-                      <h1 className="text-2xl font-bold">Ranking</h1>
-                      <p className="text-sm text-muted-foreground">
-                        View team rankings based on productivity scores and activity metrics.
-                      </p>
-                    </div>
                     <Card className="overflow-hidden">
                       <CardContent className="p-0">
                         <div className="">

@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       targetStartDate = startDate
       targetEndDate = endDate
     } else {
-      // Default to current date
-      const today = new Date().toISOString().split('T')[0]
+      // Default to current date in Asia/Manila timezone
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
       targetStartDate = today
       targetEndDate = today
     }

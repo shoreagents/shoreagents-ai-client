@@ -561,23 +561,9 @@ export default function BreaksPage() {
           <AppHeader />
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
-              <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="flex flex-col py-4 md:py-6">
                 <div className="px-4 lg:px-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center justify-between w-full">
-                      <div>
-                        <h1 className="text-2xl font-bold">Employee Breaks</h1>
-                        <p className="text-sm text-muted-foreground">
-                          Monitor all employees and their break session status
-                        </p>
-                      </div>
-
-                    </div>
-                    <Button>
-                      <PlusIcon className="mr-2 h-4 w-4" />
-                      Start Break
-                    </Button>
-                  </div>
+                    <h1 className="text-2xl font-bold">Employee Breaks</h1>
                 </div>
                 
                 <div className="px-4 lg:px-6">
@@ -605,26 +591,21 @@ export default function BreaksPage() {
         <AppHeader />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {/* Two Column Layout */}
-              <div className="px-4 lg:px-6">
-                {/* Mobile-only header (title/description) */}
-                <div className="mb-4 lg:hidden">
+            <div className="flex flex-col py-4 md:py-6">
+              {/* Employee Breaks Header Section */}
+              <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
                   <h1 className="text-2xl font-bold">Employee Breaks</h1>
                   <p className="text-sm text-muted-foreground">
                     Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
                   </p>
-                </div>
+              </div>
+
+              {/* Two Column Layout */}
+              <div className="px-4 lg:px-6">
                 {loading ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Column 1: Employee Break Sessions Table Skeleton */}
                     <div className="order-3 lg:order-1">
-                      <div className="mb-4 min-h-[72px] hidden lg:block">
-                        <h1 className="text-2xl font-bold">Employee Breaks</h1>
-                        <p className="text-sm text-muted-foreground">
-                          Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
-                        </p>
-                      </div>
                       <Card className="overflow-hidden">
                         <CardContent className="p-0">
                           <Table>
@@ -666,10 +647,6 @@ export default function BreaksPage() {
 
                     {/* Column 2: Break Type Cards Skeleton */}
                     <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
-                      <div className="mb-4 min-h-[72px] hidden lg:block">
-                        <div className="flex w-full items-center justify-end gap-3 lg:justify-end">
-                        </div>
-                      </div>
                       <div className="space-y-4">
                         {[...Array(3)].map((_, i) => (
                           <Card key={i} className="bg-white dark:bg-card">
@@ -716,14 +693,8 @@ export default function BreaksPage() {
                   </div>
                 ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Column 1: Fixed-height header + Employee Break Sessions Table */}
+                  {/* Column 1: Employee Break Sessions Table */}
                   <div className="order-3 lg:order-1">
-                    <div className="mb-4 min-h-[72px] hidden lg:block">
-                      <h1 className="text-2xl font-bold">Employee Breaks</h1>
-                      <p className="text-sm text-muted-foreground">
-                        Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
-                      </p>
-                    </div>
                     <Card className="overflow-hidden">
                       <CardContent className="p-0">
                         <div className="">
@@ -867,10 +838,6 @@ export default function BreaksPage() {
 
                   {/* Column 2: Break Type Cards (sticky) */}
                   <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
-                    <div className="mb-4 min-h-[72px] hidden lg:block">
-                      <div className="flex w-full items-center justify-end gap-3 lg:justify-end">
-                      </div>
-                    </div>
                     <div className="space-y-4">
                       {getAllBreakColumns().map((breakType) => {
                         const cardData = getBreakTypeCardData(breakType)
