@@ -92,6 +92,7 @@ export default function ActivitiesPage() {
   const [yesterdayActivities, setYesterdayActivities] = useState<ActivityEntry[]>([])
   const [weekActivities, setWeekActivities] = useState<ActivityEntry[]>([])
   const [monthActivities, setMonthActivities] = useState<ActivityEntry[]>([])
+  const [detailLoading, setDetailLoading] = useState(false)
   
   
   // Sorting
@@ -166,46 +167,25 @@ export default function ActivitiesPage() {
     fetchActivities()
   }, [user])
 
-  // Fetch yesterday's activities data
+  // Fetch detailed activity data when employee is selected (yesterday, week, month only)
   useEffect(() => {
-    const fetchYesterdayActivities = async () => {
-      if (!user) return
+    const fetchDetailedActivities = async () => {
+      if (!selectedEmployee || !user) return
+      
+      setDetailLoading(true)
       
       try {
         const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        // Get yesterday's date in Asia/Manila timezone
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
+        
+        // Get date ranges
+        const today = new Date()
+        
+        // Yesterday's date
+        const yesterday = new Date(today)
+        yesterday.setDate(today.getDate() - 1)
         const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
         
-        const response = await fetch(`/api/activities?memberId=${memberId}&date=${yesterdayStr}`)
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch yesterday's activities: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        setYesterdayActivities(data.activities || [])
-      } catch (err) {
-        console.error('❌ Yesterday activities fetch error:', err)
-        // Don't set error state for yesterday's data fetch failure
-      }
-    }
-
-    if (user) {
-      fetchYesterdayActivities()
-    }
-  }, [user])
-
-  // Fetch this week's activities data
-  useEffect(() => {
-    const fetchWeekActivities = async () => {
-      if (!user) return
-      
-      try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        // Get week dates in Asia/Manila timezone
-        const today = new Date()
+        // Week range (Sunday to Saturday)
         const startOfWeek = new Date(today)
         startOfWeek.setDate(today.getDate() - today.getDay()) // Start from Sunday
         const endOfWeek = new Date(today)
@@ -214,58 +194,44 @@ export default function ActivitiesPage() {
         const startDate = startOfWeek.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
         const endDate = endOfWeek.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
         
-        const response = await fetch(`/api/activities?memberId=${memberId}&startDate=${startDate}&endDate=${endDate}`)
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch week's activities: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        setWeekActivities(data.activities || [])
-      } catch (err) {
-        console.error('❌ Week activities fetch error:', err)
-        // Don't set error state for week's data fetch failure
-      }
-    }
-
-    if (user) {
-      fetchWeekActivities()
-    }
-  }, [user])
-
-  // Fetch this month's activities data
-  useEffect(() => {
-    const fetchMonthActivities = async () => {
-      if (!user) return
-      
-      try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        // Get month dates in Asia/Manila timezone
-        const today = new Date()
+        // Month range
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
         const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
         
-        const startDate = startOfMonth.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
-        const endDate = endOfMonth.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+        const monthStartDate = startOfMonth.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+        const monthEndDate = endOfMonth.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
         
-        const response = await fetch(`/api/activities?memberId=${memberId}&startDate=${startDate}&endDate=${endDate}`)
+        // Fetch only yesterday, week, and month data (today is already available)
+        const [yesterdayResponse, weekResponse, monthResponse] = await Promise.all([
+          fetch(`/api/activities?memberId=${memberId}&date=${yesterdayStr}`),
+          fetch(`/api/activities?memberId=${memberId}&startDate=${startDate}&endDate=${endDate}`),
+          fetch(`/api/activities?memberId=${memberId}&startDate=${monthStartDate}&endDate=${monthEndDate}`)
+        ])
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch month's activities: ${response.status}`)
-        }
+        // Process responses
+        const [yesterdayData, weekData, monthData] = await Promise.all([
+          yesterdayResponse.ok ? yesterdayResponse.json() : { activities: [] },
+          weekResponse.ok ? weekResponse.json() : { activities: [] },
+          monthResponse.ok ? monthResponse.json() : { activities: [] }
+        ])
         
-        const data = await response.json()
-        setMonthActivities(data.activities || [])
+        setYesterdayActivities(yesterdayData.activities || [])
+        setWeekActivities(weekData.activities || [])
+        setMonthActivities(monthData.activities || [])
+        
       } catch (err) {
-        console.error('❌ Month activities fetch error:', err)
-        // Don't set error state for month's data fetch failure
+        console.error('❌ Detailed activities fetch error:', err)
+        // Reset data on error
+        setYesterdayActivities([])
+        setWeekActivities([])
+        setMonthActivities([])
+      } finally {
+        setDetailLoading(false)
       }
     }
 
-    if (user) {
-      fetchMonthActivities()
-    }
-  }, [user])
+    fetchDetailedActivities()
+  }, [selectedEmployee, user])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -784,14 +750,14 @@ export default function ActivitiesPage() {
                             <CardContent className="pt-0">
                               {selectedEmployee ? (
                                 <div className="space-y-4">
-                                  {/* Today */}
+                                  {/* Today - Always available, no loading state needed */}
                                   <div>
                                     <div className="text-sm font-medium text-muted-foreground mb-2">Today</div>
                                     <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-green-600" />
+                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Active</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
@@ -799,10 +765,10 @@ export default function ActivitiesPage() {
                                           </div>
                                         </CardContent>
                                       </Card>
-                                      <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-red-600" />
+                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Inactive</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
@@ -817,25 +783,33 @@ export default function ActivitiesPage() {
                                   <div>
                                     <div className="text-sm font-medium text-muted-foreground mb-2">Yesterday</div>
                                     <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-green-600" />
+                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Active</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getYesterdayActivityData(selectedEmployee).today_active_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getYesterdayActivityData(selectedEmployee).today_active_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>
-                                      <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-red-600" />
+                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Inactive</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getYesterdayActivityData(selectedEmployee).today_inactive_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getYesterdayActivityData(selectedEmployee).today_inactive_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>
@@ -846,25 +820,33 @@ export default function ActivitiesPage() {
                                   <div>
                                     <div className="text-sm font-medium text-muted-foreground mb-2">This Week</div>
                                     <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-green-600" />
+                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Active</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getWeekActivityData(selectedEmployee).total_active_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getWeekActivityData(selectedEmployee).total_active_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>
-                                      <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-red-600" />
+                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Inactive</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getWeekActivityData(selectedEmployee).total_inactive_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getWeekActivityData(selectedEmployee).total_inactive_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>
@@ -875,25 +857,33 @@ export default function ActivitiesPage() {
                                   <div>
                                     <div className="text-sm font-medium text-muted-foreground mb-2">This Month</div>
                                     <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-green-600" />
+                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Active</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getMonthActivityData(selectedEmployee).total_active_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getMonthActivityData(selectedEmployee).total_active_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>
-                                      <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
                                           <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-red-600" />
+                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs text-muted-foreground">Inactive</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getMonthActivityData(selectedEmployee).total_inactive_seconds)}
+                                            {detailLoading ? (
+                                              <Skeleton className="h-6 w-16" />
+                                            ) : (
+                                              formatTime(getMonthActivityData(selectedEmployee).total_inactive_seconds)
+                                            )}
                                           </div>
                                         </CardContent>
                                       </Card>

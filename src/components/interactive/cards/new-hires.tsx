@@ -165,10 +165,10 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Badge className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-gray-200 dark:bg-zinc-800 transition-all duration-500 ease-out px-1.5 py-0.5 border-0 w-20 h-6 items-center ${
+            <Badge className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-sidebar dark:bg-[#252525] transition-all duration-500 ease-out px-1.5 py-0.5 border w-20 h-6 items-center ${
               getNewHiresPercentage() >= 0 
-                ? 'text-green-700 dark:text-green-400' 
-                : 'text-red-700 dark:text-red-400'
+                ? 'text-green-700 dark:text-green-400 border-green-200 dark:border-green-600/30' 
+                : 'text-red-700 dark:text-red-400 border-red-200 dark:border-red-600/30'
             }`}>
               <div className="flex items-center justify-center">
                 <TrendingUpIcon className="size-3" />
