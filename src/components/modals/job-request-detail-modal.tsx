@@ -326,19 +326,19 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                 <div className="mb-6">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h1 className="text-2xl font-semibold">
-                          {localJobRequest.jobTitle}
-                        </h1>
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs h-6 flex items-center rounded-[6px] px-2 py-1 ${getStatusColor(localJobRequest.status)}`}
-                        >
-                          {localJobRequest.status.charAt(0).toUpperCase() + localJobRequest.status.slice(1)}
-                        </Badge>
-                      </div>
+                      <h1 className="text-2xl font-semibold mb-2">
+                        {localJobRequest.jobTitle}
+                      </h1>
                     </div>
-                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge 
+                        variant="outline"
+                        className={`text-xs h-6 flex items-center rounded-[6px] px-2 py-1 ${getStatusColor(localJobRequest.status)}`}
+                      >
+                        {localJobRequest.status.charAt(0).toUpperCase() + localJobRequest.status.slice(1)}
+                      </Badge>
+                    </div>
                   </div>
 
                   {/* Application Statistics in Header */}
