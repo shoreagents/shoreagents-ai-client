@@ -6,11 +6,12 @@ import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { JobRequestModal } from "@/components/modals/job-request-modal"
+import { JobRequestDetailModal } from "@/components/modals/job-request-detail-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Briefcase, Building2, Calendar as CalendarIcon, DollarSign, CheckSquare, Sparkles, Gift, GraduationCap } from "lucide-react"
+import { Briefcase, Building2, DollarSign, CheckSquare, Sparkles, Gift, GraduationCap, User, TrendingUp } from "lucide-react"
 
 interface JobRequestRow {
   id: number
@@ -32,8 +33,39 @@ interface JobRequestRow {
   department?: string | null
 }
 
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "active":
+      return "text-green-700 dark:text-white border-green-600/20 bg-green-50 dark:bg-green-600/20"
+    case "inactive":
+      return "text-yellow-700 dark:text-white border-yellow-600/20 bg-yellow-50 dark:bg-yellow-600/20"
+    case "closed":
+      return "text-red-700 dark:text-white border-red-600/20 bg-red-50 dark:bg-red-600/20"
+    case "processed":
+      return "text-blue-700 dark:text-white border-blue-600/20 bg-blue-50 dark:bg-blue-600/20"
+    default:
+      return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
+  }
+}
+
+
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('en-US').format(num)
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric',
+    month: 'short', 
+    day: 'numeric'
+  })
+}
+
 export default function JobRequestPage() {
   const [openModal, setOpenModal] = useState(false)
+  const [openDetailModal, setOpenDetailModal] = useState(false)
+  const [selectedJobRequest, setSelectedJobRequest] = useState<JobRequestRow | null>(null)
   const { user, loading: authLoading } = useAuth()
   const companyUuid = (user as any)?.companyUuid ?? null
   const [rows, setRows] = useState<JobRequestRow[]>([])
@@ -47,6 +79,11 @@ export default function JobRequestPage() {
     } catch {
       return `₱${value ?? 0}`
     }
+  }
+
+  const handleViewRequest = (jobRequest: JobRequestRow) => {
+    setSelectedJobRequest(jobRequest)
+    setOpenDetailModal(true)
   }
 
   useEffect(() => {
@@ -124,49 +161,84 @@ export default function JobRequestPage() {
                           key={r.id}
                           role="article"
                           aria-labelledby={`job-title-${r.id}`}
-                          className="rounded-xl focus-within:ring-2 ring-ring"
+                          className="rounded-xl cursor-pointer transition-colors duration-150 hover:border-primary/50"
+                          onClick={() => handleViewRequest(r)}
                         >
                           <CardHeader className="pb-3">
-                            <div className="space-y-1">
-                              <CardTitle id={`job-title-${r.id}`} className="text-base md:text-lg font-semibold">
-                                {r.job_title}
-                              </CardTitle>
-                              <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-muted-foreground">
-                                <span className="font-mono text-[11px]">#{r.id}</span>
-                                <span>•</span>
-                                <span>{r.work_arrangement || 'Not specified'}</span>
+                            <div className="space-y-3">
+                              {/* Header with Title and Status */}
+                              <div className="flex items-start justify-between gap-3">
+                                <CardTitle id={`job-title-${r.id}`} className="text-base md:text-lg font-semibold line-clamp-2">
+                                  {r.job_title}
+                                </CardTitle>
+                                <Badge 
+                                  variant="outline"
+                                  className={`text-xs h-6 flex items-center rounded-[6px] px-2 py-1 ${getStatusColor(r.status)}`}
+                                >
+                                  {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                                </Badge>
                               </div>
+                              
                             </div>
                           </CardHeader>
-                          <CardContent className="pt-0 space-y-5">
-                            {(r.job_description || r.industry || r.department) && (
-                              <div className="space-y-2">
+                          
+                          <CardContent className="pt-0 space-y-4">
+                            {/* Job Description */}
+                            {r.job_description && (
+                              <p className="text-sm line-clamp-2 text-muted-foreground">{r.job_description}</p>
+                            )}
+
+                            {/* Key Information Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Industry */}
+                              <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                                  <Briefcase className="h-4 w-4" aria-hidden="true" /> Details
+                                  <Building2 className="h-3 w-3" />
+                                  Industry
                                 </div>
-                                {r.job_description && (
-                                  <p className="text-sm mt-1 line-clamp-2 md:line-clamp-3">{r.job_description}</p>
-                                )}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                                  {r.industry && (
-                                    <div>
-                                      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                                        <Building2 className="h-4 w-4" aria-hidden="true" /> Industry
-                                      </div>
-                                      <div className="mt-1 text-sm font-medium">{r.industry}</div>
-                                    </div>
-                                  )}
-                                  {r.department && (
-                                    <div>
-                                      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                                        <Building2 className="h-4 w-4" aria-hidden="true" /> Department
-                                      </div>
-                                      <div className="mt-1 text-sm font-medium">{r.department}</div>
-                                    </div>
-                                  )}
+                                <div className="text-sm font-medium truncate">{r.industry || "Not Specified"}</div>
+                              </div>
+                              
+                              {/* Department */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                  <User className="h-3 w-3" />
+                                  Department
+                                </div>
+                                <div className="text-sm font-medium truncate">{r.department || "Not Specified"}</div>
+                              </div>
+                              
+                              {/* Experience Level */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                  <TrendingUp className="h-3 w-3" />
+                                  Experience
+                                </div>
+                                <div className="text-sm font-medium capitalize">
+                                  {r.experience_level ? r.experience_level.replace('-', ' ') : "Not Specified"}
                                 </div>
                               </div>
-                            )}
+                              
+                              {/* Salary Range */}
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                  <DollarSign className="h-3 w-3" />
+                                  Salary Range
+                                </div>
+                                <div className="text-sm font-semibold text-foreground">
+                                  {r.salary_min && r.salary_max 
+                                    ? `₱${formatNumber(r.salary_min)} - ₱${formatNumber(r.salary_max)}`
+                                    : r.salary_min 
+                                      ? `₱${formatNumber(r.salary_min)}+`
+                                      : r.salary_max
+                                        ? `Up to ₱${formatNumber(r.salary_max)}`
+                                        : "Not Specified"
+                                  }
+                                </div>
+                              </div>
+                            </div>
+
+
                           </CardContent>
                         </Card>
                       ))}
@@ -180,6 +252,41 @@ export default function JobRequestPage() {
       </SidebarInset>
 
       <JobRequestModal open={openModal} onOpenChange={setOpenModal} />
+      
+      {/* Job Request Detail Modal */}
+      <JobRequestDetailModal 
+        jobRequest={selectedJobRequest ? {
+          id: selectedJobRequest.id.toString(),
+          jobTitle: selectedJobRequest.job_title,
+          jobDescription: selectedJobRequest.job_description || "",
+          industry: selectedJobRequest.industry || "",
+          department: selectedJobRequest.department || "",
+          workArrangement: selectedJobRequest.work_arrangement as "onsite" | "remote" | "hybrid" | "",
+          salaryMin: selectedJobRequest.salary_min || undefined,
+          salaryMax: selectedJobRequest.salary_max || undefined,
+          experienceLevel: selectedJobRequest.experience_level as "entry-level" | "mid-level" | "senior-level" | "",
+          applicationDeadline: selectedJobRequest.application_deadline || undefined,
+          workType: "full-time" as const,
+          currency: "PHP" as const,
+          salaryType: "monthly" as const,
+          requirements: selectedJobRequest.requirements || [],
+          responsibilities: selectedJobRequest.responsibilities || [],
+          benefits: selectedJobRequest.benefits || [],
+          skills: selectedJobRequest.skills || [],
+          status: selectedJobRequest.status,
+          created_at: selectedJobRequest.created_at,
+          updated_at: selectedJobRequest.created_at, // Using created_at as fallback
+          applicants_count: 0, // Default values for display
+          interviews_scheduled: 0,
+          offers_made: 0
+        } : null}
+        isOpen={openDetailModal}
+        onClose={() => {
+          setOpenDetailModal(false)
+          setSelectedJobRequest(null)
+        }}
+        pageContext="job-requests"
+      />
     </>
   )
 }

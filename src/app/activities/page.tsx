@@ -96,7 +96,7 @@ export default function ActivitiesPage() {
   
   
   // Sorting
-  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('activeTime')
+  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('status')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   // Update current time every second for timers
@@ -454,6 +454,31 @@ export default function ActivitiesPage() {
       <ArrowDown className="h-4 w-4 text-foreground" />
   }
 
+  // Custom sorting function: inactive first (by inactive time), then active (by active time)
+  const getCustomSortValue = (employee: any) => {
+    if (!employee.hasActivityData) return { group: 2, value: 0 } // Unknown - put in active group
+    
+    if (employee.activity.is_currently_active) {
+      return { group: 1, value: employee.activity.today_active_seconds } // Active group
+    }
+    
+    if (employee.activity.last_session_start) {
+      const lastActive = new Date(employee.activity.last_session_start)
+      const now = new Date()
+      const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
+      
+      if (diffMinutes < 5) {
+        return { group: 1, value: employee.activity.today_active_seconds } // Recently Active - put in active group
+      } else if (diffMinutes < 60) {
+        return { group: 0, value: employee.activity.today_inactive_seconds } // Away - put in inactive group
+      } else {
+        return { group: 0, value: employee.activity.today_inactive_seconds } // Inactive
+      }
+    }
+    
+    return { group: 0, value: employee.activity.today_inactive_seconds } // Inactive
+  }
+
   const sortedActivities = getMergedData().sort((a, b) => {
     let aValue: string | number
     let bValue: string | number
@@ -464,23 +489,17 @@ export default function ActivitiesPage() {
         bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
         break
       case 'status':
-        // Sort by status priority: Active > Recently Active > Away > Inactive > Unknown
-        const getStatusPriority = (employee: any) => {
-          if (!employee.hasActivityData) return 5 // Unknown
-          if (employee.activity.is_currently_active) return 1 // Active
-          if (employee.activity.last_session_start) {
-            const lastActive = new Date(employee.activity.last_session_start)
-            const now = new Date()
-            const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-            if (diffMinutes < 5) return 2 // Recently Active
-            if (diffMinutes < 60) return 3 // Away
-            return 4 // Inactive
-          }
-          return 4 // Inactive
+        // Custom sort: inactive first (by inactive time), then active (by active time)
+        const aSort = getCustomSortValue(a)
+        const bSort = getCustomSortValue(b)
+        
+        // First sort by group (0 = inactive, 1 = active)
+        if (aSort.group !== bSort.group) {
+          return aSort.group - bSort.group
         }
-        aValue = getStatusPriority(a)
-        bValue = getStatusPriority(b)
-        break
+        
+        // Within same group, sort by value (inactive time for inactive group, active time for active group)
+        return sortDirection === 'asc' ? aSort.value - bSort.value : bSort.value - aSort.value
       case 'activeTime':
         aValue = a.activity.today_active_seconds
         bValue = b.activity.today_active_seconds
@@ -506,6 +525,36 @@ export default function ActivitiesPage() {
     return 0
   })
 
+  // Calculate inactive employees count
+  const getInactiveEmployeesCount = () => {
+    return sortedActivities.filter(employee => {
+      if (!employee.hasActivityData) return false
+      if (employee.activity.is_currently_active) return false
+      if (employee.activity.last_session_start) {
+        const lastActive = new Date(employee.activity.last_session_start)
+        const now = new Date()
+        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
+        return diffMinutes >= 60 // Inactive if away for more than 60 minutes
+      }
+      return true // Inactive if no last session start
+    }).length
+  }
+
+  // Calculate active employees count
+  const getActiveEmployeesCount = () => {
+    return sortedActivities.filter(employee => {
+      if (!employee.hasActivityData) return false
+      if (employee.activity.is_currently_active) return true
+      if (employee.activity.last_session_start) {
+        const lastActive = new Date(employee.activity.last_session_start)
+        const now = new Date()
+        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
+        return diffMinutes < 60 // Active if away for less than 60 minutes
+      }
+      return false // Not active if no last session start
+    }).length
+  }
+
   if (loading) {
     return (
       <>
@@ -515,6 +564,12 @@ export default function ActivitiesPage() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col py-4 md:py-6">
+                {/* Activities Header Section */}
+                <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-32 mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-80"></div>
+                </div>
+
                 {/* Two Column Layout */}
                 <div className="px-4 lg:px-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -530,7 +585,7 @@ export default function ActivitiesPage() {
                                     <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
                                   </div>
                                 </TableHead>
-                                {[...Array(5)].map((_, i) => (
+                                {[...Array(3)].map((_, i) => (
                                   <TableHead key={i} className="text-center w-32">
                                     <div className="h-4 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
                                   </TableHead>
@@ -539,16 +594,16 @@ export default function ActivitiesPage() {
                             </TableHeader>
                             <TableBody>
                               {[...Array(8)].map((_, i) => (
-                                <TableRow key={i} className="h-14">
+                                <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
-                                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                                      <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+                                      <div className="h-5 bg-gray-200 rounded animate-pulse w-28"></div>
                                     </div>
                                   </TableCell>
-                                  {[...Array(5)].map((_, j) => (
+                                  {[...Array(3)].map((_, j) => (
                                     <TableCell key={j} className="text-center">
-                                      <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
+                                      <div className="h-7 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
                                     </TableCell>
                                   ))}
                                 </TableRow>
@@ -562,20 +617,73 @@ export default function ActivitiesPage() {
                     {/* Column 2: Stats Cards Skeleton */}
                     <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
                       <div className="space-y-4">
-                        {[...Array(4)].map((_, i) => (
-                          <Card key={i} className="bg-white dark:bg-card">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        {/* Status Cards Row Skeleton */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Active Card Skeleton */}
+                          <Card className="bg-white dark:bg-card">
+                            <CardHeader className="space-y-0 pb-4">
                               <div>
-                                <div className="h-4 bg-gray-200 rounded animate-pulse w-24 mb-2"></div>
-                                <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 mt-2">
-                                  <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
-                                  <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
-                                </div>
+                                <div className="h-4 bg-gray-200 rounded animate-pulse w-16 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded animate-pulse w-32"></div>
                               </div>
-                              <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
                             </CardHeader>
+                            <CardContent>
+                              <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
+                                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+                                <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
+                              </div>
+                            </CardContent>
                           </Card>
-                        ))}
+
+                          {/* Inactive Card Skeleton */}
+                          <Card className="bg-white dark:bg-card">
+                            <CardHeader className="space-y-0 pb-4">
+                              <div>
+                                <div className="h-4 bg-gray-200 rounded animate-pulse w-20 mb-2"></div>
+                                <div className="h-3 bg-gray-200 rounded animate-pulse w-36"></div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
+                                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+                                <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Activity Data Card Skeleton */}
+                        <Card className="bg-white dark:bg-card">
+                          <CardHeader>
+                            <div>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-40 mb-2"></div>
+                              <div className="h-3 bg-gray-200 rounded animate-pulse w-64"></div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-4">
+                              {[...Array(4)].map((_, i) => (
+                                <div key={i}>
+                                  <div className="h-3 bg-gray-200 rounded animate-pulse w-16 mb-2"></div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                      <CardContent className="p-3">
+                                        <div className="h-3 bg-gray-200 rounded animate-pulse w-24 mb-2"></div>
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                                      </CardContent>
+                                    </Card>
+                                    <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                      <CardContent className="p-3">
+                                        <div className="h-3 bg-gray-200 rounded animate-pulse w-28 mb-2"></div>
+                                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
                     </div>
                   </div>
@@ -731,20 +839,52 @@ export default function ActivitiesPage() {
                   {/* Column 2: Stats Cards (sticky) */}
                   <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
                     <div className="space-y-4">
+                      {/* Status Cards Row */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Active Employees Card */}
+                        <Card className="bg-white dark:bg-card">
+                          <CardHeader className="space-y-0 pb-4">
+                            <div>
+                              <CardTitle className="text-base">Active</CardTitle>
+                              <CardDescription>Employees currently active.</CardDescription>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
+                              <div className="h-5 w-5 text-green-500">
+                                <UsersIcon className="h-5 w-5" />
+                              </div>
+                              {getActiveEmployeesCount()}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        {/* Inactive Employees Card */}
+                        <Card className="bg-white dark:bg-card">
+                          <CardHeader className="space-y-0 pb-4">
+                            <div>
+                              <CardTitle className="text-base">Inactive</CardTitle>
+                              <CardDescription>Employees currently inactive.</CardDescription>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
+                              <div className="h-5 w-5 text-red-500">
+                                <UsersIcon className="h-5 w-5" />
+                              </div>
+                              {getInactiveEmployeesCount()}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
                       <Card className="bg-white dark:bg-card">
                             <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <CardTitle className="text-base">
-                                    {selectedEmployee ? `${selectedEmployee.firstName}'s Activity Data` : 'Select an employee'}
-                                  </CardTitle>
-                                  <CardDescription>Activity breakdown across different time periods</CardDescription>
-                                </div>
-                                {selectedEmployee && (
-                                  <div className="ml-4">
-                                    {getActivityStatus(selectedEmployee.activity.is_currently_active, selectedEmployee.activity.last_session_start, selectedEmployee.hasActivityData, selectedEmployee.activity.updated_at)}
-                                  </div>
-                                )}
+                              <div>
+                                <CardTitle className="text-base">
+                                  {selectedEmployee ? `${selectedEmployee.firstName}'s Activity Data` : 'Select Employee'}
+                                </CardTitle>
+                                <CardDescription>Activity breakdown across different time periods.</CardDescription>
                               </div>
                             </CardHeader>
                             <CardContent className="pt-0">
@@ -756,23 +896,21 @@ export default function ActivitiesPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Active</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(selectedEmployee.activity.today_active_seconds)}
+                                            {formatTime(getMergedData().find(emp => emp.id === selectedEmployee.id)?.activity.today_active_seconds || 0)}
                                           </div>
                                         </CardContent>
                                       </Card>
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Inactive</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(selectedEmployee.activity.today_inactive_seconds)}
+                                            {formatTime(getMergedData().find(emp => emp.id === selectedEmployee.id)?.activity.today_inactive_seconds || 0)}
                                           </div>
                                         </CardContent>
                                       </Card>
@@ -785,9 +923,8 @@ export default function ActivitiesPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Active</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -800,9 +937,8 @@ export default function ActivitiesPage() {
                                       </Card>
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Inactive</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -822,9 +958,8 @@ export default function ActivitiesPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Active</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -837,9 +972,8 @@ export default function ActivitiesPage() {
                                       </Card>
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Inactive</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -859,9 +993,8 @@ export default function ActivitiesPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ActivityIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Active</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -874,9 +1007,8 @@ export default function ActivitiesPage() {
                                       </Card>
                                       <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                         <CardContent className="p-3">
-                                          <div className="flex items-center gap-2">
-                                            <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                                            <span className="text-xs text-muted-foreground">Inactive</span>
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
                                           </div>
                                           <div className="text-lg font-semibold tabular-nums mt-1">
                                             {detailLoading ? (
@@ -891,10 +1023,113 @@ export default function ActivitiesPage() {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-center py-4">
-                                  <div className="text-2xl font-semibold tabular-nums flex items-center justify-center gap-2">
-                                    <ActivityIcon className="h-5 w-5" />
-                                    0h 0m
+                                <div className="space-y-4">
+                                  {/* Today - Default with no data */}
+                                  <div>
+                                    <div className="text-sm font-medium text-muted-foreground mb-2">Today</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Yesterday */}
+                                  <div>
+                                    <div className="text-sm font-medium text-muted-foreground mb-2">Yesterday</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* This Week */}
+                                  <div>
+                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Week</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* This Month */}
+                                  <div>
+                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Month</div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                        <CardContent className="p-3">
+                                          <div>
+                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
+                                          </div>
+                                          <div className="text-lg font-semibold tabular-nums mt-1">
+                                            0h 0m
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
                                   </div>
                                 </div>
                               )}

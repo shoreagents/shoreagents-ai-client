@@ -676,6 +676,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                         className="w-fit"
                         onClick={handleExpressInterest}
                         variant={interestStatus === 'already_interested' ? 'secondary' : 'default'}
+                        size="sm"
                       >
                         {interestStatus === 'already_interested' ? 'Interested ✓' :
                          'I\'m Interested'}
@@ -948,7 +949,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                           <div className="flex items-center justify-between min-h-[40px]">
                             <h3 className="text-lg font-medium text-muted-foreground">Resume Score</h3>
                           </div>
-                          <div className="rounded-lg p-6 border flex-1 shadow-sm">
+                          <div className="rounded-lg p-6 border flex-1 shadow-sm flex flex-col items-center justify-center text-center">
                             {/* Overall Resume Score with View Resume Button */}
                             {localApplicant.aiAnalysis?.overall_score ? (
                               <div className="space-y-4">
@@ -956,7 +957,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                   {localApplicant.aiAnalysis.overall_score}/100
                                 </div>
                                 <p className="text-sm text-muted-foreground">
-                                  AI-powered resume quality assessment
+                                  AI-Powered Resume Quality Assessment
                                 </p>
                                 
                                 {/* View Resume Button */}
@@ -964,10 +965,10 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                   <div className="mt-4">
                                     <Button 
                                       onClick={() => window.open(`https://www.bpoc.io/${localApplicant.resume_slug}`, '_blank')}
-                                      className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white border-0"
+                                      variant="default"
+                                      className="w-fit"
                                       size="sm"
                                     >
-                                      <IconFile className="h-4 w-4 mr-2" />
                                       View Resume
                                     </Button>
                                   </div>

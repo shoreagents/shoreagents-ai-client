@@ -562,8 +562,11 @@ export default function BreaksPage() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col py-4 md:py-6">
-                <div className="px-4 lg:px-6">
-                    <h1 className="text-2xl font-bold">Employee Breaks</h1>
+                <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
+                  <h1 className="text-2xl font-bold">Employee Breaks</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
+                  </p>
                 </div>
                 
                 <div className="px-4 lg:px-6">
@@ -594,10 +597,19 @@ export default function BreaksPage() {
             <div className="flex flex-col py-4 md:py-6">
               {/* Employee Breaks Header Section */}
               <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                  <h1 className="text-2xl font-bold">Employee Breaks</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
-                  </p>
+                {loading ? (
+                  <div>
+                    <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-4 w-full max-w-2xl bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold">Employee Breaks</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Two Column Layout */}
@@ -625,16 +637,16 @@ export default function BreaksPage() {
                             </TableHeader>
                             <TableBody>
                               {[...Array(8)].map((_, i) => (
-                                <TableRow key={i} className="h-14">
+                                <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse"></div>
-                                      <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                                      <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+                                      <div className="h-5 bg-gray-200 rounded animate-pulse w-28"></div>
                                     </div>
                                   </TableCell>
                                   {[...Array(3)].map((_, j) => (
                                     <TableCell key={j} className="text-center">
-                                      <div className="h-6 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
+                                      <div className="h-7 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
                                     </TableCell>
                                   ))}
                                 </TableRow>

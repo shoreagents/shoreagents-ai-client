@@ -349,78 +349,79 @@ export default function LeaderboardPage() {
           <div className="flex flex-1 flex-col">
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                <div className="px-4 lg:px-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">Ranking</h1>
-                      <p className="text-sm text-muted-foreground">
-                        View team rankings based on productivity scores and activity metrics.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
                 {/* Loading skeleton */}
                 <div className="px-4 lg:px-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Activity Rankings skeleton */}
-                  <Card>
-                    <CardHeader>
-                        <CardTitle>
-                          <Skeleton className="h-6 w-40" />
-                        </CardTitle>
-                        <CardDescription>
-                          <Skeleton className="h-4 w-80 mt-2" />
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-16">
-                                <Skeleton className="h-4 w-12" />
-                              </TableHead>
-                              <TableHead>
-                                <Skeleton className="h-4 w-32" />
-                              </TableHead>
-                              <TableHead className="text-center">
-                                <Skeleton className="h-4 w-16" />
-                              </TableHead>
-                              <TableHead className="text-center">
-                                <Skeleton className="h-4 w-24" />
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                           <TableBody>
-                             {Array.from({ length: 20 }).map((_, i) => (
-                              <TableRow key={i} className={i < 3 ? "bg-muted/50" : ""}>
-                                <TableCell className="font-medium">
-                                  <Skeleton className="h-4 w-8" />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-3">
-                                    <Skeleton className="h-8 w-8 rounded-full" />
-                                    <div className="space-y-1">
-                                      <Skeleton className="h-4 w-32" />
-                                      <Skeleton className="h-3 w-20" />
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Skeleton className="h-4 w-16" />
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
+                    {/* Column 1: Activity Rankings skeleton */}
+                    <div className="order-3 lg:order-1">
+                      {/* Ranking header moved to first column */}
+                      <div className="mb-4 min-h-[72px] flex w-full items-center justify-start gap-3 lg:justify-start">
+                        <div>
+                          <Skeleton className="h-8 w-32 mb-2" />
+                          <Skeleton className="h-4 w-80" />
+                        </div>
+                      </div>
+                      
+                      <Card className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="">
+                            <Table>
+                              <TableHeader>
+                                <TableRow variant="no-hover" className="h-12">
+                                  <TableHead className="w-16">
+                                    <Skeleton className="h-4 w-12" />
+                                  </TableHead>
+                                  <TableHead>
+                                    <Skeleton className="h-4 w-32" />
+                                  </TableHead>
+                                  <TableHead className="text-center">
+                                    <Skeleton className="h-4 w-16" />
+                                  </TableHead>
+                                  <TableHead className="text-center">
+                                    <Skeleton className="h-4 w-24" />
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {Array.from({ length: 20 }).map((_, i) => (
+                                  <TableRow key={i} className={`h-14 ${i < 3 ? "bg-muted/50" : ""}`}>
+                                    <TableCell className="font-medium">
+                                      <Skeleton className="h-4 w-8" />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-3">
+                                        <Skeleton className="h-8 w-8 rounded-full" />
+                                        <div>
+                                          <Skeleton className="h-4 w-32 mb-1" />
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Skeleton className="h-4 w-16" />
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Skeleton className="h-4 w-20" />
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
 
                     {/* Right column skeletons */}
-                    <div>
+                    <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
+                      {/* Month/Year selector skeleton */}
+                      <div className="mb-4 min-h-[72px] flex w-full items-center justify-end gap-3 lg:justify-end">
+                        <div className="flex items-center">
+                          <Skeleton className="h-5 w-5" />
+                        </div>
+                        <Skeleton className="h-10 w-32" />
+                        <Skeleton className="h-10 w-24" />
+                      </div>
+                      
                       {/* Top Performers skeleton */}
                       <Card>
                         <CardHeader>
@@ -475,8 +476,8 @@ export default function LeaderboardPage() {
                       </Card>
 
                       {/* Daily Performance skeleton */}
-                      <Card className="mt-6">
-                        <CardHeader className="pb-0">
+                      <Card className="mt-6 @container/card">
+                        <CardHeader className="relative pb-0">
                           <Skeleton className="h-6 w-40" />
                           <Skeleton className="h-4 w-80 mt-2" />
                         </CardHeader>
@@ -523,25 +524,33 @@ export default function LeaderboardPage() {
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 <div className="px-4 lg:px-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">Ranking</h1>
-                      <p className="text-sm text-muted-foreground">
-                        View team rankings based on productivity scores and activity metrics.
-                      </p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Column 1: Error message with header */}
+                    <div className="order-3 lg:order-1">
+                      {/* Ranking header moved to first column */}
+                      <div className="mb-4 min-h-[72px] flex w-full items-center justify-start gap-3 lg:justify-start">
+                        <div>
+                          <h1 className="text-2xl font-bold">Ranking</h1>
+                          <p className="text-sm text-muted-foreground">
+                            View team rankings based on productivity scores and activity metrics.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Card>
+                        <CardContent className="flex items-center justify-center h-32">
+                          <div className="text-center">
+                            <p className="text-lg font-medium text-destructive">Error</p>
+                            <p className="text-sm text-muted-foreground">{error}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                    
+                    {/* Column 2: Empty for error state */}
+                    <div className="order-2 lg:order-2">
                     </div>
                   </div>
-                </div>
-                
-                <div className="px-4 lg:px-6">
-                  <Card>
-                    <CardContent className="flex items-center justify-center h-32">
-                      <div className="text-center">
-                        <p className="text-lg font-medium text-destructive">Error</p>
-                        <p className="text-sm text-muted-foreground">{error}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               </div>
             </div>
@@ -563,17 +572,19 @@ export default function LeaderboardPage() {
 
               {/* Two Column Layout */}
               <div className="px-4 lg:px-6">
-                {/* Single responsive header */}
-                <div className="mb-4 lg:mb-6">
-                  <h1 className="text-2xl font-bold">Ranking</h1>
-                  <p className="text-sm text-muted-foreground">
-                    View team rankings based on productivity scores and activity metrics.
-                  </p>
-                </div>
-                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Column 1: Activity Rankings */}
                   <div className="order-3 lg:order-1">
+                    {/* Ranking header moved to first column */}
+                    <div className="mb-4 min-h-[72px] flex w-full items-center justify-start gap-3 lg:justify-start">
+                      <div>
+                        <h1 className="text-2xl font-bold">Ranking</h1>
+                        <p className="text-sm text-muted-foreground">
+                          View team rankings based on productivity scores and activity metrics.
+                        </p>
+                      </div>
+                    </div>
+                    
                     <Card className="overflow-hidden">
                       <CardContent className="p-0">
                         <div className="">
