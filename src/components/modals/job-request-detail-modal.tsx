@@ -337,20 +337,6 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                           {localJobRequest.status.charAt(0).toUpperCase() + localJobRequest.status.slice(1)}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {localJobRequest.department && (
-                          <div className="flex items-center gap-1">
-                            <IconBuilding className="h-4 w-4" />
-                            <span>{localJobRequest.department}</span>
-                          </div>
-                        )}
-                        {localJobRequest.industry && (
-                          <div className="flex items-center gap-1">
-                            <IconMapPin className="h-4 w-4" />
-                            <span>{localJobRequest.industry}</span>
-                          </div>
-                        )}
-                      </div>
                     </div>
                     
                   </div>
@@ -408,22 +394,6 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                         </div>
                         <div className="rounded-lg border border-[#cecece99] dark:border-border overflow-hidden">
                           <DataFieldRow
-                            icon={<IconBuilding className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Industry"
-                            fieldName="industry"
-                            value={localJobRequest.industry || ''}
-                            onSave={() => {}} // Empty function since it's read-only
-                            readOnly={true}
-                          />
-                          <DataFieldRow
-                            icon={<IconBriefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
-                            label="Department"
-                            fieldName="department"
-                            value={localJobRequest.department || ''}
-                            onSave={() => {}} // Empty function since it's read-only
-                            readOnly={true}
-                          />
-                          <DataFieldRow
                             icon={<IconClock className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
                             label="Work Type"
                             fieldName="workType"
@@ -438,8 +408,22 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                             value={localJobRequest.workArrangement ? localJobRequest.workArrangement.charAt(0).toUpperCase() + localJobRequest.workArrangement.slice(1) : ''}
                             onSave={() => {}} // Empty function since it's read-only
                             readOnly={true}
-                            isLast={true}
                           />
+                          {localJobRequest.applicationDeadline && (
+                            <DataFieldRow
+                              icon={<IconCalendarTime className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                              label="Application Deadline"
+                              fieldName="applicationDeadline"
+                              value={new Date(localJobRequest.applicationDeadline).toLocaleDateString('en-US', { 
+                                year: 'numeric',
+                                month: 'long', 
+                                day: 'numeric'
+                              })}
+                              onSave={() => {}} // Empty function since it's read-only
+                              readOnly={true}
+                              isLast={true}
+                            />
+                          )}
                         </div>
                       </div>
 
@@ -577,26 +561,6 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                       </div>
                     </div>
 
-                    {/* Application Deadline Section */}
-                    {localJobRequest.applicationDeadline && (
-                      <div>
-                        <div className="flex items-center justify-between min-h-[40px]">
-                          <h3 className="text-lg font-medium text-muted-foreground">Application Deadline</h3>
-                        </div>
-                        <div className="rounded-lg p-6 border shadow-sm">
-                          <div className="flex items-center gap-2">
-                            <IconCalendarTime className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">
-                              {new Date(localJobRequest.applicationDeadline).toLocaleDateString('en-US', { 
-                                year: 'numeric',
-                                month: 'long', 
-                                day: 'numeric'
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
 
                 </div>
