@@ -408,6 +408,7 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
                             value={localJobRequest.workArrangement ? localJobRequest.workArrangement.charAt(0).toUpperCase() + localJobRequest.workArrangement.slice(1) : ''}
                             onSave={() => {}} // Empty function since it's read-only
                             readOnly={true}
+                            isLast={!localJobRequest.applicationDeadline}
                           />
                           {localJobRequest.applicationDeadline && (
                             <DataFieldRow
