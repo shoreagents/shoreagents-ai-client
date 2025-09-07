@@ -16,14 +16,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 
 
-// Type declaration for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      openJobDetailWindow: (jobId: string, jobData: any) => Promise<{ success: boolean; error?: string }>
-    }
-  }
-}
 
 interface JobRequestDetailModalProps {
   jobRequest: JobRequest | null
