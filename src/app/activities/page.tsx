@@ -48,6 +48,13 @@ interface ActivityEntry {
   email: string
   profile_picture: string | null
   department_name: string | null
+  is_on_break: boolean
+  current_break_type: string | null
+  pause_time: string | null
+  is_in_meeting: boolean
+  meeting_title: string | null
+  meeting_type: string | null
+  meeting_start_time: string | null
 }
 
 interface Employee {
@@ -96,8 +103,8 @@ export default function ActivitiesPage() {
   
   
   // Sorting
-  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('status')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Update current time every second for timers
   useEffect(() => {
@@ -282,10 +289,94 @@ export default function ActivitiesPage() {
     }
   }
 
-  const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string) => {
-    if (!hasActivityData) {
-      return <span className="text-muted-foreground text-sm">-</span>
+const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string, isOnBreak: boolean, currentBreakType: string | null, pauseTime: string | null, isInMeeting: boolean, meetingTitle: string | null, meetingType: string | null, meetingStartTime: string | null) => {
+  if (!hasActivityData) {
+    return <span className="text-muted-foreground text-sm">-</span>
+  }
+  
+  // Check if user is in meeting first (highest priority)
+  if (isInMeeting) {
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-purple-100 text-purple-800 border-purple-200">In Meeting</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col items-center">
+              <span className="font-bold">{meetingTitle || 'Unknown Meeting'}</span>
+              <div className="h-px w-full bg-foreground/20 my-1" />
+              <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Started</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {meetingStartTime ? formatTimeOnlyLocal(meetingStartTime) : 'Unknown'}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {meetingStartTime ? formatTimeOnly(meetingStartTime) : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">
+                    {meetingStartTime ? getElapsedTime(meetingStartTime) : 'Unknown'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  
+  // Check if user is on break second
+  if (isOnBreak) {
+    // If on break but has pause_time data, show as Active (break is paused)
+    if (pauseTime) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
     }
+    
+    // Show On Break with tooltip
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col items-center">
+              <span className="font-bold">
+                Currently on {currentBreakType ? `${currentBreakType} Break` : 'Break'}
+              </span>
+              <div className="h-px w-full bg-foreground/20 my-1" />
+              <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Started</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {formatTimeOnlyLocal(updatedAt)}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {formatTimeOnly(updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">
+                    {getElapsedTime(updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
     
     if (isActive) {
       return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
@@ -297,8 +388,6 @@ export default function ActivitiesPage() {
       
       if (diffMinutes < 5) {
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Recently Active</Badge>
-      } else if (diffMinutes < 60) {
-        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Away</Badge>
       } else {
         return (
           <TooltipProvider>
@@ -306,23 +395,23 @@ export default function ActivitiesPage() {
               <TooltipTrigger>
                 <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
               </TooltipTrigger>
-              <TooltipContent className="w-auto">
-                <div className="space-y-2">
-                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                    <span>Last Active:</span>
-                    <div className="space-y-1">
-                      <div className="font-bold">
-                        Local: {formatTimeOnlyLocal(updatedAt)}
-                      </div>
-                      <div className="font-bold text-muted-foreground">
-                        PH: {formatTimeOnly(updatedAt)}
+              <TooltipContent className="min-w-[12rem]">
+                <div className="flex w-full flex-col gap-1">
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Last Active</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">
+                          Local: {formatTimeOnlyLocal(updatedAt)}
+                        </span>
+                        <span className="font-bold text-muted-foreground text-xs">
+                          PH: {formatTimeOnly(updatedAt)}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                    <span>Elapse Time:</span>
-                    <span className="font-bold">{getElapsedTime(updatedAt)}</span>
-                  </div>
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Elapse Time</span>
+                      <span className="font-bold">{getElapsedTime(updatedAt)}</span>
+                    </div>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -336,23 +425,23 @@ export default function ActivitiesPage() {
           <TooltipTrigger>
             <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
           </TooltipTrigger>
-          <TooltipContent className="w-auto">
-            <div className="space-y-2">
-              <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                <span>Last Active:</span>
-                <div className="space-y-1">
-                  <div className="font-bold">
-                    Local: {formatTimeOnlyLocal(updatedAt)}
-                  </div>
-                  <div className="font-bold text-muted-foreground">
-                    PH: {formatTimeOnly(updatedAt)}
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Last Active</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {formatTimeOnlyLocal(updatedAt)}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {formatTimeOnly(updatedAt)}
+                    </span>
                   </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                <span>Elapse Time:</span>
-                <span className="font-bold">{getElapsedTime(updatedAt)}</span>
-              </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">{getElapsedTime(updatedAt)}</span>
+                </div>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -377,7 +466,14 @@ export default function ActivitiesPage() {
       last_name: employee.lastName,
       email: employee.email,
       profile_picture: employee.avatar || null,
-      department_name: employee.department
+      department_name: employee.department,
+      is_on_break: false,
+      current_break_type: null,
+      pause_time: null,
+      is_in_meeting: false,
+      meeting_title: null,
+      meeting_type: null,
+      meeting_start_time: null
     }
   }
 
@@ -429,7 +525,14 @@ export default function ActivitiesPage() {
           last_name: employee.lastName,
           email: employee.email,
           profile_picture: employee.avatar || null,
-          department_name: employee.department
+          department_name: employee.department,
+          is_on_break: false,
+          current_break_type: null,
+          pause_time: null,
+          is_in_meeting: false,
+          meeting_title: null,
+          meeting_type: null,
+          meeting_start_time: null
         }
       }
     })
@@ -454,32 +557,45 @@ export default function ActivitiesPage() {
       <ArrowDown className="h-4 w-4 text-foreground" />
   }
 
-  // Custom sorting function: inactive first (by inactive time), then active (by active time)
-  const getCustomSortValue = (employee: any) => {
-    if (!employee.hasActivityData) return { group: 2, value: 0 } // Unknown - put in active group
-    
-    if (employee.activity.is_currently_active) {
-      return { group: 1, value: employee.activity.today_active_seconds } // Active group
-    }
-    
-    if (employee.activity.last_session_start) {
-      const lastActive = new Date(employee.activity.last_session_start)
-      const now = new Date()
-      const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-      
-      if (diffMinutes < 5) {
-        return { group: 1, value: employee.activity.today_active_seconds } // Recently Active - put in active group
-      } else if (diffMinutes < 60) {
-        return { group: 0, value: employee.activity.today_inactive_seconds } // Away - put in inactive group
-      } else {
-        return { group: 0, value: employee.activity.today_inactive_seconds } // Inactive
-      }
-    }
-    
-    return { group: 0, value: employee.activity.today_inactive_seconds } // Inactive
-  }
 
   const sortedActivities = getMergedData().sort((a, b) => {
+    // Helper function to determine activity status priority
+    const getStatusPriority = (employee: any) => {
+      if (!employee.hasActivityData) return 4 // Unknown - lowest priority
+      
+      // Check if user is in meeting first (highest priority)
+      if (employee.activity.is_in_meeting) return 0 // In Meeting - highest priority
+      
+      // Check if user is inactive second
+      if (employee.activity.last_session_start) {
+        const lastActive = new Date(employee.activity.last_session_start)
+        const now = new Date()
+        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
+        if (diffMinutes >= 5) return 1 // Inactive - second priority (changed from 60 to 5 minutes)
+      }
+      
+      // Check if no last session start (also inactive)
+      if (!employee.activity.last_session_start) return 1 // Inactive - second priority
+      
+      // Then check if user is on break
+      if (employee.activity.is_on_break) return 2
+      
+      // Then check if currently active or recently active
+      if (employee.activity.is_currently_active) return 3
+      
+      // Recently active (away for less than 5 minutes)
+      return 3 // Active
+    }
+
+    // First level: Always sort by status priority (In Meeting > Inactive > On Break > Active > Unknown)
+    const aStatusPriority = getStatusPriority(a)
+    const bStatusPriority = getStatusPriority(b)
+    
+    if (aStatusPriority !== bStatusPriority) {
+      return aStatusPriority - bStatusPriority
+    }
+
+    // Second level: Sort by the selected field
     let aValue: string | number
     let bValue: string | number
 
@@ -489,17 +605,21 @@ export default function ActivitiesPage() {
         bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
         break
       case 'status':
-        // Custom sort: inactive first (by inactive time), then active (by active time)
-        const aSort = getCustomSortValue(a)
-        const bSort = getCustomSortValue(b)
-        
-        // First sort by group (0 = inactive, 1 = active)
-        if (aSort.group !== bSort.group) {
-          return aSort.group - bSort.group
+        // Within same status group, sort by time values
+        if (aStatusPriority === 0) {
+          // For in meeting users, sort by active time
+          aValue = a.activity.today_active_seconds
+          bValue = b.activity.today_active_seconds
+        } else if (aStatusPriority === 1) {
+          // For inactive users, sort by inactive time
+          aValue = a.activity.today_inactive_seconds
+          bValue = b.activity.today_inactive_seconds
+        } else {
+          // For on break/active users, sort by active time
+          aValue = a.activity.today_active_seconds
+          bValue = b.activity.today_active_seconds
         }
-        
-        // Within same group, sort by value (inactive time for inactive group, active time for active group)
-        return sortDirection === 'asc' ? aSort.value - bSort.value : bSort.value - aSort.value
+        break
       case 'activeTime':
         aValue = a.activity.today_active_seconds
         bValue = b.activity.today_active_seconds
@@ -760,7 +880,7 @@ export default function ActivitiesPage() {
                                   </div>
                                 </TableHead>
                                 <TableHead 
-                                  className={`text-center cursor-pointer w-32 ${sortField === 'status' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  className={`text-center cursor-pointer w-24 ${sortField === 'status' ? 'text-primary font-medium bg-accent/50' : ''}`}
                                   onClick={() => handleSort('status')}
                                 >
                                   <div className="flex items-center justify-center gap-1">
@@ -768,24 +888,24 @@ export default function ActivitiesPage() {
                                     {sortField === 'status' && getSortIcon('status')}
                                   </div>
                                 </TableHead>
-                                <TableHead 
-                                  className={`text-center cursor-pointer w-32 ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                  onClick={() => handleSort('activeTime')}
-                                >
-                                  <div className="flex items-center justify-center gap-1">
-                                    Active Time
-                                    {sortField === 'activeTime' && getSortIcon('activeTime')}
-                                  </div>
-                                </TableHead>
-                                <TableHead 
-                                  className={`text-center cursor-pointer w-32 ${sortField === 'inactiveTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                  onClick={() => handleSort('inactiveTime')}
-                                >
-                                  <div className="flex items-center justify-center gap-1">
-                                    Inactive Time
-                                    {sortField === 'inactiveTime' && getSortIcon('inactiveTime')}
-                                  </div>
-                                </TableHead>
+                                 <TableHead 
+                                   className={`text-center cursor-pointer w-40 ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                   onClick={() => handleSort('activeTime')}
+                                 >
+                                   <div className="flex items-center justify-center gap-1">
+                                     Today's Total Active Time
+                                     {sortField === 'activeTime' && getSortIcon('activeTime')}
+                                   </div>
+                                 </TableHead>
+                                 <TableHead 
+                                   className={`text-center cursor-pointer w-40 ${sortField === 'inactiveTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                   onClick={() => handleSort('inactiveTime')}
+                                 >
+                                   <div className="flex items-center justify-center gap-1">
+                                     Today's Total Inactive Time
+                                     {sortField === 'inactiveTime' && getSortIcon('inactiveTime')}
+                                   </div>
+                                 </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -810,9 +930,9 @@ export default function ActivitiesPage() {
                                       </div>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="text-center">
-                                    {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at)}
-                                  </TableCell>
+            <TableCell className="text-center">
+              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, employee.activity.pause_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time)}
+            </TableCell>
                                   <TableCell className="text-center">
                                     {employee.activity.today_active_seconds > 0 ? (
                                       <span className="font-mono text-sm">{formatTime(employee.activity.today_active_seconds)}</span>
@@ -820,13 +940,13 @@ export default function ActivitiesPage() {
                                       <span className="text-muted-foreground text-sm">-</span>
                                     )}
                                   </TableCell>
-                                  <TableCell className="text-center">
-                                    {employee.activity.today_inactive_seconds > 0 ? (
-                                      <span className="font-mono text-sm">{formatTime(employee.activity.today_inactive_seconds)}</span>
-                                    ) : (
-                                      <span className="text-muted-foreground text-sm">-</span>
-                                    )}
-                                  </TableCell>
+                                   <TableCell className="text-center">
+                                     {employee.activity.today_inactive_seconds > 0 ? (
+                                       <span className="font-mono text-sm">{formatTime(employee.activity.today_inactive_seconds)}</span>
+                                     ) : (
+                                       <span className="text-muted-foreground text-sm">-</span>
+                                     )}
+                                   </TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>

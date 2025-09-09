@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDailyTrend, getWeeklyTrend, getProductivityScoresRows, getProductivityStatsRow } from '@/lib/db-utils'
+import { getDailyTrend, getDailyProductivityTrend, getWeeklyTrend, getProductivityScoresRows, getProductivityStatsRow } from '@/lib/db-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,23 +23,13 @@ export async function GET(request: NextRequest) {
       targetMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     }
 
-    // If requesting daily trend based on activity_data
+    // If requesting daily trend based on productivity_scores
     if (trend === 'daily') {
-      // Compute month date range from targetMonthYear
-      const [yearStr, monthStr] = targetMonthYear.split('-')
-      const year = parseInt(yearStr, 10)
-      const month = parseInt(monthStr, 10)
-      const startDate = new Date(Date.UTC(year, month - 1, 1))
-      const endDate = new Date(Date.UTC(year, month, 0)) // last day of month
-
-      const startISO = startDate.toISOString().slice(0, 10)
-      const endISO = endDate.toISOString().slice(0, 10)
-
-      // Queries moved to db-utils: getDailyTrend()
-
-      const dailyTrendRows = await getDailyTrend(memberId, startISO, endISO)
+      // Use the new productivity-based daily trend function
+      const dailyTrendRows = await getDailyProductivityTrend(memberId, targetMonthYear)
       const trendDaily = dailyTrendRows.map((row: any) => ({
-        date: row.date, // YYYY-MM-DD
+        date: row.date, // YYYY-MM
+        total_productivity_score: Number(row.total_productivity_score) || 0,
         total_active_seconds: Number(row.total_active_seconds) || 0,
         total_inactive_seconds: Number(row.total_inactive_seconds) || 0,
         top1: row.top1 || null,

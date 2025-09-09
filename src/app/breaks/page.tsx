@@ -523,8 +523,25 @@ export default function BreaksPage() {
       <IconArrowDown className="h-4 w-4 text-primary" />
   }
 
+  // Helper function to check if employee is currently on break
+  const isEmployeeOnBreak = (employeeId: string) => {
+    return breakSessions.some(session => 
+      session.agent_user_id.toString() === employeeId && !session.end_time
+    )
+  }
+
   // Sort employees based on current sort settings
   const sortedEmployees = [...employees].sort((a, b) => {
+    // Always sort by active status first (active employees first), then by the selected field
+    const aIsActive = isEmployeeOnBreak(a.id)
+    const bIsActive = isEmployeeOnBreak(b.id)
+    
+    // If one is active and the other isn't, active comes first
+    if (aIsActive !== bIsActive) {
+      return aIsActive ? -1 : 1
+    }
+    
+    // If both have same active status, sort by the selected field
     let aValue: string
     let bValue: string
 

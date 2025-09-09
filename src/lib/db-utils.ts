@@ -1485,6 +1485,181 @@ export async function getDailyTrend(memberId: string, startISO: string, endISO: 
   return result.rows
 }
 
+export async function getDailyProductivityTrend(memberId: string, monthYear: string) {
+  const dailyProductivityQueryAll = `
+    WITH base AS (
+      SELECT ps.user_id,
+             ps.month_year,
+             ps.productivity_score,
+             ps.total_active_seconds,
+             ps.total_inactive_seconds
+      FROM productivity_scores ps
+      JOIN users u ON ps.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND ps.month_year = $1
+    ),
+    totals_by_month AS (
+      SELECT month_year,
+             SUM(productivity_score)::numeric(10,2) AS total_productivity_score,
+             SUM(total_active_seconds)::int AS total_active_seconds,
+             SUM(total_inactive_seconds)::int AS total_inactive_seconds
+      FROM base
+      GROUP BY month_year
+    ),
+    ranked AS (
+      SELECT b.user_id,
+             b.productivity_score,
+             ROW_NUMBER() OVER (ORDER BY b.productivity_score DESC) AS rn
+      FROM base b
+    )
+    SELECT t.month_year AS date,
+           t.total_productivity_score,
+           t.total_active_seconds,
+           t.total_inactive_seconds,
+           (MAX(CASE WHEN r.rn = 1 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top1,
+           (MAX(CASE WHEN r.rn = 2 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top2,
+           (MAX(CASE WHEN r.rn = 3 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top3,
+           (MAX(CASE WHEN r.rn = 4 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top4,
+           (MAX(CASE WHEN r.rn = 5 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top5
+    FROM ranked r
+    JOIN personal_info pi ON pi.user_id = r.user_id
+    JOIN totals_by_month t ON t.month_year = $1
+    GROUP BY t.month_year, t.total_productivity_score, t.total_active_seconds, t.total_inactive_seconds
+    ORDER BY t.month_year
+  `
+
+  const dailyProductivityQueryByMember = `
+    WITH base AS (
+      SELECT ps.user_id,
+             ps.month_year,
+             ps.productivity_score,
+             ps.total_active_seconds,
+             ps.total_inactive_seconds
+      FROM productivity_scores ps
+      JOIN users u ON ps.user_id = u.id
+      JOIN agents ag ON ag.user_id = u.id
+      WHERE u.user_type = 'Agent'
+        AND ag.member_id = $2
+        AND ps.month_year = $1
+    ),
+    totals_by_month AS (
+      SELECT month_year,
+             SUM(productivity_score)::numeric(10,2) AS total_productivity_score,
+             SUM(total_active_seconds)::int AS total_active_seconds,
+             SUM(total_inactive_seconds)::int AS total_inactive_seconds
+      FROM base
+      GROUP BY month_year
+    ),
+    ranked AS (
+      SELECT b.user_id,
+             b.productivity_score,
+             ROW_NUMBER() OVER (ORDER BY b.productivity_score DESC) AS rn
+      FROM base b
+    )
+    SELECT t.month_year AS date,
+           t.total_productivity_score,
+           t.total_active_seconds,
+           t.total_inactive_seconds,
+           (MAX(CASE WHEN r.rn = 1 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top1,
+           (MAX(CASE WHEN r.rn = 2 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top2,
+           (MAX(CASE WHEN r.rn = 3 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top3,
+           (MAX(CASE WHEN r.rn = 4 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top4,
+           (MAX(CASE WHEN r.rn = 5 THEN (
+               json_build_object(
+                 'user_id', r.user_id,
+                 'first_name', pi.first_name,
+                 'last_name', pi.last_name,
+                 'profile_picture', pi.profile_picture,
+                 'points', r.productivity_score
+               )::text
+           ) END))::json AS top5
+    FROM ranked r
+    JOIN personal_info pi ON pi.user_id = r.user_id
+    JOIN totals_by_month t ON t.month_year = $1
+    GROUP BY t.month_year, t.total_productivity_score, t.total_active_seconds, t.total_inactive_seconds
+    ORDER BY t.month_year
+  `
+
+  const result = memberId === 'all'
+    ? await pool.query(dailyProductivityQueryAll, [monthYear])
+    : await pool.query(dailyProductivityQueryByMember, [monthYear, memberId])
+
+  return result.rows
+}
+
 export async function getWeeklyTrend(memberId: string, startISO: string, endISO: string) {
   const weeklyTrendQueryAll = `
     WITH base AS (
@@ -1653,7 +1828,7 @@ export async function getProductivityScoresRows(memberId: string, monthYear: str
     LEFT JOIN departments d ON a.department_id = d.id
     WHERE ps.month_year = $1
       AND u.user_type = 'Agent'
-    ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+    ORDER BY ps.productivity_score DESC, ps.active_percentage DESC
     ${limitClause}
   ` : `
     SELECT 
@@ -1680,7 +1855,7 @@ export async function getProductivityScoresRows(memberId: string, monthYear: str
     WHERE ps.month_year = $1
       AND u.user_type = 'Agent'
       AND a.member_id = $2
-    ORDER BY ps.total_active_seconds DESC, ps.active_percentage DESC
+    ORDER BY ps.productivity_score DESC, ps.active_percentage DESC
     ${limitClause}
   `
   const result = memberId === 'all'
@@ -2257,12 +2432,32 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
       pi.last_name,
       u.email,
       pi.profile_picture,
-      d.name as department_name
+      d.name as department_name,
+      CASE 
+        WHEN bs.id IS NOT NULL AND bs.end_time IS NULL THEN true
+        ELSE false
+      END as is_on_break,
+      bs.break_type as current_break_type,
+      bs.pause_time,
+      CASE 
+        WHEN m.id IS NOT NULL AND m.is_in_meeting = true AND m.status = 'in-progress' THEN true
+        ELSE false
+      END as is_in_meeting,
+      m.title as meeting_title,
+      m.meeting_type,
+      m.start_time as meeting_start_time
     FROM activity_data ad
     JOIN users u ON ad.user_id = u.id
     LEFT JOIN personal_info pi ON u.id = pi.user_id
     LEFT JOIN agents a ON u.id = a.user_id
     LEFT JOIN departments d ON a.department_id = d.id
+    LEFT JOIN break_sessions bs ON ad.user_id = bs.agent_user_id 
+      AND bs.break_date = ad.today_date 
+      AND bs.end_time IS NULL
+    LEFT JOIN meetings m ON ad.user_id = m.agent_user_id 
+      AND m.is_in_meeting = true 
+      AND m.status = 'in-progress'
+      AND DATE(m.start_time) = ad.today_date
     WHERE ad.today_date BETWEEN $1 AND $2
       AND ($3 = 'all' OR u.id IN (
         SELECT user_id FROM agents WHERE member_id = $3::int
