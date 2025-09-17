@@ -1,7 +1,13 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { TrendingDownIcon, TrendingUpIcon, TicketIcon } from "lucide-react"
+import { TrendingDownIcon, TrendingUpIcon, TicketIcon, UsersIcon } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import NumberFlow from '@number-flow/react'
 import { useRouter } from "next/navigation"
 
@@ -13,6 +19,8 @@ import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
 import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { NewHires } from "@/components/interactive/cards/new-hires"
 import { GrowthRateCard } from "@/components/interactive/cards/connect-globe"
@@ -21,6 +29,7 @@ import { OrbitingCircles } from "@/components/magicui/orbiting-circles"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -91,14 +100,33 @@ export default function Dashboard() {
   const [prevDirection, setPrevDirection] = useState<'positive' | 'negative' | null>(null)
   const { user } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [activities, setActivities] = useState<any[]>([])
   const [newHireStats, setNewHireStats] = useState<CountStats | null>(null)
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
+  const [currentTime, setCurrentTime] = useState(new Date())
   const router = useRouter()
   const [isTalentPoolHovered, setIsTalentPoolHovered] = useState(false)
+  const [jobRequests, setJobRequests] = useState<Array<{quote: string, name: string, title: string}>>([])
+  const [jobRequestsLoading, setJobRequestsLoading] = useState(true)
+  const [breaksData, setBreaksData] = useState<any>(null)
+  const [breaksLoading, setBreaksLoading] = useState(true)
 
   const handleTalentPoolClick = () => {
     router.push('/talent-pool')
   }
+
+  const handleJobsClick = () => {
+    router.push('/job-request')
+  }
+
+  // Update current time every second for timers
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -124,14 +152,32 @@ export default function Dashboard() {
           }
         }
 
-        // Fetch employees for new hires card
+        // Fetch employees and activities for inactive employees
         if (user) {
           const memberId = (user as any).userType === 'Internal' ? 'all' : (user as any).memberId
+          console.log('Dashboard - User:', user)
+          console.log('Dashboard - MemberId:', memberId)
           if (memberId) {
+            // Fetch employees
             const employeesRes = await fetch(`/api/team/employees?memberId=${memberId}`)
+            console.log('Dashboard - Employees response status:', employeesRes.status)
             if (employeesRes.ok) {
               const employeesJson = await employeesRes.json()
+              console.log('Dashboard - Employees data:', employeesJson)
               setEmployees(employeesJson.employees || [])
+            } else {
+              console.error('Dashboard - Employees fetch failed:', employeesRes.status)
+            }
+
+            // Fetch activities to determine inactive employees
+            const activitiesRes = await fetch(`/api/activities?memberId=${memberId}`)
+            console.log('Dashboard - Activities response status:', activitiesRes.status)
+            if (activitiesRes.ok) {
+              const activitiesJson = await activitiesRes.json()
+              console.log('Dashboard - Activities data:', activitiesJson)
+              setActivities(activitiesJson.activities || [])
+            } else {
+              console.error('Dashboard - Activities fetch failed:', activitiesRes.status)
             }
 
             // Fetch leaderboard data for activity rankings (only top 3)
@@ -144,12 +190,51 @@ export default function Dashboard() {
               const leaderboardJson = await leaderboardRes.json()
               setLeaderboardData(leaderboardJson.productivityScores || [])
             }
+
+            // Fetch job requests for dashboard (all jobs, not filtered by company)
+            const jobRequestsRes = await fetch(`/api/dashboard/job-requests`)
+            if (jobRequestsRes.ok) {
+              const jobRequestsJson = await jobRequestsRes.json()
+              setJobRequests(jobRequestsJson.jobs || [])
+            } else {
+              console.error('Dashboard - Job requests fetch failed:', jobRequestsRes.status)
+              // Fallback to sample data if API fails
+              setJobRequests([
+                { quote: "Senior React Developer", name: "", title: "" },
+                { quote: "DevOps Engineer", name: "", title: "" },
+                { quote: "UI/UX Designer", name: "", title: "" },
+                { quote: "Data Scientist", name: "", title: "" },
+                { quote: "QA Engineer", name: "", title: "" },
+                { quote: "Full Stack Developer", name: "", title: "" },
+                { quote: "Product Manager", name: "", title: "" },
+                { quote: "Backend Developer", name: "", title: "" },
+                { quote: "Virtual Assistant", name: "", title: "" },
+                { quote: "Executive Assistant", name: "", title: "" },
+                { quote: "Administrative Assistant", name: "", title: "" },
+                { quote: "Customer Service Rep", name: "", title: "" },
+                { quote: "Social Media Manager", name: "", title: "" },
+                { quote: "Content Writer", name: "", title: "" },
+                { quote: "Bookkeeper", name: "", title: "" },
+                { quote: "Project Coordinator", name: "", title: "" }
+              ])
+            }
+
+            // Fetch breaks data
+            const breaksRes = await fetch(`/api/breaks?memberId=${memberId}&date=${new Date().toISOString().split('T')[0]}`)
+            if (breaksRes.ok) {
+              const breaksJson = await breaksRes.json()
+              setBreaksData(breaksJson)
+            } else {
+              console.error('Dashboard - Breaks fetch failed:', breaksRes.status)
+            }
           }
         }
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
+        setJobRequestsLoading(false)
+        setBreaksLoading(false)
       }
     }
 
@@ -163,6 +248,66 @@ export default function Dashboard() {
   // Calculate all closed tickets
   const allClosedTickets = tickets.filter(ticket => ticket.status === 'Closed')
   const allClosedTicketsCount = allClosedTickets.length
+
+  // Calculate inactive employees count based on activity data
+  const getInactiveEmployeesCount = () => {
+    if (!activities.length) return 0
+    
+    const inactiveEmployees = employees.filter(employee => {
+      const activity = activities.find(a => a.user_id.toString() === employee.id)
+      if (!activity) return false
+      
+      // Inactive if not currently active
+      if (activity.is_currently_active) return false
+      
+      // Inactive if has last session start but not currently active
+      if (activity.last_session_start) return true
+      
+      // Inactive if no last session start
+      return true
+    })
+    
+    console.log('Dashboard - Inactive employees based on activity:', inactiveEmployees.length)
+    return inactiveEmployees.length
+  }
+
+  // Get inactive employees for display
+  const getInactiveEmployees = () => {
+    if (!activities.length) return []
+    
+    return employees.filter(employee => {
+      const activity = activities.find(a => a.user_id.toString() === employee.id)
+      if (!activity) return false
+      
+      // Inactive if not currently active
+      if (activity.is_currently_active) return false
+      
+      // Inactive if has last session start but not currently active
+      if (activity.last_session_start) return true
+      
+      // Inactive if no last session start
+      return true
+    })
+  }
+
+  // Format elapsed time
+  const getElapsedTime = (lastSessionStart: string) => {
+    const inactiveTime = new Date(lastSessionStart)
+    const now = currentTime
+    const elapsedMs = Math.max(0, now.getTime() - inactiveTime.getTime())
+    
+    const hours = Math.floor(elapsedMs / (1000 * 60 * 60))
+    const minutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((elapsedMs % (1000 * 60)) / 1000)
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`
+    } else {
+      return `${seconds}s`
+    }
+  }
 
   console.log('Ticket counts:', {
     totalTickets: tickets.length,
@@ -358,11 +503,77 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  {/* 1. Salmon (2x2) - New Hires */}
-                  <NewHires employees={employees} className="sm:col-span-2 lg:col-span-2 lg:row-span-2" />
+                  {/* 1. Salmon (2x2) - Inactive Employees */}
+                  <Card className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-1.5">
+                          <CardTitle>Inactive</CardTitle>
+                          <CardDescription>Employees currently inactive.</CardDescription>
+                        </div>
+                        <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 ml-4">
+                          <div className="h-5 w-5 text-red-500">
+                            <UsersIcon className="h-5 w-5" />
+                          </div>
+                          {!loading && employees.length > 0 && activities.length > 0 ? (
+                            getInactiveEmployeesCount()
+                          ) : (
+                            <Skeleton className="h-8 w-8" />
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                      <CardContent className="px-6 pb-6">
+                        <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                          {!loading && employees.length > 0 && activities.length > 0 && getInactiveEmployees().length > 0 ? (
+                            getInactiveEmployees().map((employee) => {
+                              const activity = activities.find(a => a.user_id.toString() === employee.id)
+                              const lastSessionStart = activity?.last_session_start
+                              
+                              return (
+                                <div key={employee.id} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src={employee.avatar} alt={`${employee.firstName} ${employee.lastName}`} />
+                                    <AvatarFallback>
+                                      {employee.firstName?.[0]}{employee.lastName?.[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {employee.firstName} {employee.lastName}
+                                    </p>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {lastSessionStart ? getElapsedTime(lastSessionStart) : 'Never'}
+                                  </div>
+                                </div>
+                              )
+                            })
+                          ) : (
+                            // Skeleton loading states
+                            Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                              <Skeleton className="h-8 w-8 rounded-full" />
+                              <div className="flex-1 min-w-0">
+                                <Skeleton className="h-4 w-24" />
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                            </div>
+                            ))
+                          )}
+                          {getInactiveEmployees().length === 0 && !loading && (
+                            <div className="text-center text-muted-foreground text-sm py-4">
+                              No inactive employees
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                  </Card>
 
                   {/* 2. Broccoli (1x1) - Closed */}
-                  <NewHires employees={employees} className="lg:col-span-1 lg:row-span-1" />
+                  <NewHires employees={employees} className="lg:col-span-1 lg:row-span-1" loading={loading} />
 
                   {/* 3. Tamago (1x1) - In Progress */}
                   <Card className="lg:col-span-1 lg:row-span-1">
@@ -372,8 +583,42 @@ export default function Dashboard() {
                     </CardHeader>
                   </Card>
 
-                  {/* 4. Pork (1x2) - Connect Globe */}
-                  <GrowthRateCard className="lg:col-span-1 lg:row-span-2" />
+                  {/* 4. Pork (1x2) - Jobs */}
+                  <Card 
+                    className="lg:col-span-1 lg:row-span-2 flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    onClick={handleJobsClick}
+                  >
+                    <CardHeader>
+                      <CardTitle>Jobs</CardTitle>
+                      <CardDescription>View and manage job requests.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col gap-2 p-0 justify-center">
+                      <div className="w-full">
+                        <InfiniteMovingCards
+                          items={jobRequests.length > 0 ? jobRequests.slice(0, Math.ceil(jobRequests.length / 2)) : [
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" }
+                          ]}
+                          direction="left"
+                          speed="very-slow"
+                        />
+                      </div>
+                      <div className="w-full">
+                        <InfiniteMovingCards
+                          items={jobRequests.length > 0 ? jobRequests.slice(Math.ceil(jobRequests.length / 2)) : [
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" },
+                            { quote: "Loading...", name: "", title: "" }
+                          ]}
+                          direction="left"
+                          speed="very-slow"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   {/* 5. Edamame (2x3) - Top 3 Performers */}
                   <ActivityRankings 
@@ -381,21 +626,46 @@ export default function Dashboard() {
                     className="lg:col-span-2 lg:row-span-3"
                   />
 
-                  {/* 6. Tomato (1x2) - Stuck */}
+                  {/* 6. Tomato (1x2) - Breaks */}
                   <Card className="lg:col-span-1 lg:row-span-2">
                     <CardHeader>
-                      <CardTitle className="text-base">Stuck</CardTitle>
-                      <CardDescription>{statusCounts.stuck} tickets</CardDescription>
+                      <CardTitle className="text-base">Breaks</CardTitle>
+                      <CardDescription>
+                        {breaksLoading ? (
+                          <Skeleton className="h-4 w-16" />
+                        ) : breaksData?.stats ? (
+                          `${breaksData.stats.totalBreaks || 0} breaks today`
+                        ) : (
+                          "No break data"
+                        )}
+                      </CardDescription>
                     </CardHeader>
+                    <CardContent>
+                      {breaksLoading ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      ) : breaksData?.breakSessions?.length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="text-sm text-muted-foreground">
+                            Total Duration: {breaksData.stats?.totalDuration || "0m"}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Active Breaks: {breaksData.breakSessions.filter((b: any) => !b.end_time).length}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No breaks taken today
+                        </div>
+                      )}
+                    </CardContent>
                   </Card>
 
-                  {/* 7. Tofu (1x1) - On Hold */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-base">On Hold</CardTitle>
-                      <CardDescription>{statusCounts.onHold} tickets</CardDescription>
-                    </CardHeader>
-                  </Card>
+                  {/* 7. Tofu (1x1) - Connect Globe */}
+                  <GrowthRateCard className="lg:col-span-1 lg:row-span-1 h-56" />
 
                   {/* 8. Tempura (1x2) - Talent Pool */}
                   <Card 

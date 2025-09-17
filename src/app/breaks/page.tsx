@@ -8,6 +8,7 @@ import { SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { useRealtimeBreaks, BreakSession as RealtimeBreakSession } from "@/hooks/use-realtime-breaks"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -616,8 +617,8 @@ export default function BreaksPage() {
               <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
                 {loading ? (
                   <div>
-                    <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2"></div>
-                    <div className="h-4 w-full max-w-2xl bg-gray-200 rounded animate-pulse"></div>
+                    <Skeleton className="h-8 w-48 mb-2" />
+                    <Skeleton className="h-4 w-full max-w-2xl" />
                   </div>
                 ) : (
                   <>
@@ -642,12 +643,12 @@ export default function BreaksPage() {
                               <TableRow variant="no-hover" className="h-12">
                                 <TableHead className="w-48">
                                   <div className="flex items-center gap-1">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                                    <Skeleton className="h-4 w-16" />
                                   </div>
                                 </TableHead>
                                 {[...Array(3)].map((_, i) => (
                                   <TableHead key={i} className="text-center w-32">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
+                                    <Skeleton className="h-4 w-20 mx-auto" />
                                   </TableHead>
                                 ))}
                               </TableRow>
@@ -657,13 +658,13 @@ export default function BreaksPage() {
                                 <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
-                                      <div className="h-5 bg-gray-200 rounded animate-pulse w-28"></div>
+                                      <Skeleton className="h-10 w-10 rounded-full" />
+                                      <Skeleton className="h-5 w-28" />
                                     </div>
                                   </TableCell>
                                   {[...Array(3)].map((_, j) => (
                                     <TableCell key={j} className="text-center">
-                                      <div className="h-7 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
+                                      <Skeleton className="h-7 w-20 mx-auto" />
                                     </TableCell>
                                   ))}
                                 </TableRow>
@@ -681,33 +682,33 @@ export default function BreaksPage() {
                           <Card key={i} className="bg-white dark:bg-card">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                               <div>
-                                <div className="h-4 bg-gray-200 rounded animate-pulse w-24 mb-2"></div>
+                                <Skeleton className="h-4 w-24 mb-2" />
                                 <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 mt-2">
                                   <UserIcon className="h-5 w-5" />
-                                  <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
+                                  <Skeleton className="h-8 w-8" />
                                 </div>
                               </div>
-                              <div className="h-6 w-6 bg-gray-200 rounded animate-pulse"></div>
+                              <Skeleton className="h-6 w-6" />
                             </CardHeader>
                             <CardContent>
                               <div className="space-y-3">
-                                <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                                <Skeleton className="h-4 w-3/4" />
                                 <div className="border-t border-border mt-3 pt-3">
                                   <div className="space-y-2">
                                     <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium">
-                                      <div className="h-3 bg-gray-200 rounded animate-pulse w-12"></div>
-                                      <div className="h-3 bg-gray-200 rounded animate-pulse w-16 mx-auto"></div>
-                                      <div className="h-3 bg-gray-200 rounded animate-pulse w-20 ml-auto"></div>
+                                      <Skeleton className="h-3 w-12" />
+                                      <Skeleton className="h-3 w-16 mx-auto" />
+                                      <Skeleton className="h-3 w-20 ml-auto" />
                                     </div>
                                     <div className="max-h-48 overflow-y-auto space-y-2">
                                       {[...Array(3)].map((_, j) => (
                                         <div key={j} className="grid grid-cols-[2fr_1fr_1fr] gap-4 items-center">
                                           <div className="flex items-center gap-2">
-                                            <div className="h-6 w-6 rounded-full bg-gray-200 animate-pulse"></div>
-                                            <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                                            <Skeleton className="h-6 w-6 rounded-full" />
+                                            <Skeleton className="h-4 w-20" />
                                           </div>
-                                          <div className="h-3 bg-gray-200 rounded animate-pulse w-12 mx-auto"></div>
-                                          <div className="h-3 bg-gray-200 rounded animate-pulse w-16 ml-auto"></div>
+                                          <Skeleton className="h-3 w-12 mx-auto" />
+                                          <Skeleton className="h-3 w-16 ml-auto" />
                                         </div>
                                       ))}
                                     </div>
@@ -787,65 +788,65 @@ export default function BreaksPage() {
                                              <TooltipTrigger>
                                               {getStatusBadge(breakSession)}
                                              </TooltipTrigger>
-                                              <TooltipContent className="w-auto">
+                                              <TooltipContent className="min-w-[12rem]">
                                               {breakSession.end_time ? (
-                                                <div className="space-y-2">
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Completed:</span>
-                                                    <div className="space-y-1">
-                                                      <div className="font-bold">
+                                                <div className="flex w-full flex-col gap-1">
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Completed:</span>
+                                                    <div className="flex flex-col items-start">
+                                                      <span className="font-bold">
                                                         Local: {formatTimeOnlyLocal(breakSession.start_time)} - {formatTimeOnlyLocal(breakSession.end_time)}
-                                                      </div>
-                                                      <div className="font-bold text-muted-foreground">
+                                                      </span>
+                                                      <span className="font-bold text-muted-foreground text-xs">
                                                         PH: {formatTimeOnly(breakSession.start_time)} - {formatTimeOnly(breakSession.end_time)}
-                                                      </div>
+                                                      </span>
                                                     </div>
                                                   </div>
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Duration:</span>
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Duration:</span>
                                                     <span className="font-bold">{formatDuration(breakSession.duration_minutes)}</span>
                                                   </div>
                                                 </div>
                                               ) : breakSession.pause_time && !breakSession.resume_time ? (
-                                                <div className="space-y-2">
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Paused Since:</span>
-                                                    <div className="space-y-1">
-                                                      <div className="font-bold">
-                                                        Local: {formatTimeOnlyLocal(breakSession.pause_time)}
-                                                      </div>
-                                                      <div className="font-bold text-muted-foreground">
-                                                        PH: {formatTimeOnly(breakSession.pause_time)}
-                                                      </div>
+                                                <div className="flex w-full flex-col gap-1">
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Started:</span>
+                                                    <div className="flex flex-col items-start">
+                                                      <span className="font-bold">
+                                                        Local: {formatTimeOnlyLocal(breakSession.start_time)}
+                                                      </span>
+                                                      <span className="font-bold text-muted-foreground text-xs">
+                                                        PH: {formatTimeOnly(breakSession.start_time)}
+                                                      </span>
                                                     </div>
                                                   </div>
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Started:</span>
-                                                    <div className="space-y-1">
-                                                      <div className="font-bold">
-                                                        Local: {formatTimeOnlyLocal(breakSession.start_time)}
-                                                      </div>
-                                                      <div className="font-bold text-muted-foreground">
-                                                        PH: {formatTimeOnly(breakSession.start_time)}
-                                                      </div>
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Paused Since:</span>
+                                                    <div className="flex flex-col items-start">
+                                                      <span className="font-bold">
+                                                        Local: {formatTimeOnlyLocal(breakSession.pause_time)}
+                                                      </span>
+                                                      <span className="font-bold text-muted-foreground text-xs">
+                                                        PH: {formatTimeOnly(breakSession.pause_time)}
+                                                      </span>
                                                     </div>
                                                   </div>
                                                 </div>
                                               ) : (
-                                                <div className="space-y-2">
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Started:</span>
-                                                    <div className="space-y-1">
-                                                      <div className="font-bold">
+                                                <div className="flex w-full flex-col gap-1">
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Started:</span>
+                                                    <div className="flex flex-col items-start">
+                                                      <span className="font-bold">
                                                         Local: {formatTimeOnlyLocal(breakSession.start_time)}
-                                                      </div>
-                                                      <div className="font-bold text-muted-foreground">
+                                                      </span>
+                                                      <span className="font-bold text-muted-foreground text-xs">
                                                         PH: {formatTimeOnly(breakSession.start_time)}
-                                                      </div>
+                                                      </span>
                                                     </div>
                                                   </div>
-                                                  <div className="grid grid-cols-[auto_1fr] gap-2 text-sm">
-                                                    <span>Elapsed:</span>
+                                                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                                                    <span className="text-muted-foreground">Elapsed:</span>
                                                     <span className="font-bold">{getElapsedTime(breakSession)}</span>
                                                   </div>
                                                 </div>

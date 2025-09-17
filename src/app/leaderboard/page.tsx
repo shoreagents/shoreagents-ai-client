@@ -86,8 +86,7 @@ export default function LeaderboardPage() {
     points: number
   }
   interface DailyTrendPoint {
-    date: string // YYYY-MM
-    total_productivity_score: number
+    date: string // YYYY-MM-DD
     total_active_seconds: number
     total_inactive_seconds: number
     top1?: DailyTopUser | null
@@ -102,7 +101,7 @@ export default function LeaderboardPage() {
   const [trendError, setTrendError] = useState<string | null>(null)
   
   // Sorting state
-  const [sortField, setSortField] = useState<'rank' | 'name' | 'points'>('rank')
+  const [sortField, setSortField] = useState<'rank' | 'name' | 'points' | 'activeTime'>('rank')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Fetch productivity scores data
@@ -199,9 +198,15 @@ export default function LeaderboardPage() {
   const formatPoints = (seconds: number) => {
     return seconds.toLocaleString()
   }
+  
+  const formatActiveTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours}h ${minutes}m`
+  }
 
   // Sorting logic
-  const handleSort = (field: 'rank' | 'name' | 'points') => {
+  const handleSort = (field: 'rank' | 'name' | 'points' | 'activeTime') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -210,7 +215,7 @@ export default function LeaderboardPage() {
     }
   }
 
-  const getSortIcon = (field: 'rank' | 'name' | 'points') => {
+  const getSortIcon = (field: 'rank' | 'name' | 'points' | 'activeTime') => {
     if (sortField !== field) {
       return null
     }
@@ -233,8 +238,12 @@ export default function LeaderboardPage() {
         bValue = `${b.first_name} ${b.last_name}`.toLowerCase()
         break
       case 'points':
-        aValue = a.productivity_score
-        bValue = b.productivity_score
+        aValue = a.total_active_seconds
+        bValue = b.total_active_seconds
+        break
+      case 'activeTime':
+        aValue = a.total_active_seconds
+        bValue = b.total_active_seconds
         break
       default:
         return 0
@@ -319,8 +328,8 @@ export default function LeaderboardPage() {
   const selectedYearValue = selectedMonthDate.getFullYear()
 
   const chartConfig = {
-    totalProductivityScore: {
-      label: "Total Productivity Score",
+    totalActive: {
+      label: "Total Active Seconds",
       // Fixed light-mode color across themes
       color: "hsl(12 76% 61%)",
     },
@@ -328,7 +337,7 @@ export default function LeaderboardPage() {
 
   // Daily data for chart (hide dates with no data)
   const dailyChartData = trendDaily.filter((d) =>
-    (d.total_productivity_score ?? 0) > 0
+    (d.total_active_seconds ?? 0) > 0 || (d.total_inactive_seconds ?? 0) > 0
   )
 
   if (loading) {
@@ -368,6 +377,9 @@ export default function LeaderboardPage() {
                                   <TableHead className="text-center">
                                     <Skeleton className="h-4 w-16" />
                                   </TableHead>
+                                  <TableHead className="text-center">
+                                    <Skeleton className="h-4 w-24" />
+                                  </TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -386,6 +398,9 @@ export default function LeaderboardPage() {
                                     </TableCell>
                                     <TableCell className="text-center">
                                       <Skeleton className="h-4 w-16" />
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      <Skeleton className="h-4 w-20" />
                                     </TableCell>
                                   </TableRow>
                                 ))}
@@ -469,21 +484,12 @@ export default function LeaderboardPage() {
                         <CardContent className="px-0 pt-4 sm:px-0 sm:pt-6">
                           <div className="relative">
                             {/* Chart area skeleton */}
-                            <Skeleton className="h-[250px] w-full rounded" />
-                            {/* Chart elements skeleton */}
-                            <div className="absolute inset-0 flex flex-col justify-between p-4">
-                              {/* Y-axis labels */}
-                              <div className="flex flex-col justify-between h-full">
-                                {Array.from({ length: 5 }).map((_, i) => (
-                                  <Skeleton key={i} className="h-3 w-8" />
-                                ))}
-                              </div>
-                              {/* X-axis labels */}
-                              <div className="flex justify-between mt-2">
-                                {Array.from({ length: 7 }).map((_, i) => (
-                                  <Skeleton key={i} className="h-3 w-8" />
-                                ))}
-                              </div>
+                            <Skeleton className="h-[250px] w-full rounded-none" />
+                            {/* X-axis labels skeleton */}
+                            <div className="absolute bottom-4 left-0 right-0 flex justify-between px-4">
+                              {Array.from({ length: 7 }).map((_, i) => (
+                                <Skeleton key={i} className="h-3 w-8" />
+                              ))}
                             </div>
                       </div>
                     </CardContent>
@@ -563,7 +569,7 @@ export default function LeaderboardPage() {
                     {/* Ranking header moved to first column */}
                     <div className="mb-4 min-h-[72px] flex w-full items-center justify-start gap-3 lg:justify-start">
                       <div>
-                        <h1 className="text-2xl font-bold">Ranking</h1>
+                        <h1 className="text-2xl font-bold">Leaderboard</h1>
                         <p className="text-sm text-muted-foreground">
                           View team rankings based on productivity scores and activity metrics.
                         </p>
@@ -603,6 +609,15 @@ export default function LeaderboardPage() {
                                     {sortField === 'points' && getSortIcon('points')}
                                   </div>
                                 </TableHead>
+                                <TableHead 
+                                  className={`text-center cursor-pointer ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                  onClick={() => handleSort('activeTime')}
+                                >
+                                  <div className="flex items-center justify-center gap-1">
+                                    Active Time
+                                    {sortField === 'activeTime' && getSortIcon('activeTime')}
+                                  </div>
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -635,7 +650,10 @@ export default function LeaderboardPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <span className="font-mono text-sm">{formatPoints(entry.productivity_score)}</span>
+                                    <span className="font-mono text-sm">{formatPoints(entry.total_active_seconds)}</span>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className="font-mono text-sm">{formatActiveTime(entry.total_active_seconds)}</span>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -723,7 +741,7 @@ export default function LeaderboardPage() {
                                   <div className="font-semibold text-sm">
                                     {leaderboardData[1].first_name} {leaderboardData[1].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[1].productivity_score)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[1].total_active_seconds)}</div>
                                 </div>
                                 <div className="w-20 h-32 bg-gradient-to-t from-gray-400/20 to-gray-300/10 rounded-t-lg backdrop-blur-sm border border-gray-200/20"></div>
                               </div>
@@ -748,7 +766,7 @@ export default function LeaderboardPage() {
                                   <div className="font-bold text-sm">
                                     {leaderboardData[0].first_name} {leaderboardData[0].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[0].productivity_score)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[0].total_active_seconds)}</div>
                                 </div>
                                 <div className="w-24 h-40 bg-gradient-to-t from-yellow-400/20 to-yellow-300/10 rounded-t-lg backdrop-blur-sm border border-yellow-200/20"></div>
                               </div>
@@ -773,7 +791,7 @@ export default function LeaderboardPage() {
                                   <div className="font-semibold text-sm">
                                     {leaderboardData[2].first_name} {leaderboardData[2].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[2].productivity_score)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[2].total_active_seconds)}</div>
                                 </div>
                                 <div className="w-20 h-32 bg-gradient-to-t from-amber-600/20 to-amber-500/10 rounded-t-lg backdrop-blur-sm border border-amber-400/20"></div>
                               </div>
@@ -790,8 +808,8 @@ export default function LeaderboardPage() {
                           Daily Performance
                         </CardTitle>
                         <CardDescription>
-                          <span className="@[540px]/card:block hidden">Track daily productivity scores for {selectedMonthName}—tap or hover to reveal the top 5 performers.</span>
-                          <span className="@[540px]/card:hidden">Track daily productivity scores for {selectedMonthName}—tap or hover to reveal the top 5 performers.</span>
+                          <span className="@[540px]/card:block hidden">Track daily points for {selectedMonthName}—tap or hover to reveal the top 5 stars.</span>
+                          <span className="@[540px]/card:hidden">Track daily points for {selectedMonthName}—tap or hover to reveal the top 5 stars.</span>
                         </CardDescription>
                         {/* No range toggle for daily chart; controlled by month selector above */}
                       </CardHeader>
@@ -800,7 +818,7 @@ export default function LeaderboardPage() {
                           <div className="text-center text-sm text-destructive mb-2">{trendError}</div>
                         )}
                         {!trendLoading && !trendError && dailyChartData.length === 0 && (
-                          <div className="text-center text-sm text-muted-foreground mb-2">No productivity data for {monthYear}.</div>
+                          <div className="text-center text-sm text-muted-foreground mb-2">No activity data for {monthYear}.</div>
                         )}
                         <div className="relative">
                         <ChartContainer
@@ -809,15 +827,15 @@ export default function LeaderboardPage() {
                         >
                             <AreaChart data={dailyChartData} margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
                             <defs>
-                          <linearGradient id="fillTotalProductivityScore" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id="fillTotalActive" x1="0" y1="0" x2="0" y2="1">
                                 <stop
                                   offset="5%"
-                              stopColor="var(--color-totalProductivityScore)"
+                              stopColor="var(--color-totalActive)"
                                   stopOpacity={1.0}
                                 />
                                 <stop
                                   offset="95%"
-                              stopColor="var(--color-totalProductivityScore)"
+                              stopColor="var(--color-totalActive)"
                                   stopOpacity={0.1}
                                 />
                               </linearGradient>
@@ -830,8 +848,11 @@ export default function LeaderboardPage() {
                               tickMargin={8}
                               minTickGap={32}
                               tickFormatter={(value) => {
-                                // For monthly data, just show the month
-                                return value
+                                const date = new Date(value)
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })
                               }}
                             />
                             <ChartTooltip
@@ -841,13 +862,15 @@ export default function LeaderboardPage() {
                                   className="min-w-[16rem]"
                                   labelClassName="text-center w-full"
                                   labelFormatter={(value) => {
-                                    // For monthly data, show the month and year
-                                    const [year, month] = value.split('-')
-                                    const date = new Date(parseInt(year), parseInt(month) - 1)
-                                    const monthName = date.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+                                    const date = new Date(value)
+                                    const dateText = date.toLocaleDateString("en-US", {
+                                      month: "long",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })
                                     return (
                                       <div className="flex w-full flex-col items-center">
-                                        <span>{monthName}</span>
+                                        <span>{dateText}</span>
                                         <div className="h-px w-full bg-foreground/20 my-1" />
                                       </div>
                                     )
@@ -859,7 +882,7 @@ export default function LeaderboardPage() {
                                       <div className="flex w-full flex-col gap-1">
                                         <div className="flex w-full items-center justify-between text-muted-foreground">
                                           <span>Top</span>
-                                          <span>Score</span>
+                                          <span>Points</span>
                                         </div>
                                         {([1,2,3,4,5] as const).map((rank) => {
                                           const user = d?.[`top${rank}` as const] as DailyTopUser | null | undefined
@@ -880,10 +903,10 @@ export default function LeaderboardPage() {
                               }
                             />
                             <Area
-                              dataKey="total_productivity_score"
+                              dataKey="total_active_seconds"
                               type="natural"
-                              fill="url(#fillTotalProductivityScore)"
-                              stroke="var(--color-totalProductivityScore)"
+                              fill="url(#fillTotalActive)"
+                              stroke="var(--color-totalActive)"
                               activeDot={{ r: 3 }}
                               stackId="a"
                             />

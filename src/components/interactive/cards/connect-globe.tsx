@@ -47,7 +47,7 @@ export function GrowthRateCard({ className }: GrowthRateCardProps) {
     <Card className={`@container/card relative overflow-hidden ${className}`}>
       <CardHeader className="relative">
         <CardTitle>Connect</CardTitle>
-        <CardDescription>Chat and collaborate with your team in real time via Connect chat.</CardDescription>
+        <CardDescription>Chat and collaborate with your team in real time via chat.</CardDescription>
       </CardHeader>
       <CardContent className="relative w-full grid">
         {/* Globe aligned at bottom and overlapping the card without absolute positioning */}

@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -213,10 +214,10 @@ export default function EmployeesPage() {
                       <div className="space-y-4">
                         {[...Array(10)].map((_, i) => (
                           <div key={i} className="flex items-center space-x-4">
-                            <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+                            <Skeleton className="h-10 w-10 rounded-full" />
                             <div className="space-y-2 flex-1">
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                              <div className="h-3 bg-gray-200 rounded animate-pulse w-1/3"></div>
+                              <Skeleton className="h-4 w-1/4" />
+                              <Skeleton className="h-3 w-1/3" />
                             </div>
                           </div>
                         ))}

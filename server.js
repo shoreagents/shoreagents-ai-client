@@ -58,6 +58,10 @@ async function startListening() {
     await notificationClient.query('LISTEN personal_info_changes')
     await notificationClient.query('LISTEN job_info_changes')
     await notificationClient.query('LISTEN break_sessions_changes')
+    await notificationClient.query('LISTEN activity_data_change')
+    await notificationClient.query('LISTEN restroom_status_change')
+    await notificationClient.query('LISTEN meeting_status_change')
+    await notificationClient.query('LISTEN event_attendance_changes')
 
     // Connect to BPOC database for job status notifications
     if (process.env.BPOC_DATABASE_URL) {
@@ -138,6 +142,14 @@ async function startListening() {
           messageType = 'job_info_update'
         } else if (msg.channel === 'break_sessions_changes') {
           messageType = 'break_session_update'
+        } else if (msg.channel === 'activity_data_change') {
+          messageType = 'activity_update'
+        } else if (msg.channel === 'restroom_status_change') {
+          messageType = 'restroom_status_update'
+        } else if (msg.channel === 'meeting_status_change') {
+          messageType = 'meeting_status_update'
+        } else if (msg.channel === 'event_attendance_changes') {
+          messageType = 'event_attendance_update'
         }
         
         // Broadcast to all connected WebSocket clients

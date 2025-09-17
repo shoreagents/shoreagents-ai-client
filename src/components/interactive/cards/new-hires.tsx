@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import NumberFlow from '@number-flow/react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { CalendarIcon, TrendingUpIcon } from "lucide-react"
 
@@ -30,9 +31,10 @@ interface Employee {
 interface NewHiresCardProps {
   employees: Employee[]
   className?: string
+  loading?: boolean
 }
 
-export function NewHires({ employees, className }: NewHiresCardProps) {
+export function NewHires({ employees, className, loading = false }: NewHiresCardProps) {
   const [viewMode, setViewMode] = useState<'month' | 'quarter' | 'half'>('month')
 
   // Calculate new hires based on viewMode
@@ -145,24 +147,10 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
 
   return (
     <Card className={`@container/card relative flex flex-col h-full ${className}`}>
-      <CardHeader className="relative flex-shrink-0">
-        <div className="flex justify-between items-start">
+      <CardHeader className="relative flex-shrink-0 pb-0">
+        <div className="flex justify-between items-center">
           <div>
             <CardTitle>New Hires</CardTitle>
-            <div className="mt-2">
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-purple-600" />
-                <NumberFlow 
-                  value={getNewHiresCount()}
-                  transformTiming={{ duration: 750, easing: 'ease-out' }}
-                  spinTiming={{ duration: 750, easing: 'ease-out' }}
-                  opacityTiming={{ duration: 350, easing: 'ease-out' }}
-                  className="text-2xl font-semibold tabular-nums"
-                  style={{ '--number-flow-mask-height': '0.1em' } as React.CSSProperties}
-                />
-              </div>
-              <CardDescription className="mt-1">Recently joined employees</CardDescription>
-            </div>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge className={`grid grid-cols-3 gap-1 rounded-lg text-xs bg-sidebar dark:bg-[#252525] transition-all duration-500 ease-out px-1.5 py-0.5 border w-20 h-6 items-center ${
@@ -193,6 +181,25 @@ export function NewHires({ employees, className }: NewHiresCardProps) {
           </div>
         </div>
       </CardHeader>
+      
+      <CardContent className="px-6 pb-6">
+        <div className="flex items-center gap-2">
+          <CalendarIcon className="h-5 w-5 text-purple-600" />
+          {loading || employees.length === 0 ? (
+            <Skeleton className="h-8 w-12" />
+          ) : (
+            <NumberFlow 
+              value={getNewHiresCount()}
+              transformTiming={{ duration: 750, easing: 'ease-out' }}
+              spinTiming={{ duration: 750, easing: 'ease-out' }}
+              opacityTiming={{ duration: 350, easing: 'ease-out' }}
+              className="text-2xl font-semibold tabular-nums"
+              style={{ '--number-flow-mask-height': '0.1em' } as React.CSSProperties}
+            />
+          )}
+        </div>
+        <CardDescription className="mt-1">Recently joined employees</CardDescription>
+      </CardContent>
       
       {/* Flexible content area */}
       <div className="flex-1 min-h-0 flex flex-col justify-end">

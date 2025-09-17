@@ -2438,14 +2438,35 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
         ELSE false
       END as is_on_break,
       bs.break_type as current_break_type,
+      bs.start_time as break_start_time,
       bs.pause_time,
+      bs.resume_time,
       CASE 
         WHEN m.id IS NOT NULL AND m.is_in_meeting = true AND m.status = 'in-progress' THEN true
         ELSE false
       END as is_in_meeting,
       m.title as meeting_title,
       m.meeting_type,
-      m.start_time as meeting_start_time
+      m.start_time as meeting_start_time,
+      CASE 
+        WHEN ea.id IS NOT NULL AND ea.is_going = true AND ea.is_back = false THEN true
+        ELSE false
+      END as is_in_event,
+      e.title as event_title,
+      e.location as event_location,
+      (e.event_date + e.start_time) as event_start_time,
+      (e.event_date + e.end_time) as event_end_time,
+      ea.is_going,
+      ea.is_back,
+      ea.going_at,
+      ea.back_at,
+      CASE 
+        WHEN ars.id IS NOT NULL AND ars.is_in_restroom = true THEN true
+        ELSE false
+      END as is_in_restroom,
+      COALESCE(ars.restroom_count, 0) as restroom_count,
+      COALESCE(ars.daily_restroom_count, 0) as daily_restroom_count,
+      ars.updated_at as restroom_went_at
     FROM activity_data ad
     JOIN users u ON ad.user_id = u.id
     LEFT JOIN personal_info pi ON u.id = pi.user_id
@@ -2458,6 +2479,13 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
       AND m.is_in_meeting = true 
       AND m.status = 'in-progress'
       AND DATE(m.start_time) = ad.today_date
+    LEFT JOIN event_attendance ea ON ad.user_id = ea.user_id 
+      AND ea.is_going = true 
+      AND ea.is_back = false
+    LEFT JOIN events e ON ea.event_id = e.id 
+      AND e.event_date = ad.today_date
+      AND e.status = 'today'
+    LEFT JOIN agent_restroom_status ars ON ad.user_id = ars.agent_user_id
     WHERE ad.today_date BETWEEN $1 AND $2
       AND ($3 = 'all' OR u.id IN (
         SELECT user_id FROM agents WHERE member_id = $3::int

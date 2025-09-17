@@ -102,7 +102,7 @@ export function ActivityRankings({
 
   return (
     <Card 
-      className={`${className} bg-gradient-to-br from-white/60 via-white/10 to-violet-500/30 dark:from-black/70 dark:via-black/20 dark:to-violet-400/40 cursor-pointer transition-all duration-200 group`} 
+      className={`${className} bg-gradient-to-br from-white/60 via-white/10 to-violet-500/30 dark:from-black/70 dark:via-black/20 dark:to-violet-400/40 cursor-pointer transition-all duration-200 group flex flex-col`} 
       onClick={handleCardClick}
       onMouseEnter={() => setIsCardHovered(true)}
       onMouseLeave={() => setIsCardHovered(false)}
@@ -113,7 +113,7 @@ export function ActivityRankings({
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 flex-1 flex flex-col justify-end">
         <div className="flex gap-1">
           {/* First Column - Trophy Image */}
           <div className="w-[35%] flex items-end justify-start">

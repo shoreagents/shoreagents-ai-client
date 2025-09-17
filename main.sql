@@ -66,6 +66,15 @@ CREATE SEQUENCE public.activity_data_id_seq
 	START 1
 	CACHE 1
 	NO CYCLE;
+-- DROP SEQUENCE public.agent_restroom_status_id_seq;
+
+CREATE SEQUENCE public.agent_restroom_status_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
 -- DROP SEQUENCE public.break_sessions_id_seq;
 
 CREATE SEQUENCE public.break_sessions_id_seq
@@ -105,6 +114,24 @@ CREATE SEQUENCE public.clinic_logs_id_seq
 -- DROP SEQUENCE public.departments_id_seq;
 
 CREATE SEQUENCE public.departments_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.event_attendance_id_seq;
+
+CREATE SEQUENCE public.event_attendance_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+-- DROP SEQUENCE public.events_id_seq;
+
+CREATE SEQUENCE public.events_id_seq
 	INCREMENT BY 1
 	MINVALUE 1
 	MAXVALUE 2147483647
@@ -402,10 +429,6 @@ update
     public.break_sessions for each row execute function calculate_break_duration();
 
 COMMENT ON TRIGGER calculate_break_duration_trigger ON public.break_sessions IS 'Automatically calculates duration_minutes when end_time is set, handling paused breaks correctly';
-create trigger update_break_sessions_updated_at before
-update
-    on
-    public.break_sessions for each row execute function update_updated_at_column();
 create trigger notify_break_sessions_changes after
 insert
     or
@@ -414,6 +437,10 @@ delete
 update
     on
     public.break_sessions for each row execute function notify_break_sessions_changes();
+create trigger update_break_sessions_updated_at before
+update
+    on
+    public.break_sessions for each row execute function update_updated_at_column();
 
 
 -- public.floor_plans definition
@@ -462,26 +489,6 @@ create trigger update_inventory_medical_suppliers_updated_at before
 update
     on
     public.inventory_medical_suppliers for each row execute function update_updated_at_column();
-
-
--- public.meetings definition
-
--- Drop table
-
--- DROP TABLE public.meetings;
-
-CREATE TABLE public.meetings ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, title varchar(255) NOT NULL, description text NULL, start_time timestamptz DEFAULT now() NULL, end_time timestamptz DEFAULT now() NULL, duration_minutes int4 NOT NULL, meeting_type varchar(50) NOT NULL, status varchar(50) DEFAULT 'scheduled'::character varying NOT NULL, is_in_meeting bool DEFAULT false NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, actual_start_time timestamptz DEFAULT now() NULL, CONSTRAINT meetings_meeting_type_check CHECK (((meeting_type)::text = ANY (ARRAY[('video'::character varying)::text, ('audio'::character varying)::text, ('in-person'::character varying)::text]))), CONSTRAINT meetings_pkey PRIMARY KEY (id), CONSTRAINT meetings_status_check CHECK (((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))));
-CREATE INDEX idx_meetings_agent_user_id ON public.meetings USING btree (agent_user_id);
-CREATE INDEX idx_meetings_created_at ON public.meetings USING btree (created_at);
-CREATE INDEX idx_meetings_start_time ON public.meetings USING btree (start_time);
-CREATE INDEX idx_meetings_status ON public.meetings USING btree (status);
-
--- Table Triggers
-
-create trigger trigger_update_meetings_updated_at before
-update
-    on
-    public.meetings for each row execute function update_meetings_updated_at();
 
 
 -- public.roles definition
@@ -546,12 +553,12 @@ CREATE INDEX idx_activity_data_user_date ON public.activity_data USING btree (us
 
 -- Table Triggers
 
-create trigger trg_productivity_score_on_time_change after
+create trigger notify_activity_data_change after
 insert
     or
 update
     on
-    public.activity_data for each row execute function update_productivity_score_on_time_change();
+    public.activity_data for each row execute function notify_activity_data_change();
 create trigger trg_auto_aggregate_on_insert after
 insert
     on
@@ -560,16 +567,44 @@ create trigger trg_auto_aggregate_on_update after
 update
     on
     public.activity_data for each row execute function auto_aggregate_all_on_activity_change();
-create trigger update_activity_data_updated_at before
-update
-    on
-    public.activity_data for each row execute function update_updated_at_column();
-create trigger notify_activity_data_change after
+create trigger trg_productivity_score_on_time_change after
 insert
     or
 update
     on
-    public.activity_data for each row execute function notify_activity_data_change();
+    public.activity_data for each row execute function update_productivity_score_on_time_change();
+create trigger update_activity_data_updated_at before
+update
+    on
+    public.activity_data for each row execute function update_updated_at_column();
+
+
+-- public.agent_restroom_status definition
+
+-- Drop table
+
+-- DROP TABLE public.agent_restroom_status;
+
+CREATE TABLE public.agent_restroom_status ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, is_in_restroom bool DEFAULT false NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, restroom_count int4 DEFAULT 0 NOT NULL, daily_restroom_count int4 DEFAULT 0 NOT NULL, last_daily_reset date DEFAULT CURRENT_DATE NULL, CONSTRAINT agent_restroom_status_pkey PRIMARY KEY (id), CONSTRAINT agent_restroom_status_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_agent_restroom_status_agent_user_id ON public.agent_restroom_status USING btree (agent_user_id);
+CREATE INDEX idx_agent_restroom_status_is_in_restroom ON public.agent_restroom_status USING btree (is_in_restroom);
+CREATE INDEX idx_agent_restroom_status_last_daily_reset ON public.agent_restroom_status USING btree (last_daily_reset);
+CREATE UNIQUE INDEX idx_agent_restroom_status_unique_agent ON public.agent_restroom_status USING btree (agent_user_id);
+
+-- Table Triggers
+
+create trigger notify_restroom_status_change after
+insert
+    or
+delete
+    or
+update
+    on
+    public.agent_restroom_status for each row execute function notify_restroom_status_change();
+create trigger update_agent_restroom_status_updated_at before
+update
+    on
+    public.agent_restroom_status for each row execute function update_updated_at_column();
 
 
 -- public.clinic_logs definition
@@ -579,6 +614,28 @@ update
 -- DROP TABLE public.clinic_logs;
 
 CREATE TABLE public.clinic_logs ( id serial4 NOT NULL, patient_id int4 NOT NULL, additional_notes text NULL, issued_by varchar(255) NOT NULL, created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, patient_diagnose text NOT NULL, CONSTRAINT clinic_logs_pkey PRIMARY KEY (id), CONSTRAINT clinic_logs_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.users(id) ON DELETE CASCADE);
+
+
+-- public.events definition
+
+-- Drop table
+
+-- DROP TABLE public.events;
+
+CREATE TABLE public.events ( id serial4 NOT NULL, title varchar(255) NOT NULL, description text NULL, event_date date NOT NULL, start_time time NOT NULL, end_time time NOT NULL, "location" varchar(255) NULL, status varchar(20) DEFAULT 'upcoming'::character varying NULL, created_by int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, event_type varchar(20) DEFAULT 'event'::character varying NOT NULL, assigned_user_ids _int4 NULL, CONSTRAINT events_assigned_user_ids_check CHECK (((assigned_user_ids IS NULL) OR (array_length(assigned_user_ids, 1) > 0))), CONSTRAINT events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('event'::character varying)::text, ('activity'::character varying)::text]))), CONSTRAINT events_pkey PRIMARY KEY (id), CONSTRAINT events_status_check CHECK (((status)::text = ANY (ARRAY[('upcoming'::character varying)::text, ('today'::character varying)::text, ('cancelled'::character varying)::text, ('ended'::character varying)::text]))), CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_events_assigned_user_ids ON public.events USING gin (assigned_user_ids);
+CREATE INDEX idx_events_created_by ON public.events USING btree (created_by);
+CREATE INDEX idx_events_date ON public.events USING btree (event_date);
+CREATE INDEX idx_events_status ON public.events USING btree (status);
+CREATE INDEX idx_events_status_date ON public.events USING btree (status, event_date);
+CREATE INDEX idx_events_type_status ON public.events USING btree (event_type, status);
+
+-- Table Triggers
+
+create trigger update_events_updated_at before
+update
+    on
+    public.events for each row execute function update_updated_at_column();
 
 
 -- public.internal definition
@@ -627,6 +684,38 @@ create trigger update_inventory_medical_updated_at before
 update
     on
     public.inventory_medical for each row execute function update_updated_at_column();
+
+
+-- public.meetings definition
+
+-- Drop table
+
+-- DROP TABLE public.meetings;
+
+CREATE TABLE public.meetings ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, title varchar(255) NOT NULL, description text NULL, start_time timestamptz DEFAULT now() NULL, end_time timestamptz DEFAULT now() NULL, duration_minutes int4 NOT NULL, meeting_type varchar(50) NOT NULL, status varchar(50) DEFAULT 'scheduled'::character varying NOT NULL, is_in_meeting bool DEFAULT false NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, started_automatically bool DEFAULT false NULL, CONSTRAINT check_meeting_status_consistency CHECK ((((is_in_meeting = true) AND ((status)::text = 'in-progress'::text)) OR (is_in_meeting = false))), CONSTRAINT meetings_meeting_type_check CHECK (((meeting_type)::text = ANY (ARRAY[('video'::character varying)::text, ('audio'::character varying)::text, ('in-person'::character varying)::text]))), CONSTRAINT meetings_pkey PRIMARY KEY (id), CONSTRAINT meetings_status_check CHECK (((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))), CONSTRAINT meetings_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_meetings_agent_user_id ON public.meetings USING btree (agent_user_id);
+CREATE INDEX idx_meetings_created_at ON public.meetings USING btree (created_at);
+CREATE INDEX idx_meetings_notification_queries ON public.meetings USING btree (status, start_time, started_automatically) WHERE ((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text]));
+CREATE INDEX idx_meetings_start_time ON public.meetings USING btree (start_time);
+CREATE INDEX idx_meetings_started_automatically ON public.meetings USING btree (started_automatically);
+CREATE INDEX idx_meetings_status ON public.meetings USING btree (status);
+
+-- Table Triggers
+
+create trigger trigger_meeting_end after
+update
+    on
+    public.meetings for each row execute function notify_meeting_end();
+create trigger trigger_meeting_status_change after
+insert
+    or
+update
+    on
+    public.meetings for each row execute function notify_meeting_status_change();
+create trigger trigger_update_meetings_updated_at before
+update
+    on
+    public.meetings for each row execute function update_meetings_updated_at();
 
 
 -- public.members definition
@@ -794,13 +883,22 @@ CREATE INDEX idx_talent_pool_interested_clients ON public.talent_pool USING gin 
 
 CREATE TABLE public.tickets ( id serial4 NOT NULL, ticket_id varchar(50) NOT NULL, user_id int4 NOT NULL, concern text NOT NULL, details text NULL, status public."ticket_status_enum" DEFAULT 'For Approval'::ticket_status_enum NOT NULL, resolved_by int4 NULL, resolved_at timestamptz DEFAULT now() NULL, created_at timestamptz DEFAULT now() NOT NULL, updated_at timestamptz DEFAULT now() NOT NULL, "position" int4 DEFAULT 0 NOT NULL, category_id int4 NULL, supporting_files _text DEFAULT '{}'::text[] NULL, file_count int4 DEFAULT 0 NULL, role_id int4 NULL, clear bool DEFAULT false NOT NULL, CONSTRAINT check_file_count CHECK (((file_count = array_length(supporting_files, 1)) OR ((file_count = 0) AND (supporting_files = '{}'::text[])))), CONSTRAINT tickets_pkey PRIMARY KEY (id), CONSTRAINT tickets_ticket_id_key UNIQUE (ticket_id), CONSTRAINT tickets_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ticket_categories(id) ON DELETE SET NULL, CONSTRAINT tickets_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(id) ON DELETE SET NULL, CONSTRAINT tickets_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE SET NULL, CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
 CREATE INDEX idx_tickets_active ON public.tickets USING btree (status, "position") WHERE (status <> 'Closed'::ticket_status_enum);
+CREATE INDEX idx_tickets_category_id ON public.tickets USING btree (category_id);
 CREATE INDEX idx_tickets_clear_status ON public.tickets USING btree (clear, status);
 CREATE INDEX idx_tickets_closed_clear ON public.tickets USING btree (resolved_at, clear) WHERE (status = 'Closed'::ticket_status_enum);
 CREATE INDEX idx_tickets_created_at ON public.tickets USING btree (created_at);
+CREATE INDEX idx_tickets_created_at_desc ON public.tickets USING btree (created_at DESC);
+CREATE INDEX idx_tickets_pagination ON public.tickets USING btree (status, role_id, clear, created_at DESC, id);
 CREATE INDEX idx_tickets_resolved_at ON public.tickets USING btree (resolved_at);
+CREATE INDEX idx_tickets_resolved_at_desc ON public.tickets USING btree (resolved_at DESC);
+CREATE INDEX idx_tickets_resolved_by ON public.tickets USING btree (resolved_by);
+CREATE INDEX idx_tickets_role_id ON public.tickets USING btree (role_id);
 CREATE INDEX idx_tickets_status ON public.tickets USING btree (status);
 CREATE INDEX idx_tickets_status_clear ON public.tickets USING btree (status, clear);
 CREATE INDEX idx_tickets_status_role ON public.tickets USING btree (status, role_id);
+CREATE INDEX idx_tickets_status_role_clear_created ON public.tickets USING btree (status, role_id, clear, created_at DESC) WHERE (status <> 'Closed'::ticket_status_enum);
+CREATE INDEX idx_tickets_status_role_clear_resolved ON public.tickets USING btree (status, role_id, clear, resolved_at DESC) WHERE (status = 'Closed'::ticket_status_enum);
+CREATE INDEX idx_tickets_ticket_id ON public.tickets USING btree (ticket_id);
 CREATE INDEX idx_tickets_user_id ON public.tickets USING btree (user_id);
 
 -- Table Triggers
@@ -899,6 +997,34 @@ create trigger update_departments_updated_at before
 update
     on
     public.departments for each row execute function update_updated_at_column();
+
+
+-- public.event_attendance definition
+
+-- Drop table
+
+-- DROP TABLE public.event_attendance;
+
+CREATE TABLE public.event_attendance ( id serial4 NOT NULL, event_id int4 NOT NULL, user_id int4 NOT NULL, is_going bool DEFAULT false NULL, is_back bool DEFAULT false NULL, going_at timestamp NULL, back_at timestamp NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT event_attendance_event_id_user_id_key UNIQUE (event_id, user_id), CONSTRAINT event_attendance_pkey PRIMARY KEY (id), CONSTRAINT event_attendance_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE, CONSTRAINT event_attendance_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE INDEX idx_event_attendance_event_id ON public.event_attendance USING btree (event_id);
+CREATE INDEX idx_event_attendance_going ON public.event_attendance USING btree (is_going, is_back) WHERE (is_going = true);
+CREATE INDEX idx_event_attendance_user_event ON public.event_attendance USING btree (user_id, event_id);
+CREATE INDEX idx_event_attendance_user_id ON public.event_attendance USING btree (user_id);
+
+-- Table Triggers
+
+create trigger event_attendance_notify_trigger after
+insert
+    or
+delete
+    or
+update
+    on
+    public.event_attendance for each row execute function notify_event_attendance_change();
+create trigger update_event_attendance_updated_at before
+update
+    on
+    public.event_attendance for each row execute function update_updated_at_column();
 
 
 -- public.floor_plan_members definition
@@ -1937,18 +2063,18 @@ CREATE OR REPLACE FUNCTION public.decrypt_iv(bytea, bytea, bytea, text)
 AS '$libdir/pgcrypto', $function$pg_decrypt_iv$function$
 ;
 
--- DROP FUNCTION public.digest(bytea, text);
+-- DROP FUNCTION public.digest(text, text);
 
-CREATE OR REPLACE FUNCTION public.digest(bytea, text)
+CREATE OR REPLACE FUNCTION public.digest(text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pg_digest$function$
 ;
 
--- DROP FUNCTION public.digest(text, text);
+-- DROP FUNCTION public.digest(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.digest(text, text)
+CREATE OR REPLACE FUNCTION public.digest(bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -1991,15 +2117,6 @@ CREATE OR REPLACE FUNCTION public.gen_random_uuid()
 AS '$libdir/pgcrypto', $function$pg_random_uuid$function$
 ;
 
--- DROP FUNCTION public.gen_salt(text, int4);
-
-CREATE OR REPLACE FUNCTION public.gen_salt(text, integer)
- RETURNS text
- LANGUAGE c
- PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pg_gen_salt_rounds$function$
-;
-
 -- DROP FUNCTION public.gen_salt(text);
 
 CREATE OR REPLACE FUNCTION public.gen_salt(text)
@@ -2007,6 +2124,15 @@ CREATE OR REPLACE FUNCTION public.gen_salt(text)
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pg_gen_salt$function$
+;
+
+-- DROP FUNCTION public.gen_salt(text, int4);
+
+CREATE OR REPLACE FUNCTION public.gen_salt(text, integer)
+ RETURNS text
+ LANGUAGE c
+ PARALLEL SAFE STRICT
+AS '$libdir/pgcrypto', $function$pg_gen_salt_rounds$function$
 ;
 
 -- DROP FUNCTION public.generate_ticket_id();
@@ -3176,6 +3302,77 @@ END;
 $function$
 ;
 
+-- DROP FUNCTION public.notify_event_attendance_change();
+
+CREATE OR REPLACE FUNCTION public.notify_event_attendance_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    notification_payload JSONB;
+    event_data JSONB;
+    user_data JSONB;
+BEGIN
+    -- Get event details
+    SELECT to_jsonb(e) INTO event_data
+    FROM events e
+    WHERE e.id = COALESCE(NEW.event_id, OLD.event_id);
+    
+    -- Get user details
+    SELECT to_jsonb(u) INTO user_data
+    FROM users u
+    WHERE u.id = COALESCE(NEW.user_id, OLD.user_id);
+    
+    -- Determine the operation type
+    IF TG_OP = 'INSERT' THEN
+        notification_payload := jsonb_build_object(
+            'type', 'event_attendance_created',
+            'event_id', NEW.event_id,
+            'user_id', NEW.user_id,
+            'is_going', NEW.is_going,
+            'is_back', NEW.is_back,
+            'going_at', NEW.going_at,
+            'back_at', NEW.back_at,
+            'event_data', event_data,
+            'user_data', user_data
+        );
+    ELSIF TG_OP = 'UPDATE' THEN
+        notification_payload := jsonb_build_object(
+            'type', 'event_attendance_updated',
+            'event_id', NEW.event_id,
+            'user_id', NEW.user_id,
+            'is_going', NEW.is_going,
+            'is_back', NEW.is_back,
+            'going_at', NEW.going_at,
+            'back_at', NEW.back_at,
+            'old_data', to_jsonb(OLD),
+            'new_data', to_jsonb(NEW),
+            'event_data', event_data,
+            'user_data', user_data
+        );
+    ELSIF TG_OP = 'DELETE' THEN
+        notification_payload := jsonb_build_object(
+            'type', 'event_attendance_deleted',
+            'event_id', OLD.event_id,
+            'user_id', OLD.user_id,
+            'event_data', event_data,
+            'user_data', user_data
+        );
+    END IF;
+
+    -- Send the notification
+    PERFORM pg_notify('event_attendance_changes', notification_payload::text);
+    
+    -- Return the appropriate record
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$function$
+;
+
 -- DROP FUNCTION public.notify_job_info_changes();
 
 CREATE OR REPLACE FUNCTION public.notify_job_info_changes()
@@ -3291,6 +3488,82 @@ BEGIN
 END;
 $function$
 ;
+
+-- DROP FUNCTION public.notify_meeting_end();
+
+CREATE OR REPLACE FUNCTION public.notify_meeting_end()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    payload JSON;
+BEGIN
+    -- Notify when meeting status changes to completed
+    IF TG_OP = 'UPDATE' AND OLD.status != 'completed' AND NEW.status = 'completed' THEN
+        
+        payload := json_build_object(
+            'meeting_id', NEW.id,
+            'agent_user_id', NEW.agent_user_id,
+            'is_in_meeting', false,
+            'status', NEW.status,
+            'title', NEW.title,
+            'start_time', NEW.start_time,
+            'end_time', NEW.end_time,
+            'operation', 'meeting_ended',
+            'timestamp', NOW()
+        );
+        
+        -- Send notification
+        PERFORM pg_notify('meeting_status_change', payload::text);
+        PERFORM pg_notify('"meeting-update"', payload::text);
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+;
+
+COMMENT ON FUNCTION public.notify_meeting_end() IS 'Notifies when meeting ends, including started_automatically flag';
+
+-- DROP FUNCTION public.notify_meeting_status_change();
+
+CREATE OR REPLACE FUNCTION public.notify_meeting_status_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    payload JSON;
+BEGIN
+    -- Only notify if is_in_meeting status changed
+    IF (TG_OP = 'UPDATE' AND OLD.is_in_meeting IS DISTINCT FROM NEW.is_in_meeting) OR
+       (TG_OP = 'INSERT' AND NEW.is_in_meeting = true) THEN
+        
+        -- Create payload with meeting and user information
+        payload := json_build_object(
+            'meeting_id', NEW.id,
+            'agent_user_id', NEW.agent_user_id,
+            'is_in_meeting', NEW.is_in_meeting,
+            'status', NEW.status,
+            'title', NEW.title,
+            'start_time', NEW.start_time,
+            'end_time', NEW.end_time,
+            'operation', TG_OP,
+            'timestamp', NOW()
+        );
+        
+        -- Send notification
+        PERFORM pg_notify('meeting_status_change', payload::text);
+        
+        -- Also send a specific notification for meeting updates
+        PERFORM pg_notify('"meeting-update"', payload::text);
+    END IF;
+    
+    RETURN NEW;
+END;
+$function$
+;
+
+COMMENT ON FUNCTION public.notify_meeting_status_change() IS 'Notifies when meeting status changes, including started_automatically flag';
 
 -- DROP FUNCTION public.notify_member_activity_changes();
 
@@ -3504,6 +3777,40 @@ END;
 $function$
 ;
 
+-- DROP FUNCTION public.notify_restroom_status_change();
+
+CREATE OR REPLACE FUNCTION public.notify_restroom_status_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    notification_data JSONB;
+BEGIN
+    -- Build notification payload
+    notification_data := jsonb_build_object(
+        'user_id', NEW.agent_user_id,
+        'action', TG_OP,
+        'table', 'agent_restroom_status',
+        'data', jsonb_build_object(
+            'id', NEW.id,
+            'user_id', NEW.agent_user_id,
+            'agent_user_id', NEW.agent_user_id,
+            'is_in_restroom', NEW.is_in_restroom,
+            'restroom_count', NEW.restroom_count,
+            'daily_restroom_count', NEW.daily_restroom_count,
+            'created_at', NEW.created_at,
+            'updated_at', NEW.updated_at
+        )
+    );
+    
+    -- Send notification to the restroom_status_change channel
+    PERFORM pg_notify('restroom_status_change', notification_data::text);
+    
+    RETURN NEW;
+END;
+$function$
+;
+
 -- DROP FUNCTION public.notify_ticket_change();
 
 CREATE OR REPLACE FUNCTION public.notify_ticket_change()
@@ -3577,9 +3884,9 @@ CREATE OR REPLACE FUNCTION public.pgp_key_id(bytea)
 AS '$libdir/pgcrypto', $function$pgp_key_id_w$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea);
+-- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text)
  RETURNS text
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -3595,9 +3902,9 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text)
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text);
+-- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea)
  RETURNS text
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -3613,15 +3920,6 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
-
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
- RETURNS bytea
- LANGUAGE c
- IMMUTABLE PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
-;
-
 -- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text);
 
 CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text)
@@ -3631,13 +3929,13 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text)
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt(text, bytea);
+-- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
  RETURNS bytea
  LANGUAGE c
- PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_text$function$
+ IMMUTABLE PARALLEL SAFE STRICT
+AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
 ;
 
 -- DROP FUNCTION public.pgp_pub_encrypt(text, bytea, text);
@@ -3649,18 +3947,27 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea, text)
 AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea);
+-- DROP FUNCTION public.pgp_pub_encrypt(text, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea)
+ RETURNS bytea
+ LANGUAGE c
+ PARALLEL SAFE STRICT
+AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_text$function$
+;
+
+-- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text);
+
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text);
+-- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
@@ -3685,18 +3992,18 @@ CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt(bytea, text)
 AS '$libdir/pgcrypto', $function$pgp_sym_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text);
+-- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_sym_decrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text);
+-- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT

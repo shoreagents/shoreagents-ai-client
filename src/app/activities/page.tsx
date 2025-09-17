@@ -32,6 +32,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ActivityDataCard } from "@/components/activity-data-card"
+import { useRealtimeActivities, ActivityEntry as RealtimeActivityEntry } from "@/hooks/use-realtime-activities"
 
 interface ActivityEntry {
   id: number
@@ -50,11 +52,26 @@ interface ActivityEntry {
   department_name: string | null
   is_on_break: boolean
   current_break_type: string | null
+  break_start_time: string | null
   pause_time: string | null
+  resume_time: string | null
   is_in_meeting: boolean
   meeting_title: string | null
   meeting_type: string | null
   meeting_start_time: string | null
+  is_in_event: boolean
+  event_title: string | null
+  event_location: string | null
+  event_start_time: string | null
+  event_end_time: string | null
+  is_going: boolean | null
+  is_back: boolean | null
+  going_at: string | null
+  back_at: string | null
+  is_in_restroom: boolean
+  restroom_count: number
+  daily_restroom_count: number
+  restroom_went_at: string | null
 }
 
 interface Employee {
@@ -101,6 +118,40 @@ export default function ActivitiesPage() {
   const [monthActivities, setMonthActivities] = useState<ActivityEntry[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   
+  // Realtime functionality
+  const { isConnected: isRealtimeConnected, error: realtimeError } = useRealtimeActivities({
+    onActivityCreated: (newActivity: ActivityEntry) => {
+      console.log('🆕 New activity created:', newActivity)
+      // Add new activity to the list if it's for today
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+      if (newActivity.today_date === today) {
+        setActivities(prev => {
+          // Check if activity already exists (avoid duplicates)
+          const exists = prev.some(activity => activity.id === newActivity.id)
+          if (exists) return prev
+          
+          // Add new activity
+          return [...prev, newActivity]
+        })
+      }
+    },
+    onActivityUpdated: (updatedActivity: ActivityEntry, oldActivity?: ActivityEntry) => {
+      console.log('📝 Activity updated:', updatedActivity, 'Old:', oldActivity)
+      // Update existing activity in the list
+      setActivities(prev => 
+        prev.map(activity => 
+          activity.id === updatedActivity.id ? updatedActivity : activity
+        )
+      )
+    },
+    onActivityDeleted: (deletedActivity: ActivityEntry) => {
+      console.log('🗑️ Activity deleted:', deletedActivity)
+      // Remove activity from the list
+      setActivities(prev => 
+        prev.filter(activity => activity.id !== deletedActivity.id)
+      )
+    }
+  })
   
   // Sorting
   const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('name')
@@ -289,12 +340,151 @@ export default function ActivitiesPage() {
     }
   }
 
-const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string, isOnBreak: boolean, currentBreakType: string | null, pauseTime: string | null, isInMeeting: boolean, meetingTitle: string | null, meetingType: string | null, meetingStartTime: string | null) => {
+  const getBreakElapsedTime = (breakStartTime: string, pauseTime: string | null, resumeTime: string | null) => {
+    const start = new Date(breakStartTime)
+    const now = currentTime
+    
+    // Calculate paused duration (same logic as breaks page)
+    let pausedMs = 0
+    if (pauseTime) {
+      const pauseStart = new Date(pauseTime)
+      if (resumeTime) {
+        const pauseEnd = new Date(resumeTime)
+        pausedMs += Math.max(0, pauseEnd.getTime() - pauseStart.getTime())
+      } else {
+        // Currently paused: freeze elapsed by subtracting ongoing pause window
+        pausedMs += Math.max(0, now.getTime() - pauseStart.getTime())
+      }
+    }
+
+    const elapsedMs = Math.max(0, now.getTime() - start.getTime() - pausedMs)
+    const hours = Math.floor(elapsedMs / (1000 * 60 * 60))
+    const minutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((elapsedMs % (1000 * 60)) / 1000)
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds}s`
+    } else {
+      return `${seconds}s`
+    }
+  }
+
+const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string, isOnBreak: boolean, currentBreakType: string | null, breakStartTime: string | null, pauseTime: string | null, resumeTime: string | null, isInMeeting: boolean, meetingTitle: string | null, meetingType: string | null, meetingStartTime: string | null, isInEvent: boolean, eventTitle: string | null, eventLocation: string | null, eventStartTime: string | null, eventEndTime: string | null, isGoing: boolean | null, isBack: boolean | null, goingAt: string | null, backAt: string | null, isInRestroom: boolean, restroomCount: number, dailyRestroomCount: number, restroomWentAt: string | null) => {
   if (!hasActivityData) {
     return <span className="text-muted-foreground text-sm">-</span>
   }
   
-  // Check if user is in meeting first (highest priority)
+  // Check if user is inactive first (highest priority)
+  if (lastSessionStart && !isActive) {
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Last Active</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
+                </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  
+  // Check if no last session start (also inactive)
+  if (!lastSessionStart) {
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Last Active</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
+                </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  
+  // Check if user is on break second
+  if (isOnBreak) {
+    // If on break but has pause_time data and no resume_time, show as Active (break is paused)
+    if (pauseTime && !resumeTime) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+    }
+    
+    // Show On Break with tooltip
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col items-center">
+              <span className="font-bold text-sm">{currentBreakType ? `${currentBreakType} Break` : 'Break'}</span>
+              <div className="h-px w-full bg-foreground/20 my-2" />
+              <div className="flex w-full flex-col gap-1">
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Started</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {breakStartTime ? formatTimeOnlyLocal(breakStartTime) : formatTimeOnlyLocal(updatedAt)}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {breakStartTime ? formatTimeOnly(breakStartTime) : formatTimeOnly(updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">
+                    {breakStartTime ? getBreakElapsedTime(breakStartTime, pauseTime, resumeTime) : getElapsedTime(updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  
+  // Check if user is in meeting third
   if (isInMeeting) {
     return (
       <TooltipProvider>
@@ -304,8 +494,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
           </TooltipTrigger>
           <TooltipContent className="min-w-[12rem]">
             <div className="flex w-full flex-col items-center">
-              <span className="font-bold">{meetingTitle || 'Unknown Meeting'}</span>
-              <div className="h-px w-full bg-foreground/20 my-1" />
+              <span className="font-bold text-sm">{meetingTitle || 'Unknown Meeting'}</span>
+              <div className="h-px w-full bg-foreground/20 my-2" />
               <div className="flex w-full flex-col gap-1">
                 <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
                   <span className="text-muted-foreground">Started</span>
@@ -332,42 +522,136 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     )
   }
   
-  // Check if user is on break second
-  if (isOnBreak) {
-    // If on break but has pause_time data, show as Active (break is paused)
-    if (pauseTime) {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
-    }
-    
-    // Show On Break with tooltip
+  // Check if user is in event fourth
+  if (isInEvent) {
     return (
       <TooltipProvider>
         <Tooltip delayDuration={300}>
           <TooltipTrigger>
-            <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
+            <Badge className="bg-pink-200 text-pink-800 border-pink-200">In Event</Badge>
           </TooltipTrigger>
           <TooltipContent className="min-w-[12rem]">
             <div className="flex w-full flex-col items-center">
-              <span className="font-bold">
-                Currently on {currentBreakType ? `${currentBreakType} Break` : 'Break'}
-              </span>
-              <div className="h-px w-full bg-foreground/20 my-1" />
-              <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Started</span>
-                  <div className="flex flex-col items-start">
-                    <span className="font-bold">
-                      Local: {formatTimeOnlyLocal(updatedAt)}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {formatTimeOnly(updatedAt)}
-                    </span>
-                  </div>
+              <span className="font-bold text-sm">{eventTitle || 'Unknown Event'}</span>
+              
+              {/* Event Schedule - moved to top */}
+              <div className="grid grid-cols-[1fr_2fr] gap-4 w-full mt-2">
+                <span className="text-muted-foreground">Event Schedule</span>
+                <div className="flex flex-col items-start">
+                  <span className="font-bold">
+                    Local: {eventStartTime ? (() => {
+                      // Create a date object treating the database time as Philippines timezone
+                      const date = new Date(eventStartTime);
+                      // Get the time components
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const hours = String(date.getHours()).padStart(2, '0');
+                      const minutes = String(date.getMinutes()).padStart(2, '0');
+                      const seconds = String(date.getSeconds()).padStart(2, '0');
+                      
+                      // Create ISO string with Philippines timezone offset
+                      const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+                      const phTime = new Date(phTimeString);
+                      
+                      return phTime.toLocaleString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                    })() : 'Unknown'} - {eventEndTime ? (() => {
+                      // Create a date object treating the database time as Philippines timezone
+                      const date = new Date(eventEndTime);
+                      // Get the time components
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      const hours = String(date.getHours()).padStart(2, '0');
+                      const minutes = String(date.getMinutes()).padStart(2, '0');
+                      const seconds = String(date.getSeconds()).padStart(2, '0');
+                      
+                      // Create ISO string with Philippines timezone offset
+                      const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+                      const phTime = new Date(phTimeString);
+                      
+                      return phTime.toLocaleString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      });
+                    })() : 'Unknown'}
+                  </span>
+                  <span className="font-bold text-muted-foreground text-xs">
+                    PH: {eventStartTime ? new Date(eventStartTime).toLocaleString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }) : 'Unknown'} - {eventEndTime ? new Date(eventEndTime).toLocaleString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }) : 'Unknown'}
+                  </span>
                 </div>
+              </div>
+              
+              <div className="h-px w-full bg-foreground/20 my-2" />
+              <div className="flex w-full flex-col gap-1">
+                {goingAt && (
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Went at</span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-bold">
+                        Local: {formatTimeOnlyLocal(goingAt)}
+                      </span>
+                      <span className="font-bold text-muted-foreground text-xs">
+                        PH: {formatTimeOnly(goingAt)}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
                   <span className="text-muted-foreground">Elapse Time</span>
                   <span className="font-bold">
-                    {getElapsedTime(updatedAt)}
+                    {goingAt ? getElapsedTime(goingAt) : 'Unknown'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+  
+  // Check if user is in restroom fifth
+  if (isInRestroom) {
+    return (
+      <TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger>
+            <Badge className="bg-amber-100 text-amber-800 border-amber-200">In Restroom</Badge>
+          </TooltipTrigger>
+          <TooltipContent className="min-w-[12rem]">
+            <div className="flex w-full flex-col items-center">
+              <div className="flex w-full flex-col gap-1">
+                {restroomWentAt && (
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Went at</span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-bold">
+                        Local: {formatTimeOnlyLocal(restroomWentAt)}
+                      </span>
+                      <span className="font-bold text-muted-foreground text-xs">
+                        PH: {formatTimeOnly(restroomWentAt)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                  <span className="text-muted-foreground">Elapse Time</span>
+                  <span className="font-bold">
+                    {restroomWentAt ? getElapsedTime(restroomWentAt) : 'Unknown'}
                   </span>
                 </div>
               </div>
@@ -378,46 +662,9 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     )
   }
     
+    // Check if user is active sixth (lowest priority)
     if (isActive) {
       return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
-    }
-    if (lastSessionStart) {
-      const lastActive = new Date(lastSessionStart)
-      const now = new Date()
-      const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-      
-      if (diffMinutes < 5) {
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Recently Active</Badge>
-      } else {
-        return (
-          <TooltipProvider>
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger>
-                <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
-              </TooltipTrigger>
-              <TooltipContent className="min-w-[12rem]">
-                <div className="flex w-full flex-col gap-1">
-                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                      <span className="text-muted-foreground">Last Active</span>
-                      <div className="flex flex-col items-start">
-                        <span className="font-bold">
-                          Local: {formatTimeOnlyLocal(updatedAt)}
-                        </span>
-                        <span className="font-bold text-muted-foreground text-xs">
-                          PH: {formatTimeOnly(updatedAt)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                      <span className="text-muted-foreground">Elapse Time</span>
-                      <span className="font-bold">{getElapsedTime(updatedAt)}</span>
-                    </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )
-      }
     }
     return (
       <TooltipProvider>
@@ -431,16 +678,16 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                   <span className="text-muted-foreground">Last Active</span>
                   <div className="flex flex-col items-start">
                     <span className="font-bold">
-                      Local: {formatTimeOnlyLocal(updatedAt)}
+                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
                     </span>
                     <span className="font-bold text-muted-foreground text-xs">
-                      PH: {formatTimeOnly(updatedAt)}
+                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
                     </span>
                   </div>
                 </div>
                 <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
                   <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">{getElapsedTime(updatedAt)}</span>
+                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
                 </div>
             </div>
           </TooltipContent>
@@ -469,11 +716,26 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
       department_name: employee.department,
       is_on_break: false,
       current_break_type: null,
+      break_start_time: null,
       pause_time: null,
+      resume_time: null,
       is_in_meeting: false,
       meeting_title: null,
       meeting_type: null,
-      meeting_start_time: null
+      meeting_start_time: null,
+      is_in_event: false,
+      event_title: null,
+      event_location: null,
+      event_start_time: null,
+      event_end_time: null,
+      is_going: null,
+      is_back: null,
+      going_at: null,
+      back_at: null,
+      is_in_restroom: false,
+      restroom_count: 0,
+      daily_restroom_count: 0,
+      restroom_went_at: null
     }
   }
 
@@ -529,10 +791,24 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
           is_on_break: false,
           current_break_type: null,
           pause_time: null,
+          resume_time: null,
           is_in_meeting: false,
           meeting_title: null,
           meeting_type: null,
-          meeting_start_time: null
+          meeting_start_time: null,
+          is_in_event: false,
+          event_title: null,
+          event_location: null,
+          event_start_time: null,
+          event_end_time: null,
+          is_going: null,
+          is_back: null,
+          going_at: null,
+          back_at: null,
+          is_in_restroom: false,
+          restroom_count: 0,
+          daily_restroom_count: 0,
+          restroom_went_at: null
         }
       }
     })
@@ -559,43 +835,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
 
 
   const sortedActivities = getMergedData().sort((a, b) => {
-    // Helper function to determine activity status priority
-    const getStatusPriority = (employee: any) => {
-      if (!employee.hasActivityData) return 4 // Unknown - lowest priority
-      
-      // Check if user is in meeting first (highest priority)
-      if (employee.activity.is_in_meeting) return 0 // In Meeting - highest priority
-      
-      // Check if user is inactive second
-      if (employee.activity.last_session_start) {
-        const lastActive = new Date(employee.activity.last_session_start)
-        const now = new Date()
-        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-        if (diffMinutes >= 5) return 1 // Inactive - second priority (changed from 60 to 5 minutes)
-      }
-      
-      // Check if no last session start (also inactive)
-      if (!employee.activity.last_session_start) return 1 // Inactive - second priority
-      
-      // Then check if user is on break
-      if (employee.activity.is_on_break) return 2
-      
-      // Then check if currently active or recently active
-      if (employee.activity.is_currently_active) return 3
-      
-      // Recently active (away for less than 5 minutes)
-      return 3 // Active
-    }
-
-    // First level: Always sort by status priority (In Meeting > Inactive > On Break > Active > Unknown)
-    const aStatusPriority = getStatusPriority(a)
-    const bStatusPriority = getStatusPriority(b)
-    
-    if (aStatusPriority !== bStatusPriority) {
-      return aStatusPriority - bStatusPriority
-    }
-
-    // Second level: Sort by the selected field
+    // Sort only by the selected field
     let aValue: string | number
     let bValue: string | number
 
@@ -605,20 +845,23 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
         bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
         break
       case 'status':
-        // Within same status group, sort by time values
-        if (aStatusPriority === 0) {
-          // For in meeting users, sort by active time
-          aValue = a.activity.today_active_seconds
-          bValue = b.activity.today_active_seconds
-        } else if (aStatusPriority === 1) {
-          // For inactive users, sort by inactive time
-          aValue = a.activity.today_inactive_seconds
-          bValue = b.activity.today_inactive_seconds
-        } else {
-          // For on break/active users, sort by active time
-          aValue = a.activity.today_active_seconds
-          bValue = b.activity.today_active_seconds
+        // Sort alphabetically by status name
+        const getStatusName = (employee: any) => {
+          if (!employee.hasActivityData) return 'Unknown'
+          
+          if (employee.activity.is_in_meeting) return 'In Meeting'
+          if (employee.activity.is_in_event) return 'In Event'
+          if (employee.activity.is_in_restroom) return 'In Restroom'
+          if (employee.activity.is_on_break) {
+            return employee.activity.pause_time ? 'Active' : 'On Break'
+          }
+          if (employee.activity.is_currently_active) return 'Active'
+          if (employee.activity.last_session_start) return 'Inactive'
+          return 'Inactive'
         }
+        
+        aValue = getStatusName(a).toLowerCase()
+        bValue = getStatusName(b).toLowerCase()
         break
       case 'activeTime':
         aValue = a.activity.today_active_seconds
@@ -651,10 +894,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
       if (!employee.hasActivityData) return false
       if (employee.activity.is_currently_active) return false
       if (employee.activity.last_session_start) {
-        const lastActive = new Date(employee.activity.last_session_start)
-        const now = new Date()
-        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-        return diffMinutes >= 60 // Inactive if away for more than 60 minutes
+        return true // Inactive if has last session start but not currently active
       }
       return true // Inactive if no last session start
     }).length
@@ -665,13 +905,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     return sortedActivities.filter(employee => {
       if (!employee.hasActivityData) return false
       if (employee.activity.is_currently_active) return true
-      if (employee.activity.last_session_start) {
-        const lastActive = new Date(employee.activity.last_session_start)
-        const now = new Date()
-        const diffMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60))
-        return diffMinutes < 60 // Active if away for less than 60 minutes
-      }
-      return false // Not active if no last session start
+      return false // Only currently active employees are considered active
     }).length
   }
 
@@ -686,8 +920,10 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
               <div className="flex flex-col py-4 md:py-6">
                 {/* Activities Header Section */}
                 <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                  <div className="h-8 bg-gray-200 rounded animate-pulse w-32 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-80"></div>
+                  <div>
+                    <Skeleton className="h-8 w-32 mb-2" />
+                    <Skeleton className="h-4 w-80" />
+                  </div>
                 </div>
 
                 {/* Two Column Layout */}
@@ -702,12 +938,12 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                               <TableRow variant="no-hover" className="h-12">
                                 <TableHead className="w-48">
                                   <div className="flex items-center gap-1">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                                    <Skeleton className="h-4 w-16" />
                                   </div>
                                 </TableHead>
                                 {[...Array(3)].map((_, i) => (
                                   <TableHead key={i} className="text-center w-32">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
+                                    <Skeleton className="h-4 w-20 mx-auto" />
                                   </TableHead>
                                 ))}
                               </TableRow>
@@ -717,13 +953,13 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                 <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">
-                                      <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
-                                      <div className="h-5 bg-gray-200 rounded animate-pulse w-28"></div>
+                                      <Skeleton className="h-10 w-10 rounded-full" />
+                                      <Skeleton className="h-5 w-28" />
                                     </div>
                                   </TableCell>
                                   {[...Array(3)].map((_, j) => (
                                     <TableCell key={j} className="text-center">
-                                      <div className="h-7 bg-gray-200 rounded animate-pulse w-20 mx-auto"></div>
+                                      <Skeleton className="h-7 w-20 mx-auto" />
                                     </TableCell>
                                   ))}
                                 </TableRow>
@@ -743,14 +979,14 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                           <Card className="bg-white dark:bg-card">
                             <CardHeader className="space-y-0 pb-4">
                               <div>
-                                <div className="h-4 bg-gray-200 rounded animate-pulse w-16 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded animate-pulse w-32"></div>
+                                <Skeleton className="h-4 w-16 mb-2" />
+                                <Skeleton className="h-3 w-32" />
                               </div>
                             </CardHeader>
                             <CardContent>
                               <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
-                                <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
+                                <Skeleton className="h-5 w-5" />
+                                <Skeleton className="h-8 w-8" />
                               </div>
                             </CardContent>
                           </Card>
@@ -759,14 +995,14 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                           <Card className="bg-white dark:bg-card">
                             <CardHeader className="space-y-0 pb-4">
                               <div>
-                                <div className="h-4 bg-gray-200 rounded animate-pulse w-20 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded animate-pulse w-36"></div>
+                                <Skeleton className="h-4 w-20 mb-2" />
+                                <Skeleton className="h-3 w-36" />
                               </div>
                             </CardHeader>
                             <CardContent>
                               <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
-                                <div className="h-8 bg-gray-200 rounded animate-pulse w-8"></div>
+                                <Skeleton className="h-5 w-5" />
+                                <Skeleton className="h-8 w-8" />
                               </div>
                             </CardContent>
                           </Card>
@@ -776,26 +1012,26 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                         <Card className="bg-white dark:bg-card">
                           <CardHeader>
                             <div>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-40 mb-2"></div>
-                              <div className="h-3 bg-gray-200 rounded animate-pulse w-64"></div>
+                              <Skeleton className="h-4 w-40 mb-2" />
+                              <Skeleton className="h-3 w-64" />
                             </div>
                           </CardHeader>
                           <CardContent className="pt-0">
                             <div className="space-y-4">
                               {[...Array(4)].map((_, i) => (
                                 <div key={i}>
-                                  <div className="h-3 bg-gray-200 rounded animate-pulse w-16 mb-2"></div>
+                                  <Skeleton className="h-3 w-16 mb-2" />
                                   <div className="grid grid-cols-2 gap-3">
                                     <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                       <CardContent className="p-3">
-                                        <div className="h-3 bg-gray-200 rounded animate-pulse w-24 mb-2"></div>
-                                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                                        <Skeleton className="h-3 w-24 mb-2" />
+                                        <Skeleton className="h-6 w-12" />
                                       </CardContent>
                                     </Card>
                                     <Card className="bg-muted/50 dark:bg-muted/20 border-border">
                                       <CardContent className="p-3">
-                                        <div className="h-3 bg-gray-200 rounded animate-pulse w-28 mb-2"></div>
-                                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                                        <Skeleton className="h-3 w-28 mb-2" />
+                                        <Skeleton className="h-6 w-12" />
                                       </CardContent>
                                     </Card>
                                   </div>
@@ -853,10 +1089,12 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
             <div className="flex flex-col py-4 md:py-6">
               {/* Activities Header Section */}
               <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                <h1 className="text-2xl font-bold">Activities</h1>
-                <p className="text-sm text-muted-foreground">
-                  Track user activities and productivity metrics by date.
-                </p>
+                <div>
+                  <h1 className="text-2xl font-bold">Activities</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Track user activities and productivity metrics by date.
+                  </p>
+                </div>
               </div>
 
               {/* Two Column Layout */}
@@ -931,7 +1169,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                     </div>
                                   </TableCell>
             <TableCell className="text-center">
-              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, employee.activity.pause_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time)}
+              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, (employee.activity as any).break_start_time, employee.activity.pause_time, employee.activity.resume_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time, employee.activity.is_in_event, employee.activity.event_title, employee.activity.event_location, employee.activity.event_start_time, employee.activity.event_end_time, employee.activity.is_going, employee.activity.is_back, employee.activity.going_at, employee.activity.back_at, employee.activity.is_in_restroom, employee.activity.restroom_count, employee.activity.daily_restroom_count, employee.activity.restroom_went_at)}
             </TableCell>
                                   <TableCell className="text-center">
                                     {employee.activity.today_active_seconds > 0 ? (
@@ -998,263 +1236,16 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                         </Card>
                       </div>
 
-                      <Card className="bg-white dark:bg-card">
-                            <CardHeader>
-                              <div>
-                                <CardTitle className="text-base">
-                                  {selectedEmployee ? `${selectedEmployee.firstName}'s Activity Data` : 'Select Employee'}
-                                </CardTitle>
-                                <CardDescription>Activity breakdown across different time periods.</CardDescription>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                              {selectedEmployee ? (
-                                <div className="space-y-4">
-                                  {/* Today - Always available, no loading state needed */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">Today</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getMergedData().find(emp => emp.id === selectedEmployee.id)?.activity.today_active_seconds || 0)}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {formatTime(getMergedData().find(emp => emp.id === selectedEmployee.id)?.activity.today_inactive_seconds || 0)}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Yesterday */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">Yesterday</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getYesterdayActivityData(selectedEmployee).today_active_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getYesterdayActivityData(selectedEmployee).today_inactive_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* This Week */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Week</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getWeekActivityData(selectedEmployee).total_active_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getWeekActivityData(selectedEmployee).total_inactive_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* This Month */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Month</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getMonthActivityData(selectedEmployee).total_active_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            {detailLoading ? (
-                                              <Skeleton className="h-6 w-16" />
-                                            ) : (
-                                              formatTime(getMonthActivityData(selectedEmployee).total_inactive_seconds)
-                                            )}
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="space-y-4">
-                                  {/* Today - Default with no data */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">Today</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Yesterday */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">Yesterday</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* This Week */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Week</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* This Month */}
-                                  <div>
-                                    <div className="text-sm font-medium text-muted-foreground mb-2">This Month</div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Active Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                      <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                        <CardContent className="p-3">
-                                          <div>
-                                            <span className="text-xs text-muted-foreground">Total Inactive Time</span>
-                                          </div>
-                                          <div className="text-lg font-semibold tabular-nums mt-1">
-                                            0h 0m
-                                          </div>
-                                        </CardContent>
-                                      </Card>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
+        <ActivityDataCard 
+          selectedEmployee={selectedEmployee}
+          formatTime={formatTime}
+          getMergedData={getMergedData}
+          detailLoading={detailLoading}
+          getYesterdayActivityData={getYesterdayActivityData}
+          getWeekActivityData={getWeekActivityData}
+          getMonthActivityData={getMonthActivityData}
+          user={user}
+        />
                     </div>
                   </div>
                 </div>
