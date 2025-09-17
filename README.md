@@ -10,6 +10,9 @@ A modern Electron desktop application built with Next.js and Shadcn/ui.
 - 🎯 **TypeScript** - Type-safe development
 - 🎨 **Tailwind CSS v3** - Utility-first CSS framework
 - 📊 **Dashboard** - Interactive dashboard with charts and data tables
+- 🤖 **AI-Powered RAG** - Retrieval Augmented Generation with Qdrant vector database
+- 🔍 **Semantic Search** - Advanced document search and retrieval
+- 💬 **Intelligent Chatbot** - AI-powered talent analysis and recommendations
 
 ## Getting Started
 
@@ -17,6 +20,8 @@ A modern Electron desktop application built with Next.js and Shadcn/ui.
 
 - Node.js 18+ 
 - npm or yarn
+- Docker (for Qdrant vector database)
+- OpenAI API key (for embeddings)
 
 ### Installation
 
@@ -24,6 +29,19 @@ A modern Electron desktop application built with Next.js and Shadcn/ui.
 2. Install dependencies:
    ```bash
    npm install
+   ```
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env.local
+   # Add your OpenAI API key and other configuration
+   ```
+4. Start Qdrant vector database:
+   ```bash
+   npm run qdrant:start
+   ```
+5. Test Qdrant connection:
+   ```bash
+   npm run qdrant:test
    ```
 
 ### Development
@@ -61,6 +79,13 @@ This will:
 - `npm run electron-build` - Build for production
 - `npm run lint` - Run ESLint
 
+#### Qdrant Scripts
+
+- `npm run qdrant:start` - Start Qdrant vector database
+- `npm run qdrant:stop` - Stop Qdrant vector database
+- `npm run qdrant:logs` - View Qdrant logs
+- `npm run qdrant:test` - Test Qdrant connection
+
 ## Project Structure
 
 ```
@@ -88,6 +113,30 @@ The app includes a comprehensive dashboard with:
 - 🌙 Dark/light theme support
 - 📱 Mobile-responsive layout
 
+## RAG System
+
+The application includes a sophisticated Retrieval Augmented Generation (RAG) system powered by Qdrant:
+
+### Features
+
+- 🔍 **Semantic Search** - Find relevant documents using natural language queries
+- 📚 **Document Indexing** - Automatically index talent profiles and documents
+- 🤖 **AI-Powered Chat** - Intelligent chatbot with context-aware responses
+- 🎯 **Talent Matching** - Advanced talent search and recommendation
+- 📊 **Source Attribution** - Track sources used in AI responses
+
+### API Endpoints
+
+- `POST /api/rag/documents` - Index documents
+- `GET /api/rag/documents` - Search documents
+- `GET /api/rag/stats` - Get collection statistics
+
+### Configuration
+
+The RAG system automatically falls back to existing PGVector/Memory storage if Qdrant is unavailable, ensuring continuous operation.
+
+For detailed setup instructions, see [QDRANT_SETUP.md](documents/QDRANT_SETUP.md).
+
 ## Technologies Used
 
 - **Electron** - Desktop app framework
@@ -97,6 +146,10 @@ The app includes a comprehensive dashboard with:
 - **TypeScript** - Type safety
 - **Recharts** - Chart library
 - **Lucide React** - Icons
+- **Qdrant** - Vector database for RAG
+- **OpenAI** - Embeddings and AI models
+- **LangChain** - AI framework
+- **Anthropic Claude** - AI language model
 
 ## License
 

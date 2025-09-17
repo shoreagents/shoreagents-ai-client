@@ -18,7 +18,9 @@
     "add-position": "node scripts/add-position-column.js",
     "apply-realtime": "node scripts/apply-realtime-schema.js",
     "test-db": "node scripts/test-db.js",
-    "create-accounts": "node scripts/create-supabase-accounts.js"
+    "create-accounts": "node scripts/create-supabase-accounts.js",
+    "qdrant:test": "node scripts/test-qdrant.js",
+    "qdrant:query": "node scripts/query-qdrant.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",
@@ -27,8 +29,10 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@langchain/anthropic": "^0.3.26",
+    "@langchain/community": "^0.3.56",
     "@langchain/core": "^0.3.72",
     "@number-flow/react": "^0.5.10",
+    "@qdrant/js-client-rest": "^1.15.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -65,6 +69,7 @@
     "next": "15.4.4",
     "next-themes": "^0.4.6",
     "pg": "^8.16.3",
+    "qdrant-client": "^0.0.1",
     "react": "19.1.0",
     "react-day-picker": "^9.8.1",
     "react-dom": "19.1.0",

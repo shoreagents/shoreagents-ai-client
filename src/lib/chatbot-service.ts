@@ -4,7 +4,7 @@ import { RunnableSequence } from "@langchain/core/runnables"
 import { StringOutputParser } from "@langchain/core/output_parsers"
 import { HumanMessage, AIMessage, SystemMessage, BaseMessage } from "@langchain/core/messages"
 import { cacheHelpers } from './cache'
-import { retrieveContextForTalent, indexTalentProfileDoc, isRagAvailable } from './rag'
+import { retrieveContextForTalent, indexTalentProfileDoc, isRagAvailable, enhancedRetrieveContext } from './rag'
 
 // Message interface for chat
 export interface ChatMessage {
@@ -17,6 +17,7 @@ export interface ChatMessage {
     analysisType?: string
     confidence?: number
     model?: string
+    ragSources?: Array<{ content: string; metadata: any; score: number }>
   }
 }
 
@@ -159,8 +160,9 @@ Remember: Base your analysis on the provided profile data and general industry k
         conversationHistory = cachedHistory
       }
 
-      // Optional: RAG retrieval
+      // Enhanced RAG retrieval with sources
       let ragContext = ""
+      let ragSources: any[] = []
       try {
         if (await isRagAvailable()) {
           // Ensure at least the talent profile is indexed (idempotent add)
@@ -172,10 +174,15 @@ Remember: Base your analysis on the provided profile data and general industry k
             experience: talent.experience,
             description: talent.description,
           })
-          ragContext = await retrieveContextForTalent(talentId, message)
+          
+          // Use enhanced retrieval for better context
+          const { context, sources } = await enhancedRetrieveContext(message, talentId, 4)
+          ragContext = context
+          ragSources = sources
         }
       } catch (_) {
         ragContext = ""
+        ragSources = []
       }
 
       // Create the chat chain with optional RAG context
@@ -205,7 +212,8 @@ Remember: Base your analysis on the provided profile data and general industry k
         timestamp: new Date(),
         metadata: {
           talentId,
-          confidence: 0.85 // You could implement actual confidence scoring
+          confidence: 0.85, // You could implement actual confidence scoring
+          ragSources: ragSources.length > 0 ? ragSources : undefined
         }
       }
 
