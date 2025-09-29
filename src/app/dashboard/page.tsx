@@ -110,6 +110,8 @@ export default function Dashboard() {
   const [jobRequestsLoading, setJobRequestsLoading] = useState(true)
   const [breaksData, setBreaksData] = useState<any>(null)
   const [breaksLoading, setBreaksLoading] = useState(true)
+  const [birthdayEmployees, setBirthdayEmployees] = useState<Employee[]>([])
+  const [birthdayLoading, setBirthdayLoading] = useState(true)
 
   const handleTalentPoolClick = () => {
     router.push('/talent-pool')
@@ -227,6 +229,15 @@ export default function Dashboard() {
             } else {
               console.error('Dashboard - Breaks fetch failed:', breaksRes.status)
             }
+
+            // Fetch birthday employees
+            const birthdayRes = await fetch(`/api/team/birthday-employees?memberId=${memberId}`)
+            if (birthdayRes.ok) {
+              const birthdayJson = await birthdayRes.json()
+              setBirthdayEmployees(birthdayJson.employees || [])
+            } else {
+              console.error('Dashboard - Birthday employees fetch failed:', birthdayRes.status)
+            }
           }
         }
       } catch (error) {
@@ -235,6 +246,7 @@ export default function Dashboard() {
         setLoading(false)
         setJobRequestsLoading(false)
         setBreaksLoading(false)
+        setBirthdayLoading(false)
       }
     }
 
@@ -416,88 +428,176 @@ export default function Dashboard() {
               </div>
               {loading ? (
                 <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  {/* 1. Salmon (2x2) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-2 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
-                        <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                  {/* 1. Activity Card (2x2) - Inactive Employees */}
+                  <Card className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-1.5">
+                          <CardTitle>Activity</CardTitle>
+                          <CardDescription>Employees currently inactive.</CardDescription>
+                        </div>
+                        <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 ml-4">
+                          <div className="h-5 w-5 text-red-500">
+                            <UsersIcon className="h-5 w-5" />
+                          </div>
+                          <Skeleton className="h-8 w-8" />
+                        </div>
                       </div>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className="h-4 w-32 bg-muted animate-pulse rounded mb-2"></div>
-                      <div className="flex flex-wrap gap-1">
-                        <div className="h-6 w-16 bg-muted animate-pulse rounded-full"></div>
-                        <div className="h-6 w-20 bg-muted animate-pulse rounded-full"></div>
-                        <div className="h-6 w-14 bg-muted animate-pulse rounded-full"></div>
+                    <CardContent className="px-6 pb-6">
+                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="flex-1 min-w-0">
+                              <Skeleton className="h-4 w-24" />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <Skeleton className="h-3 w-12" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </CardFooter>
+                    </CardContent>
                   </Card>
                   
-                  {/* 2. Broccoli (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
-                        <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                  {/* 2. New Hires Card (1x1) */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">New Hires</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-20" />
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
                       </div>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                    </CardContent>
                   </Card>
                   
-                  {/* 3. Tamago (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                  {/* 3. Today Card (1x1) - Birthday Employees */}
+                  <Card className="lg:col-span-1 lg:row-span-1">
+                    <CardHeader>
+                      <CardTitle className="text-base">Today</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-20" />
+                      </CardDescription>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                    <CardContent className="px-6 pb-6">
+                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="flex-1 min-w-0">
+                              <Skeleton className="h-4 w-24" />
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              <Skeleton className="h-3 w-12" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
                   </Card>
                   
-                  {/* 4. Pork (1x2) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-2 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
-                      <div className="h-8 w-12 bg-muted animate-pulse rounded mt-2"></div>
+                  {/* 4. Jobs Card (1x2) */}
+                  <Card className="lg:col-span-1 lg:row-span-2 flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Jobs</CardTitle>
+                      <CardDescription>View and manage job requests.</CardDescription>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                    <CardContent className="flex-1 flex flex-col gap-2 p-0 justify-center">
+                      <div className="w-full">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      </div>
+                      <div className="w-full">
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-4 w-1/3" />
+                        </div>
+                      </div>
+                    </CardContent>
                   </Card>
 
-                  {/* 5. Edamame (2x1) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
-                      <div className="h-8 w-24 bg-muted animate-pulse rounded mt-2"></div>
+                  {/* 5. Activity Rankings Card (2x3) */}
+                  <Card className="lg:col-span-2 lg:row-span-3">
+                    <CardHeader>
+                      <CardTitle>Activity Rankings</CardTitle>
+                      <CardDescription>Top performers this month</CardDescription>
                     </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm"></CardFooter>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-24 mb-1" />
+                              <Skeleton className="h-3 w-16" />
+                            </div>
+                            <Skeleton className="h-6 w-12" />
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
                   </Card>
 
-                  {/* 6. Tomato (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                  {/* 6. Breaks Card (1x2) */}
+                  <Card className="lg:col-span-1 lg:row-span-2">
+                    <CardHeader>
+                      <CardTitle className="text-base">Breaks</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-20" />
+                      </CardDescription>
                     </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    </CardContent>
                   </Card>
 
-                  {/* 7. Tofu (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                  {/* 7. Connect Globe Card (1x1) */}
+                  <Card className="lg:col-span-1 lg:row-span-1 h-56">
+                    <CardHeader>
+                      <CardTitle className="text-base">Growth Rate</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-16" />
+                      </CardDescription>
                     </CardHeader>
+                    <CardContent className="flex items-center justify-center">
+                      <Skeleton className="h-32 w-32 rounded-full" />
+                    </CardContent>
                   </Card>
 
-                  {/* 8. Tempura (2x1) */}
-                  <Card className="@container/card sm:col-span-2 lg:col-span-2 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                  {/* 8. Talent Pool Card (1x2) */}
+                  <Card className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-white/60 via-white/20 to-blue-500/30 dark:from-black/70 dark:via-black/30 dark:to-blue-400/40 relative overflow-hidden">
+                    <CardHeader>
+                      <CardTitle>Talent Pool</CardTitle>
+                      <CardDescription>Explore and discover skilled candidates available for your team.</CardDescription>
                     </CardHeader>
+                    <div className="absolute bottom-0 left-0 right-0 h-[100px]">
+                      <div className="relative flex h-full w-full items-center justify-center">
+                        <Skeleton className="h-32 w-32 rounded-full" />
+                      </div>
+                    </div>
                   </Card>
 
-                  {/* 9. Gyoza (1x1) */}
-                  <Card className="@container/card sm:col-span-1 lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader className="relative">
-                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                  {/* 9. Approved Card (1x1) */}
+                  <Card className="lg:col-span-1 lg:row-span-1 h-full">
+                    <CardHeader>
+                      <CardTitle className="text-base">Approved</CardTitle>
+                      <CardDescription>
+                        <Skeleton className="h-4 w-16" />
+                      </CardDescription>
                     </CardHeader>
                   </Card>
                 </div>
@@ -508,24 +608,37 @@ export default function Dashboard() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-1.5">
-                          <CardTitle>Inactive</CardTitle>
+                          <CardTitle>Activity</CardTitle>
                           <CardDescription>Employees currently inactive.</CardDescription>
                         </div>
                         <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 ml-4">
                           <div className="h-5 w-5 text-red-500">
                             <UsersIcon className="h-5 w-5" />
                           </div>
-                          {!loading && employees.length > 0 && activities.length > 0 ? (
-                            getInactiveEmployeesCount()
-                          ) : (
+                          {loading || employees.length === 0 || activities.length === 0 ? (
                             <Skeleton className="h-8 w-8" />
+                          ) : (
+                            getInactiveEmployeesCount()
                           )}
                         </div>
                       </div>
                     </CardHeader>
                       <CardContent className="px-6 pb-6">
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                          {!loading && employees.length > 0 && activities.length > 0 && getInactiveEmployees().length > 0 ? (
+                          {loading || employees.length === 0 || activities.length === 0 ? (
+                            // Skeleton loading states
+                            Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                              <Skeleton className="h-8 w-8 rounded-full" />
+                              <div className="flex-1 min-w-0">
+                                <Skeleton className="h-4 w-24" />
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                            </div>
+                            ))
+                          ) : getInactiveEmployees().length > 0 ? (
                             getInactiveEmployees().map((employee) => {
                               const activity = activities.find(a => a.user_id.toString() === employee.id)
                               const lastSessionStart = activity?.last_session_start
@@ -550,22 +663,8 @@ export default function Dashboard() {
                               )
                             })
                           ) : (
-                            // Skeleton loading states
-                            Array.from({ length: 3 }).map((_, index) => (
-                            <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
-                              <Skeleton className="h-8 w-8 rounded-full" />
-                              <div className="flex-1 min-w-0">
-                                <Skeleton className="h-4 w-24" />
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                <Skeleton className="h-3 w-12" />
-                              </div>
-                            </div>
-                            ))
-                          )}
-                          {getInactiveEmployees().length === 0 && !loading && (
                             <div className="text-center text-muted-foreground text-sm py-4">
-                              No inactive employees
+                              No Inactive Employees
                             </div>
                           )}
                         </div>
@@ -575,12 +674,70 @@ export default function Dashboard() {
                   {/* 2. Broccoli (1x1) - Closed */}
                   <NewHires employees={employees} className="lg:col-span-1 lg:row-span-1" loading={loading} />
 
-                  {/* 3. Tamago (1x1) - In Progress */}
+                  {/* 3. Today (1x1) - Birthday Employees */}
                   <Card className="lg:col-span-1 lg:row-span-1">
                     <CardHeader>
-                      <CardTitle className="text-base">In Progress</CardTitle>
-                      <CardDescription>{statusCounts.inProgress} tickets</CardDescription>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 space-y-1.5">
+                          <CardTitle className="text-base">Today</CardTitle>
+                          <CardDescription>Employees with birthdays today.</CardDescription>
+                        </div>
+                        <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 ml-4">
+                          <div className="h-5 w-5 text-pink-500">
+                            <UsersIcon className="h-5 w-5" />
+                          </div>
+                          {birthdayLoading ? (
+                            <Skeleton className="h-8 w-8" />
+                          ) : (
+                            birthdayEmployees.length
+                          )}
+                        </div>
+                      </div>
                     </CardHeader>
+                    <CardContent className="px-6 pb-6">
+                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                        {birthdayLoading ? (
+                          // Skeleton loading states
+                          Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                              <Skeleton className="h-8 w-8 rounded-full" />
+                              <div className="flex-1 min-w-0">
+                                <Skeleton className="h-4 w-24" />
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                            </div>
+                          ))
+                        ) : birthdayEmployees.length > 0 ? (
+                          birthdayEmployees.map((employee) => (
+                            <div key={employee.id} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={employee.avatar} alt={`${employee.firstName} ${employee.lastName}`} />
+                                <AvatarFallback>
+                                  {employee.firstName?.[0]}{employee.lastName?.[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {employee.firstName} {employee.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {employee.department}
+                                </p>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                🎂
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center text-muted-foreground text-sm py-4">
+                            No birthdays today
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
                   </Card>
 
                   {/* 4. Pork (1x2) - Jobs */}

@@ -52,11 +52,17 @@ export interface ActivityEntry {
   restroom_count: number
   daily_restroom_count: number
   restroom_went_at: string | null
+  // Clinic statistics
+  is_in_clinic: boolean
+  in_clinic_at: string | null
+  clinic_request_status: string | null
+  clinic_priority: string | null
+  clinic_complaint: string | null
 }
 
 // Activity update message interface
 export interface ActivityUpdate {
-  type: 'activity_update' | 'restroom_status_update' | 'meeting_status_update' | 'event_attendance_update' | 'break_session_update'
+  type: 'activity_update' | 'restroom_status_update' | 'meeting_status_update' | 'event_attendance_update' | 'break_session_update' | 'clinic_status_update'
   data: {
     table?: string
     action?: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -97,6 +103,15 @@ export interface ActivityUpdate {
     // Break session fields
     record?: any
     old_record?: any
+    // Clinic-specific fields
+    event?: string
+    request_id?: number
+    user_id?: number
+    field_name?: string
+    field_value?: any
+    going_to_clinic_at?: string | null
+    in_clinic_at?: string | null
+    updated_at?: string
   }
 }
 
@@ -172,8 +187,13 @@ function getOrCreateActivitiesWebSocket() {
           console.log('🎯 BREAK SESSION MESSAGE DETECTED:', message)
         }
         
-        // Process activity, restroom, meeting, event attendance, and break session updates
-        if ((message.type === 'activity_update' || message.type === 'restroom_status_update' || message.type === 'meeting_status_update' || message.type === 'event_attendance_update' || message.type === 'break_session_update') && message.data) {
+        // Special logging for clinic status messages
+        if (message.type === 'clinic_status_update') {
+          console.log('🎯 CLINIC STATUS MESSAGE DETECTED:', message)
+        }
+        
+        // Process activity, restroom, meeting, event attendance, break session, and clinic status updates
+        if ((message.type === 'activity_update' || message.type === 'restroom_status_update' || message.type === 'meeting_status_update' || message.type === 'event_attendance_update' || message.type === 'break_session_update' || message.type === 'clinic_status_update') && message.data) {
           console.log('✅ Message will be processed by callbacks:', message.type)
           // Call all registered callbacks
           globalActivitiesCallbacks.forEach(callback => {
@@ -219,7 +239,7 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
     console.log('🔍 Message type:', message.type)
     console.log('🔍 Message data:', message.data)
     
-    if ((message.type === 'activity_update' || message.type === 'restroom_status_update' || message.type === 'meeting_status_update' || message.type === 'event_attendance_update' || message.type === 'break_session_update') && message.data) {
+    if ((message.type === 'activity_update' || message.type === 'restroom_status_update' || message.type === 'meeting_status_update' || message.type === 'event_attendance_update' || message.type === 'break_session_update' || message.type === 'clinic_status_update') && message.data) {
       const { action, data } = message.data
       console.log('🔍 Processing update:', { type: message.type, action, data })
       
@@ -361,6 +381,50 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
         return
       }
       
+      // Handle clinic status updates
+      if (message.type === 'clinic_status_update') {
+        // Clinic status data comes from health_check_events channel
+        const clinicData = message.data
+        console.log('🏥 Clinic status update received:', {
+          event: clinicData.event,
+          request_id: clinicData.request_id,
+          user_id: clinicData.user_id,
+          field_name: clinicData.field_name,
+          field_value: clinicData.field_value,
+          going_to_clinic_at: clinicData.going_to_clinic_at,
+          in_clinic_at: clinicData.in_clinic_at,
+          updated_at: clinicData.updated_at
+        })
+        
+        // For clinic status updates, we need to refetch activities to get the updated clinic status
+        fetch('/api/activities?memberId=all')
+          .then(res => {
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`)
+            }
+            return res.json()
+          })
+          .then(completeData => {
+            console.log('Refetched activities data for clinic status update:', completeData)
+            
+            // Find the updated activity in the complete data
+            const updatedActivity = completeData.activities.find((activity: ActivityEntry) => 
+              activity.user_id === clinicData.user_id
+            )
+            
+            if (updatedActivity) {
+              console.log('✅ Found updated activity with clinic status:', updatedActivity)
+              onActivityUpdated?.(updatedActivity)
+            } else {
+              console.warn('❌ Updated activity not found in refetched data for user:', clinicData.user_id)
+            }
+          })
+          .catch(error => {
+            console.error('Error refetching activities data for clinic status update:', error)
+          })
+        return
+      }
+      
       // Add null check for data
       if (!data) {
         console.warn('🔄 Invalid data received:', data)
@@ -470,7 +534,13 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
                 is_in_restroom: data.is_in_restroom || false,
                 restroom_count: data.restroom_count || 0,
                 daily_restroom_count: data.daily_restroom_count || 0,
-                restroom_went_at: null
+                restroom_went_at: null,
+                // Clinic statistics
+                is_in_clinic: false,
+                in_clinic_at: null,
+                clinic_request_status: null,
+                clinic_priority: null,
+                clinic_complaint: null
               }
               
               if (action === 'INSERT') {
@@ -518,7 +588,13 @@ export function useRealtimeActivities(options: UseRealtimeActivitiesOptions = {}
           is_in_restroom: data.is_in_restroom || false,
           restroom_count: data.restroom_count || 0,
           daily_restroom_count: data.daily_restroom_count || 0,
-          restroom_went_at: null
+          restroom_went_at: null,
+          // Clinic statistics
+          is_in_clinic: false,
+          in_clinic_at: null,
+          clinic_request_status: null,
+          clinic_priority: null,
+          clinic_complaint: null
         }
         
         onActivityDeleted?.(activityEntry)

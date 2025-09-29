@@ -35,6 +35,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 interface LeaderboardEntry {
   id: number
@@ -99,69 +100,82 @@ export default function LeaderboardPage() {
   const [trendDaily, setTrendDaily] = useState<DailyTrendPoint[]>([])
   const [trendLoading, setTrendLoading] = useState(false)
   const [trendError, setTrendError] = useState<string | null>(null)
+  const [reloading, setReloading] = useState(false)
   
   // Sorting state
   const [sortField, setSortField] = useState<'rank' | 'name' | 'points' | 'activeTime'>('rank')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Fetch productivity scores data
-  useEffect(() => {
-    const fetchProductivityScores = async () => {
-      console.log('🔍 Fetching productivity scores for memberId:', user?.memberId)
-      console.log('🔍 Full user data:', user)
-      
-      // Clear any previous errors and set loading
-      setError(null)
-      setLoading(true)
-      
-      if (!user?.memberId && user?.userType !== 'Internal') {
-        console.log('❌ No member ID found and user is not Internal')
-        console.log('❌ User data:', user)
-        setError('User member ID not found')
-        setLoading(false)
-        return
-      }
-
-      try {
-        console.log('📡 Making API request to /api/productivity-scores')
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        const params = new URLSearchParams({
-          memberId: String(memberId),
-          timeframe: timeframe
-        })
-        
-        if (monthYear) {
-          params.append('monthYear', monthYear)
-        }
-        
-        const response = await fetch(`/api/productivity-scores?${params}`)
-        
-        console.log('📊 Response status:', response.status)
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.log('❌ API error:', errorText)
-          throw new Error(`Failed to fetch productivity scores: ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log('✅ Productivity scores data received:', data)
-        
-        setLeaderboardData(data.productivityScores)
-        setError(null) // Clear any previous errors
-      } catch (err) {
-        console.error('❌ Fetch error:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch productivity scores')
-      } finally {
-        setLoading(false)
-      }
+  const fetchProductivityScores = async () => {
+    console.log('🔍 Fetching productivity scores for memberId:', user?.memberId)
+    console.log('🔍 Full user data:', user)
+    
+    // Clear any previous errors and set loading
+    setError(null)
+    setLoading(true)
+    
+    if (!user?.memberId && user?.userType !== 'Internal') {
+      console.log('❌ No member ID found and user is not Internal')
+      console.log('❌ User data:', user)
+      setError('User member ID not found')
+      setLoading(false)
+      return
     }
 
+    try {
+      console.log('📡 Making API request to /api/productivity-scores')
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      const params = new URLSearchParams({
+        memberId: String(memberId),
+        timeframe: timeframe
+      })
+      
+      if (monthYear) {
+        params.append('monthYear', monthYear)
+      }
+      
+      const response = await fetch(`/api/productivity-scores?${params}`)
+      
+      console.log('📊 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ API error:', errorText)
+        throw new Error(`Failed to fetch productivity scores: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Productivity scores data received:', data)
+      
+      setLeaderboardData(data.productivityScores)
+      setError(null) // Clear any previous errors
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch productivity scores')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     // Only fetch if user is available
     if (user) {
       fetchProductivityScores()
     }
   }, [user, timeframe, monthYear])
+
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      await fetchProductivityScores()
+    } catch (err) {
+      console.error('❌ Reload error:', err)
+    } finally {
+      setReloading(false)
+    }
+  }
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -357,8 +371,10 @@ export default function LeaderboardPage() {
                       {/* Ranking header moved to first column */}
                       <div className="mb-4 min-h-[72px] flex w-full items-center justify-start gap-3 lg:justify-start">
                         <div>
-                          <Skeleton className="h-8 w-32 mb-2" />
-                          <Skeleton className="h-4 w-80" />
+                          <h1 className="text-2xl font-bold">Leaderboard</h1>
+                          <p className="text-sm text-muted-foreground">
+                            View team rankings based on productivity scores and activity metrics.
+                          </p>
                         </div>
                       </div>
                       
@@ -694,6 +710,10 @@ export default function LeaderboardPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      <ReloadButton 
+                        loading={reloading} 
+                        onReload={handleReload}
+                      />
                     </div>
                     {/* Top Performers */}
                     <Card>

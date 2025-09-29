@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Briefcase, Building2, DollarSign, CheckSquare, Sparkles, Gift, GraduationCap, User, TrendingUp } from "lucide-react"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 interface JobRequestRow {
   id: number
@@ -71,6 +72,7 @@ export default function JobRequestPage() {
   const [rows, setRows] = useState<JobRequestRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloading, setReloading] = useState(false)
 
   const formatCurrency = (value?: number | null) => {
     try {
@@ -86,30 +88,43 @@ export default function JobRequestPage() {
     setOpenDetailModal(true)
   }
 
-  useEffect(() => {
-    const fetchRequests = async () => {
-      if (authLoading) return // wait for session to resolve
-      if (!companyUuid) { // no company context yet; show empty
-        setRows([])
-        setLoading(false)
-        return
-      }
-      try {
-        setLoading(true)
-        const url = `/api/job-requests?companyId=${encodeURIComponent(companyUuid)}`
-        const res = await fetch(url)
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        setRows(data.requests || [])
-      } catch (e: any) {
-        console.error(e)
-        setError(e?.message || "Failed to load job requests")
-      } finally {
-        setLoading(false)
-      }
+  const fetchRequests = async () => {
+    if (authLoading) return // wait for session to resolve
+    if (!companyUuid) { // no company context yet; show empty
+      setRows([])
+      setLoading(false)
+      return
     }
+    try {
+      setLoading(true)
+      const url = `/api/job-requests?companyId=${encodeURIComponent(companyUuid)}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setRows(data.requests || [])
+    } catch (e: any) {
+      console.error(e)
+      setError(e?.message || "Failed to load job requests")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchRequests()
   }, [companyUuid, authLoading, openModal])
+
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      await fetchRequests()
+    } catch (err) {
+      console.error('❌ Reload error:', err)
+    } finally {
+      setReloading(false)
+    }
+  }
 
   return (
     <>
@@ -125,7 +140,13 @@ export default function JobRequestPage() {
                     <h1 className="text-2xl font-bold">Job Request</h1>
                     <p className="text-sm text-muted-foreground">Create and track your job requests.</p>
                   </div>
-                  <Button onClick={() => setOpenModal(true)}>New Request</Button>
+                  <div className="flex items-center gap-2">
+                    <ReloadButton 
+                      loading={reloading} 
+                      onReload={handleReload}
+                    />
+                    <Button onClick={() => setOpenModal(true)}>New Request</Button>
+                  </div>
                 </div>
 
                 <div className="@container/card">

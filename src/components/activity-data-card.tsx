@@ -682,7 +682,7 @@ export function ActivityDataCard({
             <CardTitle className="text-base">
               {selectedEmployee ? `${selectedEmployee.firstName}'s Activity Data` : 'Select Employee'}
             </CardTitle>
-            <CardDescription>Activity breakdown across different time periods.</CardDescription>
+            <CardDescription>Metrics and analytics for daily, weekly, and monthly activity data.</CardDescription>
           </div>
           <div className="ml-4">
             <AnimatedTabs

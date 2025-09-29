@@ -1311,6 +1311,74 @@ export async function getEmployees(memberId: string, search: string | null, depa
   }
 }
 
+// Get employees with birthdays today
+export async function getEmployeesWithBirthdayToday(memberId: string) {
+  let whereClause = `WHERE u.user_type = 'Agent' AND pi.birthday IS NOT NULL AND EXTRACT(MONTH FROM pi.birthday) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM pi.birthday) = EXTRACT(DAY FROM CURRENT_DATE)`
+  const params: any[] = []
+
+  if (memberId !== 'all') {
+    params.push(memberId)
+    whereClause += ` AND a.member_id = $${params.length}`
+  }
+
+  const birthdayEmployeesQuery = `
+    SELECT 
+      u.id,
+      u.email,
+      u.user_type,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      pi.phone,
+      pi.birthday,
+      pi.city,
+      pi.address,
+      pi.gender,
+      a.department_id,
+      d.name as department_name,
+      d.description as department_description,
+      ji.job_title,
+      ji.employment_status,
+      ji.start_date,
+      ji.work_email,
+      m.shift
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    LEFT JOIN members m ON a.member_id = m.id
+    ${whereClause}
+    ORDER BY pi.last_name, pi.first_name
+  `
+
+  const result = await pool.query(birthdayEmployeesQuery, params)
+
+  const employees = result.rows.map((row: any) => ({
+    id: row.id.toString(),
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    email: row.email,
+    phone: row.phone,
+    department: row.department_name || 'Unassigned',
+    position: row.job_title || 'Agent',
+    hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+    avatar: row.profile_picture,
+    departmentId: row.department_id,
+    workEmail: row.work_email,
+    birthday: row.birthday,
+    city: row.city,
+    address: row.address,
+    gender: row.gender,
+    shift: row.shift,
+  }))
+
+  return {
+    employees,
+    count: employees.length,
+  }
+}
+
 // =============================
 // Productivity Scores & Trends
 // =============================
@@ -2466,7 +2534,13 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
       END as is_in_restroom,
       COALESCE(ars.restroom_count, 0) as restroom_count,
       COALESCE(ars.daily_restroom_count, 0) as daily_restroom_count,
-      ars.updated_at as restroom_went_at
+      ars.created_at as restroom_went_at,
+      -- Clinic statistics
+      COALESCE(hcr.in_clinic, false) as is_in_clinic,
+      hcr.in_clinic_at,
+      hcr.status as clinic_request_status,
+      hcr.priority as clinic_priority,
+      hcr.complaint as clinic_complaint
     FROM activity_data ad
     JOIN users u ON ad.user_id = u.id
     LEFT JOIN personal_info pi ON u.id = pi.user_id
@@ -2486,6 +2560,10 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
       AND e.event_date = ad.today_date
       AND e.status = 'today'
     LEFT JOIN agent_restroom_status ars ON ad.user_id = ars.agent_user_id
+    LEFT JOIN health_check_requests hcr ON ad.user_id = hcr.user_id 
+      AND hcr.status IN ('pending', 'approved', 'completed')
+      AND hcr.done = false
+      AND hcr.in_clinic = true
     WHERE ad.today_date BETWEEN $1 AND $2
       AND ($3 = 'all' OR u.id IN (
         SELECT user_id FROM agents WHERE member_id = $3::int

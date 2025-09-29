@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ActivityDataCard } from "@/components/activity-data-card"
 import { useRealtimeActivities, ActivityEntry as RealtimeActivityEntry } from "@/hooks/use-realtime-activities"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 interface ActivityEntry {
   id: number
@@ -72,6 +73,12 @@ interface ActivityEntry {
   restroom_count: number
   daily_restroom_count: number
   restroom_went_at: string | null
+  // Clinic statistics
+  is_in_clinic: boolean
+  in_clinic_at: string | null
+  clinic_request_status: string | null
+  clinic_priority: string | null
+  clinic_complaint: string | null
 }
 
 interface Employee {
@@ -117,6 +124,7 @@ export default function ActivitiesPage() {
   const [weekActivities, setWeekActivities] = useState<ActivityEntry[]>([])
   const [monthActivities, setMonthActivities] = useState<ActivityEntry[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
+  const [reloading, setReloading] = useState(false)
   
   // Realtime functionality
   const { isConnected: isRealtimeConnected, error: realtimeError } = useRealtimeActivities({
@@ -154,7 +162,7 @@ export default function ActivitiesPage() {
   })
   
   // Sorting
-  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('name')
+  const [sortField, setSortField] = useState<'name' | 'status' | 'activeTime' | 'inactiveTime'>('status')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Update current time every second for timers
@@ -195,35 +203,47 @@ export default function ActivitiesPage() {
   }, [user])
 
   // Fetch activities data
-  useEffect(() => {
-    const fetchActivities = async () => {
-      if (!user) return
+  const fetchActivities = async () => {
+    if (!user) return
+    
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
       
-      setLoading(true)
-      setError(null)
+      const response = await fetch(`/api/activities?memberId=${memberId}`)
       
-      try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        
-        const response = await fetch(`/api/activities?memberId=${memberId}`)
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch activities: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        setActivities(data.activities)
-        setStats(data.stats)
-      } catch (err) {
-        console.error('❌ Fetch error:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch activities')
-      } finally {
-        setLoading(false)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status}`)
       }
+      
+      const data = await response.json()
+      setActivities(data.activities)
+      setStats(data.stats)
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch activities')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchActivities()
   }, [user])
+
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      await fetchActivities()
+    } catch (err) {
+      console.error('❌ Reload error:', err)
+    } finally {
+      setReloading(false)
+    }
+  }
 
   // Fetch detailed activity data when employee is selected (yesterday, week, month only)
   useEffect(() => {
@@ -371,330 +391,333 @@ export default function ActivitiesPage() {
     }
   }
 
-const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string, isOnBreak: boolean, currentBreakType: string | null, breakStartTime: string | null, pauseTime: string | null, resumeTime: string | null, isInMeeting: boolean, meetingTitle: string | null, meetingType: string | null, meetingStartTime: string | null, isInEvent: boolean, eventTitle: string | null, eventLocation: string | null, eventStartTime: string | null, eventEndTime: string | null, isGoing: boolean | null, isBack: boolean | null, goingAt: string | null, backAt: string | null, isInRestroom: boolean, restroomCount: number, dailyRestroomCount: number, restroomWentAt: string | null) => {
+const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, hasActivityData: boolean, updatedAt: string, isOnBreak: boolean, currentBreakType: string | null, breakStartTime: string | null, pauseTime: string | null, resumeTime: string | null, isInMeeting: boolean, meetingTitle: string | null, meetingType: string | null, meetingStartTime: string | null, isInEvent: boolean, eventTitle: string | null, eventLocation: string | null, eventStartTime: string | null, eventEndTime: string | null, isGoing: boolean | null, isBack: boolean | null, goingAt: string | null, backAt: string | null, isInRestroom: boolean, restroomCount: number, dailyRestroomCount: number, restroomWentAt: string | null, isInClinic: boolean, inClinicAt: string | null, clinicRequestStatus: string | null, clinicPriority: string | null, clinicComplaint: string | null) => {
   if (!hasActivityData) {
     return <span className="text-muted-foreground text-sm">-</span>
   }
   
-  // Check if user is inactive first (highest priority)
-  if (lastSessionStart && !isActive) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Last Active</span>
-                  <div className="flex flex-col items-start">
-                    <span className="font-bold">
-                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
-                </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
+  // Collect all active statuses
+  const statuses = []
   
-  // Check if no last session start (also inactive)
-  if (!lastSessionStart) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Last Active</span>
-                  <div className="flex flex-col items-start">
-                    <span className="font-bold">
-                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
-                </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-  
-  // Check if user is on break second
+  // Check for break status
   if (isOnBreak) {
-    // If on break but has pause_time data and no resume_time, show as Active (break is paused)
-    if (pauseTime && !resumeTime) {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+    // If on break but has pause_time data and no resume_time, don't add break status (it's paused)
+    if (!(pauseTime && !resumeTime)) {
+      statuses.push({
+        type: 'break',
+        badge: (
+          <TooltipProvider key="break">
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger>
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
+              </TooltipTrigger>
+              <TooltipContent className="min-w-[12rem]">
+                <div className="flex w-full flex-col items-center">
+                  <span className="font-bold text-sm">{currentBreakType ? `${currentBreakType} Break` : 'Break'}</span>
+                  <div className="h-px w-full bg-foreground/20 my-2" />
+                  <div className="flex w-full flex-col gap-1">
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Started</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">
+                          Local: {breakStartTime ? formatTimeOnlyLocal(breakStartTime) : formatTimeOnlyLocal(updatedAt)}
+                        </span>
+                        <span className="font-bold text-muted-foreground text-xs">
+                          PH: {breakStartTime ? formatTimeOnly(breakStartTime) : formatTimeOnly(updatedAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Elapse Time</span>
+                      <span className="font-bold">
+                        {breakStartTime ? getBreakElapsedTime(breakStartTime, pauseTime, resumeTime) : getElapsedTime(updatedAt)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      })
     }
-    
-    // Show On Break with tooltip
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col items-center">
-              <span className="font-bold text-sm">{currentBreakType ? `${currentBreakType} Break` : 'Break'}</span>
-              <div className="h-px w-full bg-foreground/20 my-2" />
-              <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Started</span>
-                  <div className="flex flex-col items-start">
-                    <span className="font-bold">
-                      Local: {breakStartTime ? formatTimeOnlyLocal(breakStartTime) : formatTimeOnlyLocal(updatedAt)}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {breakStartTime ? formatTimeOnly(breakStartTime) : formatTimeOnly(updatedAt)}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">
-                    {breakStartTime ? getBreakElapsedTime(breakStartTime, pauseTime, resumeTime) : getElapsedTime(updatedAt)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
   }
   
-  // Check if user is in meeting third
+  // Check for meeting status
   if (isInMeeting) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-purple-100 text-purple-800 border-purple-200">In Meeting</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col items-center">
-              <span className="font-bold text-sm">{meetingTitle || 'Unknown Meeting'}</span>
-              <div className="h-px w-full bg-foreground/20 my-2" />
-              <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Started</span>
-                  <div className="flex flex-col items-start">
+    statuses.push({
+      type: 'meeting',
+      badge: (
+        <TooltipProvider key="meeting">
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger>
+              <Badge className="bg-purple-100 text-purple-800 border-purple-200">In Meeting</Badge>
+            </TooltipTrigger>
+            <TooltipContent className="min-w-[12rem]">
+              <div className="flex w-full flex-col items-center">
+                <span className="font-bold text-sm">{meetingTitle || 'Unknown Meeting'}</span>
+                <div className="h-px w-full bg-foreground/20 my-2" />
+                <div className="flex w-full flex-col gap-1">
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Started</span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-bold">
+                        Local: {meetingStartTime ? formatTimeOnlyLocal(meetingStartTime) : 'Unknown'}
+                      </span>
+                      <span className="font-bold text-muted-foreground text-xs">
+                        PH: {meetingStartTime ? formatTimeOnly(meetingStartTime) : 'Unknown'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Elapse Time</span>
                     <span className="font-bold">
-                      Local: {meetingStartTime ? formatTimeOnlyLocal(meetingStartTime) : 'Unknown'}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {meetingStartTime ? formatTimeOnly(meetingStartTime) : 'Unknown'}
+                      {meetingStartTime ? getElapsedTime(meetingStartTime) : 'Unknown'}
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">
-                    {meetingStartTime ? getElapsedTime(meetingStartTime) : 'Unknown'}
-                  </span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    })
+  }
+  
+  // Check for event status
+  if (isInEvent) {
+    statuses.push({
+      type: 'event',
+      badge: (
+        <TooltipProvider key="event">
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger>
+              <Badge className="bg-pink-200 text-pink-800 border-pink-200">In Event</Badge>
+            </TooltipTrigger>
+            <TooltipContent className="min-w-[12rem]">
+              <div className="flex w-full flex-col items-center">
+                <span className="font-bold text-sm">{eventTitle || 'Unknown Event'}</span>
+                
+                {/* Event Schedule - moved to top */}
+                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full mt-2">
+                  <span className="text-muted-foreground">Event Schedule</span>
+                  <div className="flex flex-col items-start">
+                    <span className="font-bold">
+                      Local: {eventStartTime ? (() => {
+                        // Create a date object treating the database time as Philippines timezone
+                        const date = new Date(eventStartTime);
+                        // Get the time components
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                        
+                        // Create ISO string with Philippines timezone offset
+                        const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+                        const phTime = new Date(phTimeString);
+                        
+                        return phTime.toLocaleString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+                      })() : 'Unknown'} - {eventEndTime ? (() => {
+                        // Create a date object treating the database time as Philippines timezone
+                        const date = new Date(eventEndTime);
+                        // Get the time components
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const hours = String(date.getHours()).padStart(2, '0');
+                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                        
+                        // Create ISO string with Philippines timezone offset
+                        const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
+                        const phTime = new Date(phTimeString);
+                        
+                        return phTime.toLocaleString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        });
+                      })() : 'Unknown'}
+                    </span>
+                    <span className="font-bold text-muted-foreground text-xs">
+                      PH: {eventStartTime ? new Date(eventStartTime).toLocaleString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      }) : 'Unknown'} - {eventEndTime ? new Date(eventEndTime).toLocaleString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      }) : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="h-px w-full bg-foreground/20 my-2" />
+                <div className="flex w-full flex-col gap-1">
+                  {goingAt && (
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Went at</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">
+                          Local: {formatTimeOnlyLocal(goingAt)}
+                        </span>
+                        <span className="font-bold text-muted-foreground text-xs">
+                          PH: {formatTimeOnly(goingAt)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Elapse Time</span>
+                    <span className="font-bold">
+                      {goingAt ? getElapsedTime(goingAt) : 'Unknown'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    })
+  }
+  
+  // Check for restroom status
+  if (isInRestroom) {
+    statuses.push({
+      type: 'restroom',
+      badge: (
+        <TooltipProvider key="restroom">
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger>
+              <Badge className="bg-amber-100 text-amber-800 border-amber-200">In Restroom</Badge>
+            </TooltipTrigger>
+            <TooltipContent className="min-w-[12rem]">
+              <div className="flex w-full flex-col items-center">
+                <div className="flex w-full flex-col gap-1">
+                  {restroomWentAt && (
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Went at</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">
+                          Local: {formatTimeOnlyLocal(restroomWentAt)}
+                        </span>
+                        <span className="font-bold text-muted-foreground text-xs">
+                          PH: {formatTimeOnly(restroomWentAt)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Elapse Time</span>
+                    <span className="font-bold">
+                      {restroomWentAt ? getElapsedTime(restroomWentAt) : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    })
+  }
+  
+  // Check for clinic status
+  if (isInClinic) {
+    statuses.push({
+      type: 'clinic',
+      badge: (
+        <TooltipProvider key="clinic">
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger>
+              <Badge className="bg-orange-100 text-orange-800 border-orange-200">In Clinic</Badge>
+            </TooltipTrigger>
+            <TooltipContent className="min-w-[12rem]">
+              <div className="flex w-full flex-col items-center">
+                <span className="font-bold text-sm">{clinicComplaint || 'Health Check'}</span>
+                
+                <div className="h-px w-full bg-foreground/20 my-2" />
+                <div className="flex w-full flex-col gap-1">
+                  {inClinicAt && (
+                    <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                      <span className="text-muted-foreground">Arrived</span>
+                      <div className="flex flex-col items-start">
+                        <span className="font-bold">
+                          Local: {formatTimeOnlyLocal(inClinicAt)}
+                        </span>
+                        <span className="font-bold text-muted-foreground text-xs">
+                          PH: {formatTimeOnly(inClinicAt)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                    <span className="text-muted-foreground">Elapse Time</span>
+                    <span className="font-bold">
+                      {inClinicAt ? getElapsedTime(inClinicAt) : 'Unknown'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    })
+  }
+  
+  // If there are other statuses, show them (multiple badges)
+  if (statuses.length > 0) {
+    return (
+      <div className="flex flex-wrap gap-1 justify-center">
+        {statuses.map(status => status.badge)}
+      </div>
     )
   }
   
-  // Check if user is in event fourth
-  if (isInEvent) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-pink-200 text-pink-800 border-pink-200">In Event</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col items-center">
-              <span className="font-bold text-sm">{eventTitle || 'Unknown Event'}</span>
-              
-              {/* Event Schedule - moved to top */}
-              <div className="grid grid-cols-[1fr_2fr] gap-4 w-full mt-2">
-                <span className="text-muted-foreground">Event Schedule</span>
+  // If no other statuses, show Active/Inactive
+  if (isActive) {
+    return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+  }
+  
+  // Show Inactive with tooltip
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger>
+          <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
+        </TooltipTrigger>
+        <TooltipContent className="min-w-[12rem]">
+          <div className="flex w-full flex-col gap-1">
+              <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                <span className="text-muted-foreground">Last Active</span>
                 <div className="flex flex-col items-start">
                   <span className="font-bold">
-                    Local: {eventStartTime ? (() => {
-                      // Create a date object treating the database time as Philippines timezone
-                      const date = new Date(eventStartTime);
-                      // Get the time components
-                      const year = date.getFullYear();
-                      const month = String(date.getMonth() + 1).padStart(2, '0');
-                      const day = String(date.getDate()).padStart(2, '0');
-                      const hours = String(date.getHours()).padStart(2, '0');
-                      const minutes = String(date.getMinutes()).padStart(2, '0');
-                      const seconds = String(date.getSeconds()).padStart(2, '0');
-                      
-                      // Create ISO string with Philippines timezone offset
-                      const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
-                      const phTime = new Date(phTimeString);
-                      
-                      return phTime.toLocaleString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      });
-                    })() : 'Unknown'} - {eventEndTime ? (() => {
-                      // Create a date object treating the database time as Philippines timezone
-                      const date = new Date(eventEndTime);
-                      // Get the time components
-                      const year = date.getFullYear();
-                      const month = String(date.getMonth() + 1).padStart(2, '0');
-                      const day = String(date.getDate()).padStart(2, '0');
-                      const hours = String(date.getHours()).padStart(2, '0');
-                      const minutes = String(date.getMinutes()).padStart(2, '0');
-                      const seconds = String(date.getSeconds()).padStart(2, '0');
-                      
-                      // Create ISO string with Philippines timezone offset
-                      const phTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
-                      const phTime = new Date(phTimeString);
-                      
-                      return phTime.toLocaleString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      });
-                    })() : 'Unknown'}
+                    Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
                   </span>
                   <span className="font-bold text-muted-foreground text-xs">
-                    PH: {eventStartTime ? new Date(eventStartTime).toLocaleString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    }) : 'Unknown'} - {eventEndTime ? new Date(eventEndTime).toLocaleString('en-US', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    }) : 'Unknown'}
+                    PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
                   </span>
                 </div>
               </div>
-              
-              <div className="h-px w-full bg-foreground/20 my-2" />
-              <div className="flex w-full flex-col gap-1">
-                {goingAt && (
-                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                    <span className="text-muted-foreground">Went at</span>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold">
-                        Local: {formatTimeOnlyLocal(goingAt)}
-                      </span>
-                      <span className="font-bold text-muted-foreground text-xs">
-                        PH: {formatTimeOnly(goingAt)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">
-                    {goingAt ? getElapsedTime(goingAt) : 'Unknown'}
-                  </span>
-                </div>
+              <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
+                <span className="text-muted-foreground">Elapse Time</span>
+                <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
               </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-  
-  // Check if user is in restroom fifth
-  if (isInRestroom) {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-amber-100 text-amber-800 border-amber-200">In Restroom</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col items-center">
-              <div className="flex w-full flex-col gap-1">
-                {restroomWentAt && (
-                  <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                    <span className="text-muted-foreground">Went at</span>
-                    <div className="flex flex-col items-start">
-                      <span className="font-bold">
-                        Local: {formatTimeOnlyLocal(restroomWentAt)}
-                      </span>
-                      <span className="font-bold text-muted-foreground text-xs">
-                        PH: {formatTimeOnly(restroomWentAt)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">
-                    {restroomWentAt ? getElapsedTime(restroomWentAt) : 'Unknown'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-    
-    // Check if user is active sixth (lowest priority)
-    if (isActive) {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
-    }
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger>
-            <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
-          </TooltipTrigger>
-          <TooltipContent className="min-w-[12rem]">
-            <div className="flex w-full flex-col gap-1">
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Last Active</span>
-                  <div className="flex flex-col items-start">
-                    <span className="font-bold">
-                      Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
-                    </span>
-                    <span className="font-bold text-muted-foreground text-xs">
-                      PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
-                  <span className="text-muted-foreground">Elapse Time</span>
-                  <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
-                </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
   // Get yesterday's activity data for selected employee
   const getYesterdayActivityData = (employee: Employee) => {
@@ -735,7 +758,13 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
       is_in_restroom: false,
       restroom_count: 0,
       daily_restroom_count: 0,
-      restroom_went_at: null
+      restroom_went_at: null,
+      // Clinic statistics
+      is_in_clinic: false,
+      in_clinic_at: null,
+      clinic_request_status: null,
+      clinic_priority: null,
+      clinic_complaint: null
     }
   }
 
@@ -808,7 +837,13 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
           is_in_restroom: false,
           restroom_count: 0,
           daily_restroom_count: 0,
-          restroom_went_at: null
+          restroom_went_at: null,
+          // Clinic statistics
+          is_in_clinic: false,
+          in_clinic_at: null,
+          clinic_request_status: null,
+          clinic_priority: null,
+          clinic_complaint: null
         }
       }
     })
@@ -845,23 +880,29 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
         bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
         break
       case 'status':
-        // Sort alphabetically by status name
-        const getStatusName = (employee: any) => {
-          if (!employee.hasActivityData) return 'Unknown'
+        // Sort by priority (lower number = higher priority)
+        const getStatusPriority = (employee: any) => {
+          if (!employee.hasActivityData) return 8 // Unknown - lowest priority
           
-          if (employee.activity.is_in_meeting) return 'In Meeting'
-          if (employee.activity.is_in_event) return 'In Event'
-          if (employee.activity.is_in_restroom) return 'In Restroom'
+          // Check statuses in order of priority (1 = highest, 7 = lowest)
+          if (employee.activity.is_in_meeting) return 3 // In Meeting
+          if (employee.activity.is_in_event) return 4 // In Event
+          if (employee.activity.is_in_restroom) return 5 // In Restroom
+          if (employee.activity.is_in_clinic) return 6 // In Clinic
           if (employee.activity.is_on_break) {
-            return employee.activity.pause_time ? 'Active' : 'On Break'
+            // Check if break is paused (counts as Active)
+            if (employee.activity.pause_time && !employee.activity.resume_time) {
+              return 7 // Paused Break (counts as Active)
+            }
+            return 2 // Regular On Break
           }
-          if (employee.activity.is_currently_active) return 'Active'
-          if (employee.activity.last_session_start) return 'Inactive'
-          return 'Inactive'
+          if (employee.activity.is_currently_active) return 7 // Active - lowest priority
+          if (employee.activity.last_session_start) return 1 // Inactive - highest priority
+          return 1 // Inactive - highest priority
         }
         
-        aValue = getStatusName(a).toLowerCase()
-        bValue = getStatusName(b).toLowerCase()
+        aValue = getStatusPriority(a)
+        bValue = getStatusPriority(b)
         break
       case 'activeTime':
         aValue = a.activity.today_active_seconds
@@ -875,17 +916,65 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
         return 0
     }
 
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection === 'asc' ? 
+    // Primary sort by selected field
+    let primaryResult = 0
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      primaryResult = sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+      primaryResult = sortDirection === 'asc' ? 
         aValue.localeCompare(bValue) : 
         bValue.localeCompare(aValue)
     }
 
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    // If primary sort is equal (0), apply secondary sort based on status
+    if (primaryResult === 0) {
+      if (sortField === 'status') {
+        // Get status priority to determine secondary sort method
+        const getStatusPriority = (employee: any) => {
+          if (!employee.hasActivityData) return 8
+          if (employee.activity.is_in_meeting) return 3
+          if (employee.activity.is_in_event) return 4
+          if (employee.activity.is_in_restroom) return 5
+          if (employee.activity.is_in_clinic) return 6
+          if (employee.activity.is_on_break && !employee.activity.pause_time) return 2
+          if (employee.activity.is_currently_active) return 7
+          if (employee.activity.last_session_start) return 1
+          return 1
+        }
+        
+        const aPriority = getStatusPriority(a)
+        const bPriority = getStatusPriority(b)
+        
+        // If both are Active (priority 7), sort by name
+        if (aPriority === 7 && bPriority === 7) {
+          const aName = `${a.firstName} ${a.lastName}`.toLowerCase()
+          const bName = `${b.firstName} ${b.lastName}`.toLowerCase()
+          return aName.localeCompare(bName)
+        }
+        
+        // For all other statuses, sort by time (when they started that status)
+        const getStatusStartTime = (employee: any) => {
+          if (employee.activity.is_in_meeting) return new Date(employee.activity.meeting_start_time || 0).getTime()
+          if (employee.activity.is_in_event) return new Date(employee.activity.going_at || 0).getTime()
+          if (employee.activity.is_in_restroom) return new Date(employee.activity.restroom_went_at || 0).getTime()
+          if (employee.activity.is_in_clinic) return new Date(employee.activity.in_clinic_at || 0).getTime()
+          if (employee.activity.is_on_break) return new Date(employee.activity.break_start_time || 0).getTime()
+          if (employee.activity.last_session_start) return new Date(employee.activity.last_session_start).getTime()
+          return 0
+        }
+        
+        const aTime = getStatusStartTime(a)
+        const bTime = getStatusStartTime(b)
+        return sortDirection === 'asc' ? bTime - aTime : aTime - bTime
+      } else {
+        // For non-status fields, sort by name as secondary criteria
+        const aName = `${a.firstName} ${a.lastName}`.toLowerCase()
+        const bName = `${b.firstName} ${b.lastName}`.toLowerCase()
+        return aName.localeCompare(bName)
+      }
     }
 
-    return 0
+    return primaryResult
   })
 
   // Calculate inactive employees count
@@ -900,13 +989,51 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     }).length
   }
 
-  // Calculate active employees count
-  const getActiveEmployeesCount = () => {
-    return sortedActivities.filter(employee => {
-      if (!employee.hasActivityData) return false
-      if (employee.activity.is_currently_active) return true
-      return false // Only currently active employees are considered active
-    }).length
+  // Calculate counts for each status
+  const getStatusCounts = () => {
+    const counts = {
+      inactive: 0,
+      onBreak: 0,
+      inMeeting: 0,
+      inEvent: 0,
+      inRestroom: 0,
+      inClinic: 0,
+      active: 0,
+      unknown: 0
+    }
+
+    sortedActivities.forEach(employee => {
+      if (!employee.hasActivityData) {
+        counts.unknown++
+        return
+      }
+
+      // Check statuses in order of priority
+      if (employee.activity.last_session_start && !employee.activity.is_currently_active) {
+        counts.inactive++
+      } else if (employee.activity.is_in_meeting) {
+        counts.inMeeting++
+      } else if (employee.activity.is_in_event) {
+        counts.inEvent++
+      } else if (employee.activity.is_in_restroom) {
+        counts.inRestroom++
+      } else if (employee.activity.is_in_clinic) {
+        counts.inClinic++
+      } else if (employee.activity.is_on_break) {
+        // Check if break is paused (counts as active)
+        if (employee.activity.pause_time && !employee.activity.resume_time) {
+          counts.active++
+        } else {
+          counts.onBreak++
+        }
+      } else if (employee.activity.is_currently_active) {
+        counts.active++
+      } else {
+        counts.unknown++
+      }
+    })
+
+    return counts
   }
 
   if (loading) {
@@ -920,11 +1047,20 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
               <div className="flex flex-col py-4 md:py-6">
                 {/* Activities Header Section */}
                 <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                  <div>
-                    <Skeleton className="h-8 w-32 mb-2" />
-                    <Skeleton className="h-4 w-80" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-bold">Activities</h1>
+                      <p className="text-sm text-muted-foreground">
+                        Track user activities and productivity metrics by date.
+                      </p>
+                    </div>
+                    <ReloadButton 
+                      loading={reloading} 
+                      onReload={handleReload}
+                    />
                   </div>
                 </div>
+
 
                 {/* Two Column Layout */}
                 <div className="px-4 lg:px-6">
@@ -970,77 +1106,59 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                       </Card>
                     </div>
 
-                    {/* Column 2: Stats Cards Skeleton */}
-                    <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
-                      <div className="space-y-4">
-                        {/* Status Cards Row Skeleton */}
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Active Card Skeleton */}
-                          <Card className="bg-white dark:bg-card">
-                            <CardHeader className="space-y-0 pb-4">
+                    {/* Column 2: Status Cards + Activity Data Card Skeleton */}
+                    <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start space-y-4">
+                      {/* Status Cards Skeleton */}
+                      <div className="flex gap-3 overflow-x-auto pb-2">
+                        {Array.from({ length: 7 }).map((_, index) => (
+                          <Card key={index} className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                            <CardHeader className="space-y-0 pb-2">
                               <div>
-                                <Skeleton className="h-4 w-16 mb-2" />
-                                <Skeleton className="h-3 w-32" />
+                                <Skeleton className="h-4 w-16" />
                               </div>
                             </CardHeader>
                             <CardContent>
-                              <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                                <Skeleton className="h-5 w-5" />
-                                <Skeleton className="h-8 w-8" />
+                              <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                                <Skeleton className="h-4 w-4 rounded-full" />
+                                <Skeleton className="h-6 w-6" />
                               </div>
                             </CardContent>
                           </Card>
-
-                          {/* Inactive Card Skeleton */}
-                          <Card className="bg-white dark:bg-card">
-                            <CardHeader className="space-y-0 pb-4">
-                              <div>
-                                <Skeleton className="h-4 w-20 mb-2" />
-                                <Skeleton className="h-3 w-36" />
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                                <Skeleton className="h-5 w-5" />
-                                <Skeleton className="h-8 w-8" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-
-                        {/* Activity Data Card Skeleton */}
-                        <Card className="bg-white dark:bg-card">
-                          <CardHeader>
-                            <div>
-                              <Skeleton className="h-4 w-40 mb-2" />
-                              <Skeleton className="h-3 w-64" />
-                            </div>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="space-y-4">
-                              {[...Array(4)].map((_, i) => (
-                                <div key={i}>
-                                  <Skeleton className="h-3 w-16 mb-2" />
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                      <CardContent className="p-3">
-                                        <Skeleton className="h-3 w-24 mb-2" />
-                                        <Skeleton className="h-6 w-12" />
-                                      </CardContent>
-                                    </Card>
-                                    <Card className="bg-muted/50 dark:bg-muted/20 border-border">
-                                      <CardContent className="p-3">
-                                        <Skeleton className="h-3 w-28 mb-2" />
-                                        <Skeleton className="h-6 w-12" />
-                                      </CardContent>
-                                    </Card>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
+                        ))}
                       </div>
+
+                      {/* Activity Data Card Skeleton */}
+                      <Card className="bg-white dark:bg-card">
+                        <CardHeader>
+                          <div>
+                            <Skeleton className="h-4 w-40 mb-2" />
+                            <Skeleton className="h-3 w-64" />
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0">
+                          <div className="space-y-4">
+                            {[...Array(4)].map((_, i) => (
+                              <div key={i}>
+                                <Skeleton className="h-3 w-16 mb-2" />
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                    <CardContent className="p-3">
+                                      <Skeleton className="h-3 w-24 mb-2" />
+                                      <Skeleton className="h-6 w-12" />
+                                    </CardContent>
+                                  </Card>
+                                  <Card className="bg-muted/50 dark:bg-muted/20 border-border">
+                                    <CardContent className="p-3">
+                                      <Skeleton className="h-3 w-28 mb-2" />
+                                      <Skeleton className="h-6 w-12" />
+                                    </CardContent>
+                                  </Card>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
                 </div>
@@ -1089,13 +1207,20 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
             <div className="flex flex-col py-4 md:py-6">
               {/* Activities Header Section */}
               <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                <div>
-                  <h1 className="text-2xl font-bold">Activities</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Track user activities and productivity metrics by date.
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold">Activities</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Track user activities and productivity metrics by date.
+                    </p>
+                  </div>
+                  <ReloadButton 
+                    loading={reloading} 
+                    onReload={handleReload}
+                  />
                 </div>
               </div>
+
 
               {/* Two Column Layout */}
               <div className="px-4 lg:px-6">
@@ -1169,7 +1294,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                     </div>
                                   </TableCell>
             <TableCell className="text-center">
-              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, (employee.activity as any).break_start_time, employee.activity.pause_time, employee.activity.resume_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time, employee.activity.is_in_event, employee.activity.event_title, employee.activity.event_location, employee.activity.event_start_time, employee.activity.event_end_time, employee.activity.is_going, employee.activity.is_back, employee.activity.going_at, employee.activity.back_at, employee.activity.is_in_restroom, employee.activity.restroom_count, employee.activity.daily_restroom_count, employee.activity.restroom_went_at)}
+              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, (employee.activity as any).break_start_time, employee.activity.pause_time, employee.activity.resume_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time, employee.activity.is_in_event, employee.activity.event_title, employee.activity.event_location, employee.activity.event_start_time, employee.activity.event_end_time, employee.activity.is_going, employee.activity.is_back, employee.activity.going_at, employee.activity.back_at, employee.activity.is_in_restroom, employee.activity.restroom_count, employee.activity.daily_restroom_count, employee.activity.restroom_went_at, employee.activity.is_in_clinic, employee.activity.in_clinic_at, employee.activity.clinic_request_status, employee.activity.clinic_priority, employee.activity.clinic_complaint)}
             </TableCell>
                                   <TableCell className="text-center">
                                     {employee.activity.today_active_seconds > 0 ? (
@@ -1194,60 +1319,141 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                     </Card>
                   </div>
 
-                  {/* Column 2: Stats Cards (sticky) */}
-                  <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
-                    <div className="space-y-4">
-                      {/* Status Cards Row */}
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Active Employees Card */}
-                        <Card className="bg-white dark:bg-card">
-                          <CardHeader className="space-y-0 pb-4">
-                            <div>
-                              <CardTitle className="text-base">Active</CardTitle>
-                              <CardDescription>Employees currently active.</CardDescription>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                              <div className="h-5 w-5 text-green-500">
-                                <UsersIcon className="h-5 w-5" />
-                              </div>
-                              {getActiveEmployeesCount()}
-                            </div>
-                          </CardContent>
-                        </Card>
+                   {/* Column 2: Status Cards + Activity Data Card (sticky) */}
+                   <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start space-y-4">
+                     {/* Status Cards */}
+                     <div className="flex gap-3 overflow-x-auto pb-2">
+                       {/* Active Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">Active</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-green-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().active}
+                           </div>
+                         </CardContent>
+                       </Card>
 
-                        {/* Inactive Employees Card */}
-                        <Card className="bg-white dark:bg-card">
-                          <CardHeader className="space-y-0 pb-4">
-                            <div>
-                              <CardTitle className="text-base">Inactive</CardTitle>
-                              <CardDescription>Employees currently inactive.</CardDescription>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-semibold tabular-nums flex items-center gap-2">
-                              <div className="h-5 w-5 text-red-500">
-                                <UsersIcon className="h-5 w-5" />
-                              </div>
-                              {getInactiveEmployeesCount()}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
+                       {/* Inactive Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">Inactive</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-red-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().inactive}
+                           </div>
+                         </CardContent>
+                       </Card>
 
-        <ActivityDataCard 
-          selectedEmployee={selectedEmployee}
-          formatTime={formatTime}
-          getMergedData={getMergedData}
-          detailLoading={detailLoading}
-          getYesterdayActivityData={getYesterdayActivityData}
-          getWeekActivityData={getWeekActivityData}
-          getMonthActivityData={getMonthActivityData}
-          user={user}
-        />
-                    </div>
-                  </div>
+                       {/* On Break Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">On Break</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-blue-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().onBreak}
+                           </div>
+                         </CardContent>
+                       </Card>
+
+                       {/* In Meeting Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">In Meeting</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-purple-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().inMeeting}
+                           </div>
+                         </CardContent>
+                       </Card>
+
+                       {/* In Event Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">In Event</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-indigo-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().inEvent}
+                           </div>
+                         </CardContent>
+                       </Card>
+
+                       {/* In Restroom Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">In Restroom</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-yellow-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().inRestroom}
+                           </div>
+                         </CardContent>
+                       </Card>
+
+                       {/* In Clinic Card */}
+                       <Card className="bg-white dark:bg-card min-w-[120px] flex-shrink-0">
+                         <CardHeader className="space-y-0 pb-2">
+                           <div>
+                             <CardTitle className="text-sm">In Clinic</CardTitle>
+                           </div>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-xl font-semibold tabular-nums flex items-center gap-2">
+                             <div className="h-4 w-4 text-orange-500">
+                               <UsersIcon className="h-4 w-4" />
+                             </div>
+                             {getStatusCounts().inClinic}
+                           </div>
+                         </CardContent>
+                       </Card>
+                     </div>
+
+                     <ActivityDataCard 
+                       selectedEmployee={selectedEmployee}
+                       formatTime={formatTime}
+                       getMergedData={getMergedData}
+                       detailLoading={detailLoading}
+                       getYesterdayActivityData={getYesterdayActivityData}
+                       getWeekActivityData={getWeekActivityData}
+                       getMonthActivityData={getMonthActivityData}
+                       user={user}
+                     />
+                   </div>
                 </div>
               </div>
             </div>

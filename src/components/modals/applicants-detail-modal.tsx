@@ -14,21 +14,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import { useTheme } from "next-themes"
 import { useRealtimeApplicants } from "@/hooks/use-realtime-applicants"
-import { useRealtimeBpocJobStatus } from "@/hooks/use-realtime-bpoc-job-status"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 
 import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-// Type declaration for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      openJobDetailWindow: (jobId: string, jobData: any) => Promise<{ success: boolean; error?: string }>
-    }
-  }
-}
 
 interface ApplicantsDetailModalProps {
   applicant: Applicant | null
@@ -41,51 +32,36 @@ interface ApplicantsDetailModalProps {
 
 interface Applicant {
   id: string
-  ticket_id: string
+  applicant_id?: string | null
   user_id: string
   resume_slug?: string | null
-  concern: string
   details: string | null
-  category: string
-  category_id: number | null
-  category_name?: string
   status: string
-  position: number
-  resolved_by: string | null
-  resolved_at: string | null
   created_at: string
   updated_at: string
-  role_id: number | null
-  station_id: string | null
   profile_picture: string | null
   first_name: string | null
+  last_name: string | null
+  full_name?: string | null
   employee_id: string | null
-  resolver_first_name?: string | null
-  resolver_last_name?: string | null
-  user_type?: string | null
-  member_name?: string | null
-  member_color?: string | null
   job_title?: string | null
   company_name?: string | null
+  user_position?: string | null
   // Additional fields from recruits table
-  bpoc_application_ids?: string[] | null
-  applicant_id?: string | null
-  job_ids?: number[] | null
-  resume_slug_recruits?: string | null
-  status_recruits?: string | null
-  created_at_recruits?: string | null
-  updated_at_recruits?: string | null
   video_introduction_url?: string | null
   current_salary?: number | null
   expected_monthly_salary?: number | null
   shift?: string | null
-  // Arrays of all job information
-  all_job_titles?: string[]
-  all_companies?: string[]
-  all_job_statuses?: string[]
-  all_job_timestamps?: string[]
   // Skills data from BPOC database
   skills?: string[]
+  // Interested clients data
+  interested_clients?: {
+    user_id: number
+    first_name: string | null
+    last_name: string | null
+    profile_picture: string | null
+    employee_id: string | null
+  }[]
   originalSkillsData?: any
   // Summary from BPOC database
   summary?: string | null
@@ -228,55 +204,10 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
     }
   })
 
-  // Real-time updates for BPOC job status changes
-  const { isConnected: isBpocJobStatusConnected } = useRealtimeBpocJobStatus({
-    onJobStatusUpdate: (jobStatusUpdate) => {
-      console.log('🔄 Real-time: BPOC job status update received in modal:', { 
-        jobStatusUpdate, 
-        currentApplicantId: localApplicant?.id,
-        modalIsOpen: isOpen,
-        hasLocalApplicant: !!localApplicant
-      })
-      
-      // Only process updates if modal is open and we have a local applicant
-      if (isOpen && localApplicant) {
-        // Check if this job status update affects the current applicant
-        // We need to check if the job_id is in the applicant's job_ids array
-        if (localApplicant.job_ids && localApplicant.job_ids.includes(jobStatusUpdate.job_id)) {
-          console.log('🔄 Real-time: Job status update affects current applicant, updating local state...')
-          
-          // Update the local applicant's job statuses array
-          setLocalApplicant(prevApplicant => {
-            if (!prevApplicant) return prevApplicant
-            
-            // Find the index of the updated job status
-            const jobIndex = prevApplicant.all_job_statuses?.findIndex((_, index) => 
-              prevApplicant.job_ids?.[index] === jobStatusUpdate.job_id
-            )
-            
-            if (jobIndex !== undefined && jobIndex !== -1 && prevApplicant.all_job_statuses) {
-              const updatedJobStatuses = [...prevApplicant.all_job_statuses]
-              updatedJobStatuses[jobIndex] = jobStatusUpdate.new_status
-              
-              return {
-                ...prevApplicant,
-                all_job_statuses: updatedJobStatuses
-              }
-            }
-            
-            return prevApplicant
-          })
-        } else {
-          console.log('🔄 Real-time: Job status update does not affect current applicant, skipping')
-        }
-      }
-    }
-  })
 
   // Log connection status for debugging
   console.log('🔍 Modal connection status:', { 
     isRealtimeConnected,
-    isBpocJobStatusConnected,
     applicantId: localApplicant?.id
   })
 
@@ -285,12 +216,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
     if (applicant) {
       console.log('🔍 Modal Loading Applicant Data:', {
         id: applicant.id,
-        status: applicant.status,
-        all_job_statuses: applicant.all_job_statuses,
-        all_job_titles: applicant.all_job_titles,
-        all_companies: applicant.all_companies,
-        job_ids: applicant.job_ids,
-        bpoc_application_ids: applicant.bpoc_application_ids
+        status: applicant.status
       })
       
       setLocalApplicant(applicant)
@@ -356,59 +282,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
 
 
 
-  // Handle job click to show job details
-  const handleJobClick = async (jobIndex: number) => {
-    try {
-      // Get job ID from the applicant's job_ids array
-      const jobId = localApplicant?.job_ids?.[jobIndex]
-      
-      if (!jobId) {
-        console.error('No job ID found for index:', jobIndex)
-        return
-      }
-
-      // Debug: Log the mapping to verify accuracy
-      console.log('🔍 Job Click Debug:', {
-        jobIndex,
-        jobId,
-        jobTitle: localApplicant?.all_job_titles?.[jobIndex],
-        company: localApplicant?.all_companies?.[jobIndex],
-        status: localApplicant?.all_job_statuses?.[jobIndex],
-        timestamp: localApplicant?.all_job_timestamps?.[jobIndex],
-        allJobIds: localApplicant?.job_ids,
-        allJobTitles: localApplicant?.all_job_titles,
-        allCompanies: localApplicant?.all_companies,
-        allJobStatuses: localApplicant?.all_job_statuses
-      })
-
-      // Fetch detailed job data from BPOC database first
-      const response = await fetch(`/api/bpoc/job-details/${jobId}`)
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch job details: ${response.statusText}`)
-      }
-
-      const jobData = await response.json()
-      
-      // Check if we're in Electron environment
-      if (typeof window !== 'undefined' && window.electronAPI) {
-        // Open Electron window with real job data from the API
-        const result = await window.electronAPI.openJobDetailWindow(String(jobId), jobData)
-        if (result.success) {
-          console.log('✅ Job detail window opened successfully:', result)
-        } else {
-          console.error('❌ Failed to open job detail window:', result.error)
-        }
-      } else {
-        // Not in Electron environment - show error or fallback
-        console.error('❌ Electron environment not available')
-        alert('Job details can only be viewed in the desktop application.')
-      }
-    } catch (error) {
-      console.error('Error handling job click:', error)
-      alert('Failed to load job details. Please try again.')
-    }
-  }
 
 
 
@@ -638,7 +511,7 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
               <div className="flex items-center justify-between px-6 py-5 bg-sidebar h-16 border-b border-[#cecece99] dark:border-border">
                 <div className="flex items-center gap-3">
                   <Badge className="text-xs h-6 flex items-center rounded-[6px]">
-                    Applicant
+                    Talent Pool
                   </Badge>
 
                 </div>
@@ -710,71 +583,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
               {/* Applicant Details with Tabs */}
               <div className="px-6 py-5 overflow-y-auto flex-1 min-h-0">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-col">
-                  {/* Job Application Section - Only show when there are job applications */}
-                  {/* 
-                    CRITICAL: The index here MUST correspond to localApplicant.job_ids[index]
-                    The arrays all_job_titles, all_companies, all_job_statuses, all_job_timestamps
-                    are mapped 1:1 with the job_ids array from the main database.
-                  */}
-                  {localApplicant.all_job_titles && localApplicant.all_job_titles.length > 0 && (
-                  <div className="flex flex-col mb-6">
-                    <div className="flex items-center justify-between min-h-[40px]">
-                      <h3 className="text-lg font-medium text-muted-foreground">Job Application</h3>
-                    </div>
-                    <div className="rounded-lg border p-6 shadow-sm">
-                      <div className="space-y-2">
-                              {localApplicant.all_job_titles.map((jobTitle, index) => (
-                              <div 
-                                key={index} 
-                                className="rounded-lg p-4 border bg-card cursor-pointer hover:bg-accent/50 transition-colors relative"
-                                onClick={() => handleJobClick(index)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <h4 className="font-medium text-foreground">
-                                      {jobTitle}
-                                    </h4>
-                                  </div>
-                                  
-                                  {/* Applied Date and Time - Top Right */}
-                                  {localApplicant.all_job_timestamps && localApplicant.all_job_timestamps[index] && (
-                                    <div className="flex items-center gap-1 text-right flex-shrink-0">
-                                      <IconCalendar className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-muted-foreground text-xs">
-                                        {new Date(localApplicant.all_job_timestamps[index]).toLocaleDateString('en-US', { 
-                                          month: 'short', 
-                                          day: 'numeric',
-                                          timeZone: 'Asia/Manila'
-                                        })}
-                                      </span>
-                                      <span className="text-muted-foreground/70 text-xs">•</span>
-                                      <IconClock className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-muted-foreground text-xs">
-                                        {new Date(localApplicant.all_job_timestamps[index]).toLocaleTimeString('en-US', { 
-                                          hour: '2-digit', 
-                                          minute: '2-digit', 
-                                          hour12: true, 
-                                          timeZone: 'Asia/Manila'
-                                        })}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {/* Company Name - Only show when there's company data */}
-                                {localApplicant?.all_companies && localApplicant.all_companies[index] && (
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex-1">
-                                          <p className="text-sm text-muted-foreground">{localApplicant?.all_companies?.[index]}</p>
-                                      </div>
-                                        </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                      </div>
-                    </div>
-                  )}
 
 
 
@@ -912,22 +720,6 @@ export function ApplicantsDetailModal({ applicant, isOpen, onClose, pageContext 
                                         {localApplicant.skills.map((skill: string, index: number) => (
                                           <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
                                             {skill}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )
-                                }
-                                
-                                // Applied Positions fallback
-                                if (localApplicant.all_job_titles && localApplicant.all_job_titles.length > 0) {
-                                  return (
-                                    <div>
-                                      <h4 className="text-sm font-medium text-muted-foreground mb-2">Applied Positions</h4>
-                                      <div className="flex flex-wrap gap-2">
-                                        {localApplicant.all_job_titles.map((jobTitle, index) => (
-                                          <Badge key={index} className="text-xs bg-gray-200 text-black dark:bg-zinc-800 dark:text-white border-0">
-                                            {jobTitle}
                                           </Badge>
                                         ))}
                                       </div>

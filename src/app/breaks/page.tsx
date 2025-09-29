@@ -47,6 +47,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 interface BreakSession {
   id: number
@@ -102,6 +103,7 @@ export default function BreaksPage() {
     totalAgents: 0
   })
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [reloading, setReloading] = useState(false)
 
   // Sorting state
   const [sortField, setSortField] = useState<'name' | 'department' | 'position'>('name')
@@ -210,63 +212,75 @@ export default function BreaksPage() {
   }, [user])
 
   // Fetch break sessions data
-  useEffect(() => {
-    const fetchBreakSessions = async () => {
-      console.log('🔍 Fetching break sessions for memberId:', user?.memberId)
-      console.log('🔍 Full user data:', user)
-      
-      // Clear any previous errors and set loading
-      setError(null)
-      setLoading(true)
-      
-      if (!user?.memberId && user?.userType !== 'Internal') {
-        console.log('❌ No member ID found and user is not Internal')
-        console.log('❌ User data:', user)
-        setError('User member ID not found')
-        setLoading(false)
-        return
-      }
-
-      try {
-        console.log('📡 Making API request to /api/breaks')
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        // Get today's date in Asia/Manila timezone to match database calculations
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) // YYYY-MM-DD format
-        const response = await fetch(`/api/breaks?memberId=${memberId}&date=${today}`)
-        
-        console.log('📊 Response status:', response.status)
-        
-        if (!response.ok) {
-          const errorText = await response.text()
-          console.log('❌ API error:', errorText)
-          throw new Error(`Failed to fetch break sessions: ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log('✅ Break sessions data received:', data)
-        
-        setBreakSessions(data.breakSessions)
-        setStats({
-          total: data.stats.total,
-          active: data.stats.active,
-          today: data.stats.today,
-          averageDuration: data.stats.averageDuration,
-          totalAgents: data.stats.totalAgents
-        })
-        setError(null) // Clear any previous errors
-      } catch (err) {
-        console.error('❌ Fetch error:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch break sessions')
-      } finally {
-        setLoading(false)
-      }
+  const fetchBreakSessions = async () => {
+    console.log('🔍 Fetching break sessions for memberId:', user?.memberId)
+    console.log('🔍 Full user data:', user)
+    
+    // Clear any previous errors and set loading
+    setError(null)
+    setLoading(true)
+    
+    if (!user?.memberId && user?.userType !== 'Internal') {
+      console.log('❌ No member ID found and user is not Internal')
+      console.log('❌ User data:', user)
+      setError('User member ID not found')
+      setLoading(false)
+      return
     }
 
+    try {
+      console.log('📡 Making API request to /api/breaks')
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      // Get today's date in Asia/Manila timezone to match database calculations
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) // YYYY-MM-DD format
+      const response = await fetch(`/api/breaks?memberId=${memberId}&date=${today}`)
+      
+      console.log('📊 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ API error:', errorText)
+        throw new Error(`Failed to fetch break sessions: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Break sessions data received:', data)
+      
+      setBreakSessions(data.breakSessions)
+      setStats({
+        total: data.stats.total,
+        active: data.stats.active,
+        today: data.stats.today,
+        averageDuration: data.stats.averageDuration,
+        totalAgents: data.stats.totalAgents
+      })
+      setError(null) // Clear any previous errors
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch break sessions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     // Only fetch if user is available
     if (user) {
       fetchBreakSessions()
     }
   }, [user])
+
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      await fetchBreakSessions()
+    } catch (err) {
+      console.error('❌ Reload error:', err)
+    } finally {
+      setReloading(false)
+    }
+  }
 
   const getBreakTypeIcon = (breakType: string) => {
     switch (breakType) {
@@ -615,19 +629,18 @@ export default function BreaksPage() {
             <div className="flex flex-col py-4 md:py-6">
               {/* Employee Breaks Header Section */}
               <div className="px-4 lg:px-6 mb-4 min-h-[72px]">
-                {loading ? (
+                <div className="flex items-center justify-between">
                   <div>
-                    <Skeleton className="h-8 w-48 mb-2" />
-                    <Skeleton className="h-4 w-full max-w-2xl" />
-                  </div>
-                ) : (
-                  <>
-                    <h1 className="text-2xl font-bold">Employee Breaks</h1>
+                    <h1 className="text-2xl font-bold">Breaks</h1>
                     <p className="text-sm text-muted-foreground">
                       Monitor all employees and their break session status across all break types including morning, lunch, afternoon, and night shifts.
                     </p>
-                  </>
-                )}
+                  </div>
+                  <ReloadButton 
+                    loading={reloading} 
+                    onReload={handleReload}
+                  />
+                </div>
               </div>
 
               {/* Two Column Layout */}

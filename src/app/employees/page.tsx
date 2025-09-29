@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 interface Employee {
   id: string
@@ -74,6 +75,7 @@ export default function EmployeesPage() {
     total: 0,
     departments: 0
   })
+  const [reloading, setReloading] = useState(false)
 
   // Sort state
   const [sortField, setSortField] = useState<keyof Employee | null>(null)
@@ -196,6 +198,18 @@ export default function EmployeesPage() {
     return () => clearTimeout(timer)
   }, [searchQuery, currentPage, sortField, sortDirection])
 
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      await fetchEmployees()
+    } catch (err) {
+      console.error('❌ Reload error:', err)
+    } finally {
+      setReloading(false)
+    }
+  }
+
   if (loading) {
     return (
       <>
@@ -206,24 +220,120 @@ export default function EmployeesPage() {
             <div className="@container/main flex flex-1 flex-col gap-2">
               <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
                 <div className="px-4 lg:px-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Employee Directory</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {[...Array(10)].map((_, i) => (
-                          <div key={i} className="flex items-center space-x-4">
-                            <Skeleton className="h-10 w-10 rounded-full" />
-                            <div className="space-y-2 flex-1">
-                              <Skeleton className="h-4 w-1/4" />
-                              <Skeleton className="h-3 w-1/3" />
-                            </div>
-                          </div>
-                        ))}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-2xl font-bold">Employees</h1>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your team members and their information.
+                        </p>
                       </div>
-                    </CardContent>
+                      <ReloadButton 
+                        loading={reloading} 
+                        onReload={handleReload}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Cards Skeleton */}
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 lg:px-6">
+                  <Card className="@container/card">
+                    <CardHeader>
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
+                        <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                      </div>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-1 text-sm">
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded mb-2"></div>
+                      <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
+                    </CardFooter>
                   </Card>
+
+                  <Card className="@container/card">
+                    <CardHeader>
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
+                        <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                      </div>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-1 text-sm">
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded mb-2"></div>
+                      <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
+                    </CardFooter>
+                  </Card>
+
+                  <Card className="@container/card">
+                    <CardHeader>
+                      <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="h-6 w-6 bg-muted animate-pulse rounded"></div>
+                        <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                      </div>
+                    </CardHeader>
+                    <CardFooter className="flex-col items-start gap-1 text-sm">
+                      <div className="h-4 w-32 bg-muted animate-pulse rounded mb-2"></div>
+                      <div className="h-3 w-24 bg-muted animate-pulse rounded"></div>
+                    </CardFooter>
+                  </Card>
+                </div>
+
+                {/* Search Section Skeleton */}
+                <div className="px-4 lg:px-6">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                      <div className="h-10 w-full bg-muted animate-pulse rounded"></div>
+                    </div>
+                    <div className="h-10 w-32 bg-muted animate-pulse rounded"></div>
+                  </div>
+                </div>
+
+                {/* Table Skeleton */}
+                <div className="px-4 lg:px-6">
+                  <Card className="overflow-hidden">
+                    <div className="border-b">
+                      <div className="h-12 flex items-center px-4">
+                        <div className="flex-1 grid grid-cols-5 gap-4">
+                          <div className="h-4 w-16 bg-muted animate-pulse rounded"></div>
+                          <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                          <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                          <div className="h-4 w-16 bg-muted animate-pulse rounded"></div>
+                          <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="divide-y">
+                      {[...Array(10)].map((_, i) => (
+                        <div key={i} className="h-16 flex items-center px-4">
+                          <div className="flex-1 grid grid-cols-5 gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 bg-muted animate-pulse rounded-full"></div>
+                              <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                            </div>
+                            <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                            <div className="h-4 w-24 bg-muted animate-pulse rounded"></div>
+                            <div className="h-4 w-32 bg-muted animate-pulse rounded"></div>
+                            <div className="h-4 w-20 bg-muted animate-pulse rounded"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                  
+                  {/* Pagination Skeleton */}
+                  <div className="flex items-center justify-between mt-6">
+                    <div className="h-4 w-48 bg-muted animate-pulse rounded"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                      <div className="h-8 w-8 bg-muted animate-pulse rounded"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -266,11 +376,17 @@ export default function EmployeesPage() {
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <div className="px-4 lg:px-6">
                 <div className="mb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">Employees</h1>
-                    <p className="text-sm text-muted-foreground">
-                      Manage your team members and their information.
-                    </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h1 className="text-2xl font-bold">Employees</h1>
+                      <p className="text-sm text-muted-foreground">
+                        Manage your team members and their information.
+                      </p>
+                    </div>
+                    <ReloadButton 
+                      loading={reloading} 
+                      onReload={handleReload}
+                    />
                   </div>
                 </div>
               </div>

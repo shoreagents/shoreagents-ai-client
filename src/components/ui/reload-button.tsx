@@ -15,10 +15,7 @@ const ReloadButton = React.forwardRef<HTMLButtonElement, ReloadButtonProps>(
       <Button
         ref={ref}
         variant="outline"
-        className={cn(
-          "text-sm h-9 rounded-lg shadow-none",
-          className
-        )}
+        className={cn("bg-card text-card-foreground border-muted-foreground/20 hover:bg-muted dark:hover:bg-gray-300/20 hover:border-muted-foreground/20", className)}
         onClick={onReload}
         disabled={loading}
         {...props}
