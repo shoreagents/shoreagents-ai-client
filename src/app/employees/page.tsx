@@ -46,6 +46,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 import { ReloadButton } from "@/components/ui/reload-button"
+import { AgentsDetailModal } from "@/components/modals/agents-detail-modal"
 
 interface Employee {
   id: string
@@ -55,15 +56,8 @@ interface Employee {
   phone?: string
   department: string
   position: string
-  hireDate?: string
   status: 'Active' | 'Inactive'
   avatar?: string
-  departmentId?: number
-  workEmail?: string
-  birthday?: string
-  city?: string
-  address?: string
-  gender?: string
 }
 
 export default function EmployeesPage() {
@@ -77,8 +71,8 @@ export default function EmployeesPage() {
   })
   const [reloading, setReloading] = useState(false)
 
-  // Sort state
-  const [sortField, setSortField] = useState<keyof Employee | null>(null)
+  // Sort state - default to name sorting like leaderboard
+  const [sortField, setSortField] = useState<keyof Employee>('firstName')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   // Search state
@@ -89,6 +83,12 @@ export default function EmployeesPage() {
   const itemsPerPage = 20
   const [totalCount, setTotalCount] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
+
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [detailedEmployeeData, setDetailedEmployeeData] = useState<any>(null)
+  const [modalLoading, setModalLoading] = useState(false)
 
   // removed department filter state and memo
 
@@ -111,6 +111,67 @@ export default function EmployeesPage() {
     return sortDirection === 'asc' 
       ? <IconArrowUp className="h-4 w-4 text-primary" />
       : <IconArrowDown className="h-4 w-4 text-primary" />
+  }
+
+  // Fetch missing employee data for modal
+  const fetchMissingEmployeeData = async (employee: Employee) => {
+    setModalLoading(true)
+    try {
+      const missingFields = [
+        'birthday', 'city', 'address', 'gender',
+        'workEmail', 'employmentStatus', 'startDate',
+        'memberId', 'company', 'shift', 'departmentId',
+        'memberBadgeColor', 'employeeId', 'shiftPeriod',
+        'shiftSchedule', 'shiftTime', 'workSetup',
+        'hireType', 'staffSource', 'exitDate', 'stationId'
+      ]
+      
+      const response = await fetch(`/api/team/employees/${employee.id}/details`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: missingFields })
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch employee details: ${response.status}`)
+      }
+      
+      const missingData = await response.json()
+      
+      // Merge with the employee parameter directly (not selectedEmployee state)
+      const completeData = {
+        ...employee, // Use the employee parameter directly
+        ...missingData       // Newly fetched data
+      }
+      
+      console.log('🔄 Merging employee data:', {
+        employee: employee,
+        missingData: missingData,
+        completeData: completeData
+      })
+      
+      setDetailedEmployeeData(completeData)
+    } catch (error) {
+      console.error('Error fetching missing employee data:', error)
+      setDetailedEmployeeData(null)
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  // Handle employee click to open modal
+  const handleEmployeeClick = (employee: Employee) => {
+    setSelectedEmployee(employee)
+    setIsModalOpen(true)
+    // Fetch missing data when modal opens - pass employee directly
+    fetchMissingEmployeeData(employee)
+  }
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedEmployee(null)
+    setDetailedEmployeeData(null)
   }
 
   // Remove client-side filtering since it's now server-side
@@ -141,11 +202,9 @@ export default function EmployeesPage() {
         params.append('search', searchQuery.trim())
       }
 
-      // Add sort parameters if sorting is active
-      if (sortField) {
-        params.append('sortField', sortField)
-        params.append('sortDirection', sortDirection)
-      }
+      // Always add sort parameters (default is firstName asc)
+      params.append('sortField', sortField)
+      params.append('sortDirection', sortDirection)
 
       const response = await fetch(`/api/team/employees?${params.toString()}`)
       if (!response.ok) {
@@ -202,9 +261,53 @@ export default function EmployeesPage() {
   const handleReload = async () => {
     setReloading(true)
     try {
-      await fetchEmployees()
-    } catch (err) {
+      // Don't call fetchEmployees() - it sets loading=true which triggers skeleton
+      // Instead, duplicate the fetch logic without setLoading(true)
+      if (!user?.memberId && user?.userType !== 'Internal') {
+        setError('User member ID not found')
+        return
+      }
+
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      const params = new URLSearchParams({ 
+        memberId: String(memberId),
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
+      })
+
+      // Add search parameter if there's a search query
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim())
+      }
+
+      // Always add sort parameters (default is firstName asc)
+      params.append('sortField', sortField)
+      params.append('sortDirection', sortDirection)
+
+      const response = await fetch(`/api/team/employees?${params.toString()}`)
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to fetch employees: ${response.status} ${errorText}`)
+      }
+      const data = await response.json()
+      
+      // Handle paginated response
+      if (data.employees && data.pagination) {
+        setEmployees(data.employees)
+        setTotalCount(data.pagination.totalCount)
+        setTotalPages(data.pagination.totalPages)
+        setStats({ total: data.stats.total, departments: data.stats.departments })
+      } else {
+        // Fallback for non-paginated response
+        setEmployees(data.employees || data)
+        setTotalCount(data.employees?.length || data.length)
+        setTotalPages(Math.ceil((data.employees?.length || data.length) / itemsPerPage))
+        setStats({ total: data.stats?.total || data.length, departments: data.stats?.departments || 0 })
+      }
+      setError(null) // Clear any previous errors
+    } catch (err: any) {
       console.error('❌ Reload error:', err)
+      setError(err?.message || 'Failed to reload employees')
     } finally {
       setReloading(false)
     }
@@ -475,7 +578,7 @@ export default function EmployeesPage() {
                               className={`cursor-pointer ${sortField === 'position' ? 'text-primary font-medium bg-accent/50' : ''}`}
                             >
                               <div className="flex items-center gap-1">
-                                Position
+                                Job Title
                                 {getSortIcon('position')}
                               </div>
                             </TableHead>
@@ -497,20 +600,15 @@ export default function EmployeesPage() {
                                 {getSortIcon('email')}
                               </div>
                             </TableHead>
-                            <TableHead 
-                              onClick={() => handleSort('hireDate')} 
-                              className={`cursor-pointer ${sortField === 'hireDate' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                            >
-                              <div className="flex items-center gap-1">
-                                Hire Date
-                                {getSortIcon('hireDate')}
-                              </div>
-                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {displayedEmployees.map((employee) => (
-                            <TableRow key={employee.id}>
+                            <TableRow 
+                              key={employee.id}
+                              className="cursor-pointer hover:bg-accent/50"
+                              onClick={() => handleEmployeeClick(employee)}
+                            >
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-8 w-8">
@@ -538,11 +636,6 @@ export default function EmployeesPage() {
                                       {employee.phone}
                                     </div>
                                   )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm">
-                                  {employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : 'N/A'}
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -604,6 +697,87 @@ export default function EmployeesPage() {
             </div>
           </div>
         </SidebarInset>
+        
+        {/* Debug logging */}
+        {console.log('🔄 Modal data mapping:', {
+          detailedEmployeeData: detailedEmployeeData,
+          selectedEmployee: selectedEmployee,
+          memberId: detailedEmployeeData?.memberId,
+          company: detailedEmployeeData?.company,
+          memberBadgeColor: detailedEmployeeData?.memberBadgeColor
+        })}
+        
+        {/* Agents Detail Modal */}
+        <AgentsDetailModal
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          agentId={selectedEmployee?.id}
+          agentData={detailedEmployeeData ? {
+            user_id: parseInt(detailedEmployeeData.id),
+            email: detailedEmployeeData.email,
+            user_type: 'Agent',
+            first_name: detailedEmployeeData.firstName,
+            middle_name: null,
+            last_name: detailedEmployeeData.lastName,
+            nickname: null,
+            profile_picture: detailedEmployeeData.avatar || null,
+            phone: detailedEmployeeData.phone || null,
+            birthday: detailedEmployeeData.birthday || null,
+            city: detailedEmployeeData.city || null,
+            address: detailedEmployeeData.address || null,
+            gender: detailedEmployeeData.gender || null,
+            employee_id: detailedEmployeeData.employeeId || null,
+            job_title: detailedEmployeeData.position,
+            work_email: detailedEmployeeData.workEmail || detailedEmployeeData.email,
+            shift_period: detailedEmployeeData.shiftPeriod || null,
+            shift_schedule: detailedEmployeeData.shiftSchedule || null,
+            shift_time: detailedEmployeeData.shiftTime || null,
+            work_setup: detailedEmployeeData.workSetup || null,
+            employment_status: detailedEmployeeData.employmentStatus || 'Active',
+            hire_type: detailedEmployeeData.hireType || null,
+            staff_source: detailedEmployeeData.staffSource || null,
+            start_date: detailedEmployeeData.startDate || null,
+            exit_date: detailedEmployeeData.exitDate || null,
+            member_id: detailedEmployeeData.memberId || null,
+            member_company: detailedEmployeeData.company || null,
+            member_badge_color: detailedEmployeeData.memberBadgeColor || null,
+            department_id: detailedEmployeeData.departmentId || null,
+            department_name: detailedEmployeeData.department,
+            station_id: detailedEmployeeData.stationId || null
+          } : (selectedEmployee ? {
+            user_id: parseInt(selectedEmployee.id),
+            email: selectedEmployee.email,
+            user_type: 'Agent',
+            first_name: selectedEmployee.firstName,
+            middle_name: null,
+            last_name: selectedEmployee.lastName,
+            nickname: null,
+            profile_picture: selectedEmployee.avatar || null,
+            phone: selectedEmployee.phone || null,
+            birthday: null,
+            city: null,
+            address: null,
+            gender: null,
+            employee_id: null,
+            job_title: selectedEmployee.position,
+            work_email: selectedEmployee.email,
+            shift_period: null,
+            shift_schedule: null,
+            shift_time: null,
+            work_setup: null,
+            employment_status: 'Active',
+            hire_type: null,
+            staff_source: null,
+            start_date: null,
+            exit_date: null,
+            member_id: null,
+            member_company: null,
+            member_badge_color: null,
+            department_id: null,
+            department_name: selectedEmployee.department,
+            station_id: null
+          } : undefined)}
+        />
       </>
     )
   }

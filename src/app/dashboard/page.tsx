@@ -426,182 +426,6 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-              {loading ? (
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-                  {/* 1. Activity Card (2x2) - Inactive Employees */}
-                  <Card className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-1.5">
-                          <CardTitle>Activity</CardTitle>
-                          <CardDescription>Employees currently inactive.</CardDescription>
-                        </div>
-                        <div className="text-2xl font-semibold tabular-nums flex items-center gap-2 ml-4">
-                          <div className="h-5 w-5 text-red-500">
-                            <UsersIcon className="h-5 w-5" />
-                          </div>
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-6">
-                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <div className="flex-1 min-w-0">
-                              <Skeleton className="h-4 w-24" />
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <Skeleton className="h-3 w-12" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* 2. New Hires Card (1x1) */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-base">New Hires</CardTitle>
-                      <CardDescription>
-                        <Skeleton className="h-4 w-20" />
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* 3. Today Card (1x1) - Birthday Employees */}
-                  <Card className="lg:col-span-1 lg:row-span-1">
-                    <CardHeader>
-                      <CardTitle className="text-base">Today</CardTitle>
-                      <CardDescription>
-                        <Skeleton className="h-4 w-20" />
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="px-6 pb-6">
-                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <div className="flex-1 min-w-0">
-                              <Skeleton className="h-4 w-24" />
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <Skeleton className="h-3 w-12" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* 4. Jobs Card (1x2) */}
-                  <Card className="lg:col-span-1 lg:row-span-2 flex flex-col">
-                    <CardHeader>
-                      <CardTitle>Jobs</CardTitle>
-                      <CardDescription>View and manage job requests.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col gap-2 p-0 justify-center">
-                      <div className="w-full">
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-4 w-1/2" />
-                        </div>
-                      </div>
-                      <div className="w-full">
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-full" />
-                          <Skeleton className="h-4 w-2/3" />
-                          <Skeleton className="h-4 w-1/3" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 5. Activity Rankings Card (2x3) */}
-                  <Card className="lg:col-span-2 lg:row-span-3">
-                    <CardHeader>
-                      <CardTitle>Activity Rankings</CardTitle>
-                      <CardDescription>Top performers this month</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="flex items-center gap-3">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <div className="flex-1">
-                              <Skeleton className="h-4 w-24 mb-1" />
-                              <Skeleton className="h-3 w-16" />
-                            </div>
-                            <Skeleton className="h-6 w-12" />
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 6. Breaks Card (1x2) */}
-                  <Card className="lg:col-span-1 lg:row-span-2">
-                    <CardHeader>
-                      <CardTitle className="text-base">Breaks</CardTitle>
-                      <CardDescription>
-                        <Skeleton className="h-4 w-20" />
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 7. Connect Globe Card (1x1) */}
-                  <Card className="lg:col-span-1 lg:row-span-1 h-56">
-                    <CardHeader>
-                      <CardTitle className="text-base">Growth Rate</CardTitle>
-                      <CardDescription>
-                        <Skeleton className="h-4 w-16" />
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-center">
-                      <Skeleton className="h-32 w-32 rounded-full" />
-                    </CardContent>
-                  </Card>
-
-                  {/* 8. Talent Pool Card (1x2) */}
-                  <Card className="lg:col-span-1 lg:row-span-2 bg-gradient-to-b from-white/60 via-white/20 to-blue-500/30 dark:from-black/70 dark:via-black/30 dark:to-blue-400/40 relative overflow-hidden">
-                    <CardHeader>
-                      <CardTitle>Talent Pool</CardTitle>
-                      <CardDescription>Explore and discover skilled candidates available for your team.</CardDescription>
-                    </CardHeader>
-                    <div className="absolute bottom-0 left-0 right-0 h-[100px]">
-                      <div className="relative flex h-full w-full items-center justify-center">
-                        <Skeleton className="h-32 w-32 rounded-full" />
-                      </div>
-                    </div>
-                  </Card>
-
-                  {/* 9. Approved Card (1x1) */}
-                  <Card className="lg:col-span-1 lg:row-span-1 h-full">
-                    <CardHeader>
-                      <CardTitle className="text-base">Approved</CardTitle>
-                      <CardDescription>
-                        <Skeleton className="h-4 w-16" />
-                      </CardDescription>
-                    </CardHeader>
-                  </Card>
-                </div>
-              ) : (
                 <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
                   {/* 1. Salmon (2x2) - Inactive Employees */}
                   <Card className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
@@ -627,7 +451,7 @@ export default function Dashboard() {
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
                           {loading || employees.length === 0 || activities.length === 0 ? (
                             // Skeleton loading states
-                            Array.from({ length: 3 }).map((_, index) => (
+                            Array.from({ length: 9 }).map((_, index) => (
                             <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
                               <Skeleton className="h-8 w-8 rounded-full" />
                               <div className="flex-1 min-w-0">
@@ -698,7 +522,7 @@ export default function Dashboard() {
                       <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
                         {birthdayLoading ? (
                           // Skeleton loading states
-                          Array.from({ length: 3 }).map((_, index) => (
+                          Array.from({ length: 9 }).map((_, index) => (
                             <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
                               <Skeleton className="h-8 w-8 rounded-full" />
                               <div className="flex-1 min-w-0">
@@ -991,7 +815,6 @@ export default function Dashboard() {
                     </CardHeader>
                   </Card>
                 </div>
-              )}
               {/* Removed Total Visitors section */}
             </div>
           </div>

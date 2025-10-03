@@ -322,6 +322,27 @@ export default function TalentPoolPage() {
     fetchApplicants()
   }, [fetchApplicants])
 
+  // Reload function for retry button - doesn't trigger skeleton
+  const handleRetry = async () => {
+    try {
+      setError(null)
+      // Don't call fetchApplicants() - it sets loading=true which triggers skeleton
+      // Instead, duplicate the fetch logic without setLoading(true)
+      const res = await fetch('/api/bpoc?status=passed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Failed to fetch applicants (${res.status})`)
+      }
+      const data: any[] = await res.json()
+      
+      // Map BPOC applications from main database into board items with proper status mapping
+      const mapped: Applicant[] = data.map((a) => mapApplicantData(a))
+      setApplicants(mapped)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to reload applicants')
+    }
+  }
+
   // Filter and sort applicants based on search and category
   const filteredApplicants = useMemo(() => {
     // First, ensure we only show applicants with 'passed' status
@@ -458,7 +479,7 @@ export default function TalentPoolPage() {
                       variant="outline" 
                       size="sm" 
                       className="mt-2"
-                      onClick={fetchApplicants}
+                      onClick={handleRetry}
                     >
                       Retry
                     </Button>
@@ -471,7 +492,7 @@ export default function TalentPoolPage() {
                   <div className="lg:col-span-3">
                     {loading ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {Array.from({ length: 6 }).map((_, i) => (
+                        {Array.from({ length: 9 }).map((_, i) => (
                           <Card key={i} className="rounded-xl">
                             <CardHeader className="pb-4">
                               <div className="flex items-start gap-3">

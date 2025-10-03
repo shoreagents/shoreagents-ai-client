@@ -45,7 +45,7 @@ interface DataFieldRowProps {
   fieldName: string
   value: string | number | boolean | null | undefined
   placeholder?: string
-  onSave: (fieldName: string, value: string) => void
+  onSave?: (fieldName: string, value: string) => void
   onBlur?: () => void
   onKeyDown?: (e: React.KeyboardEvent) => void
   isLast?: boolean
@@ -123,7 +123,7 @@ export const DataFieldRow = ({
               fieldName={fieldName}
               value={typeof value === 'string' ? value : String(value || '')}
               placeholder={placeholder}
-              onSave={onSave}
+              onSave={onSave || (() => {})}
               onBlur={onBlur}
               onKeyDown={onKeyDown}
             />
@@ -149,7 +149,7 @@ export const DataFieldRow = ({
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    onSave(fieldName, '')
+                    onSave?.(fieldName, '')
                   }}
                   className="p-0 hover:text-foreground rounded transition-colors text-muted-foreground"
                   title="Clear value"

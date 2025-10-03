@@ -1209,11 +1209,97 @@ export async function getBreakStats(memberId: string, date: string) {
   }
 }
 
+// Get detailed employee data by ID
+export async function getEmployeeDetails(employeeId: string, fields: string[] = []) {
+  // Build dynamic query based on requested fields
+  let selectFields = 'u.id' // Always include ID
+  
+  if (fields.includes('birthday')) selectFields += ', pi.birthday'
+  if (fields.includes('city')) selectFields += ', pi.city'
+  if (fields.includes('address')) selectFields += ', pi.address'
+  if (fields.includes('gender')) selectFields += ', pi.gender'
+  if (fields.includes('workEmail')) selectFields += ', ji.work_email'
+  if (fields.includes('employmentStatus')) selectFields += ', ji.employment_status'
+  if (fields.includes('startDate')) selectFields += ', ji.start_date'
+  if (fields.includes('memberId')) selectFields += ', a.member_id'
+  if (fields.includes('company')) selectFields += ', m.company'
+  if (fields.includes('shift')) selectFields += ', m.shift'
+  if (fields.includes('departmentId')) selectFields += ', a.department_id'
+  if (fields.includes('memberBadgeColor')) selectFields += ', m.badge_color'
+  if (fields.includes('employeeId')) selectFields += ', ji.employee_id'
+  if (fields.includes('shiftPeriod')) selectFields += ', ji.shift_period'
+  if (fields.includes('shiftSchedule')) selectFields += ', ji.shift_schedule'
+  if (fields.includes('shiftTime')) selectFields += ', ji.shift_time'
+  if (fields.includes('workSetup')) selectFields += ', ji.work_setup'
+  if (fields.includes('hireType')) selectFields += ', ji.hire_type'
+  if (fields.includes('staffSource')) selectFields += ', ji.staff_source'
+  if (fields.includes('exitDate')) selectFields += ', ji.exit_date'
+  if (fields.includes('stationId')) selectFields += ', s.station_id'
+  
+  const query = `
+    SELECT ${selectFields}
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    LEFT JOIN members m ON a.member_id = m.id
+    LEFT JOIN stations s ON u.id = s.assigned_user_id
+    WHERE u.id = $1
+  `
+  
+  console.log('🔍 Fetching employee details for ID:', employeeId, 'Fields:', fields)
+  
+  const result = await pool.query(query, [employeeId])
+  
+  if (result.rows.length === 0) {
+    throw new Error('Employee not found')
+  }
+  
+  const employeeData = result.rows[0]
+  
+  // Map the database fields to the expected format
+  const mappedData: any = {}
+  
+  if (fields.includes('birthday')) mappedData.birthday = employeeData.birthday
+  if (fields.includes('city')) mappedData.city = employeeData.city
+  if (fields.includes('address')) mappedData.address = employeeData.address
+  if (fields.includes('gender')) mappedData.gender = employeeData.gender
+  if (fields.includes('workEmail')) mappedData.workEmail = employeeData.work_email
+  if (fields.includes('employmentStatus')) mappedData.employmentStatus = employeeData.employment_status
+  if (fields.includes('startDate')) mappedData.startDate = employeeData.start_date
+  if (fields.includes('memberId')) mappedData.memberId = employeeData.member_id
+  if (fields.includes('company')) mappedData.company = employeeData.company
+  if (fields.includes('shift')) mappedData.shift = employeeData.shift
+  if (fields.includes('departmentId')) mappedData.departmentId = employeeData.department_id
+  if (fields.includes('memberBadgeColor')) mappedData.memberBadgeColor = employeeData.badge_color
+  if (fields.includes('employeeId')) mappedData.employeeId = employeeData.employee_id
+  if (fields.includes('shiftPeriod')) mappedData.shiftPeriod = employeeData.shift_period
+  if (fields.includes('shiftSchedule')) mappedData.shiftSchedule = employeeData.shift_schedule
+  if (fields.includes('shiftTime')) mappedData.shiftTime = employeeData.shift_time
+  if (fields.includes('workSetup')) mappedData.workSetup = employeeData.work_setup
+  if (fields.includes('hireType')) mappedData.hireType = employeeData.hire_type
+  if (fields.includes('staffSource')) mappedData.staffSource = employeeData.staff_source
+  if (fields.includes('exitDate')) mappedData.exitDate = employeeData.exit_date
+  if (fields.includes('stationId')) mappedData.stationId = employeeData.station_id
+  
+  console.log('✅ Successfully fetched employee details:', mappedData)
+  
+  return mappedData
+}
+
 // =============================
 // Team Employees
 // =============================
 
-export async function getEmployees(memberId: string, search: string | null, department: string | null) {
+export async function getEmployees(
+  memberId: string, 
+  search: string | null, 
+  department: string | null,
+  page: string | null = null,
+  limit: string | null = null,
+  sortField: string | null = null,
+  sortDirection: string | null = null
+) {
   let whereClause = `WHERE u.user_type = 'Agent'`
   const params: any[] = []
 
@@ -1224,7 +1310,7 @@ export async function getEmployees(memberId: string, search: string | null, depa
 
   if (search) {
     params.push(`%${search}%`)
-    whereClause += ` AND (pi.first_name ILIKE $${params.length} OR pi.last_name ILIKE $${params.length})`
+    whereClause += ` AND (pi.first_name ILIKE $${params.length} OR pi.last_name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR ji.job_title ILIKE $${params.length} OR d.name ILIKE $${params.length} OR pi.phone ILIKE $${params.length})`
   }
 
   if (department) {
@@ -1232,35 +1318,74 @@ export async function getEmployees(memberId: string, search: string | null, depa
     whereClause += ` AND d.name = $${params.length}`
   }
 
-  const employeesQuery = `
-    SELECT 
-      u.id,
-      u.email,
-      u.user_type,
-      pi.first_name,
-      pi.last_name,
-      pi.profile_picture,
-      pi.phone,
-      pi.birthday,
-      pi.city,
-      pi.address,
-      pi.gender,
-      a.department_id,
-      d.name as department_name,
-      d.description as department_description,
-      ji.job_title,
-      ji.employment_status,
-      ji.start_date,
-      ji.work_email,
-      m.shift
+  // Build ORDER BY clause
+  let orderByClause = 'ORDER BY pi.first_name, pi.last_name' // Default sorting
+  if (sortField && sortDirection) {
+    const direction = sortDirection.toLowerCase() === 'desc' ? 'DESC' : 'ASC'
+    
+    // Map frontend field names to database column names
+    const fieldMapping: { [key: string]: string } = {
+      'firstName': 'pi.first_name',
+      'lastName': 'pi.last_name', 
+      'email': 'u.email',
+      'position': 'ji.job_title',
+      'department': 'd.name'
+    }
+    
+    const dbField = fieldMapping[sortField]
+    if (dbField) {
+      orderByClause = `ORDER BY ${dbField} ${direction}`
+      // Add secondary sort for consistency
+      if (sortField !== 'firstName') {
+        orderByClause += `, pi.first_name, pi.last_name`
+      } else {
+        orderByClause += `, pi.last_name`
+      }
+    }
+  }
+
+  // Get total count for pagination
+  const countQuery = `
+    SELECT COUNT(*) as total
     FROM users u
     LEFT JOIN personal_info pi ON u.id = pi.user_id
     LEFT JOIN agents a ON u.id = a.user_id
     LEFT JOIN departments d ON a.department_id = d.id
     LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
-    LEFT JOIN members m ON a.member_id = m.id
     ${whereClause}
-    ORDER BY pi.last_name, pi.first_name
+  `
+  const countResult = await pool.query(countQuery, params)
+  const totalCount = parseInt(countResult.rows[0].total)
+
+  // Build pagination
+  let paginationClause = ''
+  const currentPage = page ? parseInt(page) : 1
+  const itemsPerPage = limit ? parseInt(limit) : 20
+  const offset = (currentPage - 1) * itemsPerPage
+  
+  if (page && limit) {
+    params.push(itemsPerPage, offset)
+    paginationClause = `LIMIT $${params.length - 1} OFFSET $${params.length}`
+  }
+
+  const employeesQuery = `
+    SELECT 
+      u.id,
+      u.email,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      pi.phone,
+      d.name as department_name,
+      ji.job_title
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    ${whereClause}
+    ${orderByClause}
+    ${paginationClause}
   `
 
   const employeesResult = await pool.query(employeesQuery, params)
@@ -1289,19 +1414,31 @@ export async function getEmployees(memberId: string, search: string | null, depa
     phone: row.phone,
     department: row.department_name || 'Unassigned',
     position: row.job_title || 'Agent',
-    hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+    status: 'Active' as const,
     avatar: row.profile_picture,
-
-    departmentId: row.department_id,
-    workEmail: row.work_email,
-    birthday: row.birthday,
-    city: row.city,
-    address: row.address,
-    gender: row.gender,
-    shift: row.shift,
   }))
 
   const stats = statsResult.rows[0] || { total_departments: 0, total_agents: 0 }
+  const totalPages = Math.ceil(totalCount / itemsPerPage)
+
+  // Return paginated response if pagination parameters are provided
+  if (page && limit) {
+    return {
+      employees,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalCount,
+        itemsPerPage
+      },
+      stats: {
+        total: totalCount,
+        departments: stats.total_departments,
+      },
+    }
+  }
+
+  // Return non-paginated response for backward compatibility
   return {
     employees,
     stats: {

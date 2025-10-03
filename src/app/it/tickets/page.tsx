@@ -569,7 +569,7 @@ function TicketsSkeleton() {
                 </div>
               </div>
               <div className="flex-1 px-4 pb-4 cards-container">
-                {Array.from({ length: 3 }).map((_, index) => (
+                {Array.from({ length: 9 }).map((_, index) => (
                   <TicketSkeleton key={index} />
                 ))}
               </div>

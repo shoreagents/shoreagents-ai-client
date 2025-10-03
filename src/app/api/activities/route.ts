@@ -5,11 +5,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const memberId = searchParams.get('memberId')
+    const userId = searchParams.get('userId') // Optional: filter by specific user
     const date = searchParams.get('date') // Format: YYYY-MM-DD
     const startDate = searchParams.get('startDate') // Format: YYYY-MM-DD
     const endDate = searchParams.get('endDate') // Format: YYYY-MM-DD
 
-    console.log('📊 API: Fetching activities for memberId:', memberId, 'date:', date, 'startDate:', startDate, 'endDate:', endDate)
+    console.log('📊 API: Fetching activities for memberId:', memberId, 'userId:', userId, 'date:', date, 'startDate:', startDate, 'endDate:', endDate)
 
     if (!memberId) {
       return NextResponse.json({ error: 'Member ID is required' }, { status: 400 })
@@ -34,7 +35,15 @@ export async function GET(request: NextRequest) {
       targetEndDate = today
     }
 
-    const activities = await getActivitiesByDate(memberId, targetStartDate, targetEndDate)
+    let activities = await getActivitiesByDate(memberId, targetStartDate, targetEndDate)
+    
+    // If userId is provided, filter activities for that specific user
+    if (userId) {
+      const userIdNum = parseInt(userId)
+      activities = activities.filter((activity: any) => activity.user_id === userIdNum)
+      console.log('📊 API: Filtered activities for userId', userId, ':', activities.length, 'records')
+    }
+    
     const stats = await getActivityStats(memberId, targetStartDate, targetEndDate)
 
     return NextResponse.json({ 

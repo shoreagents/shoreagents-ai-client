@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDailyTrend, getDailyProductivityTrend, getWeeklyTrend, getProductivityScoresRows, getProductivityStatsRow } from '@/lib/db-utils'
+import { getDailyProductivityTrend, getWeeklyTrend, getProductivityScoresRows, getProductivityStatsRow } from '@/lib/db-utils'
 
 export async function GET(request: NextRequest) {
   try {

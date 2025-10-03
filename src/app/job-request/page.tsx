@@ -118,9 +118,23 @@ export default function JobRequestPage() {
   const handleReload = async () => {
     setReloading(true)
     try {
-      await fetchRequests()
-    } catch (err) {
+      // Don't call fetchRequests() - it sets loading=true which triggers skeleton
+      // Instead, duplicate the fetch logic without setLoading(true)
+      if (authLoading) return
+      if (!companyUuid) {
+        setRows([])
+        return
+      }
+      
+      const url = `/api/job-requests?companyId=${encodeURIComponent(companyUuid)}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setRows(data.requests || [])
+      setError(null) // Clear any previous errors
+    } catch (err: any) {
       console.error('❌ Reload error:', err)
+      setError(err?.message || "Failed to reload job requests")
     } finally {
       setReloading(false)
     }
@@ -153,7 +167,7 @@ export default function JobRequestPage() {
                   {error && <div className="text-sm text-destructive mb-4">{error}</div>}
                   {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Array.from({ length: 6 }).map((_, i) => (
+                      {Array.from({ length: 9 }).map((_, i) => (
                         <Card key={i} className="rounded-xl">
                           <CardHeader className="pb-3 space-y-2">
                             <Skeleton className="h-5 w-3/5" />

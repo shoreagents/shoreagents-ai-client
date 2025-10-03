@@ -169,9 +169,44 @@ export default function LeaderboardPage() {
   const handleReload = async () => {
     setReloading(true)
     try {
-      await fetchProductivityScores()
-    } catch (err) {
+      // Don't call fetchProductivityScores() - it sets loading=true which triggers skeleton
+      // Instead, duplicate the fetch logic without setLoading(true)
+      if (!user?.memberId && user?.userType !== 'Internal') {
+        console.log('❌ No member ID found and user is not Internal')
+        console.log('❌ User data:', user)
+        setError('User member ID not found')
+        return
+      }
+
+      console.log('📡 Making API request to /api/productivity-scores')
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      const params = new URLSearchParams({
+        memberId: String(memberId),
+        timeframe: timeframe
+      })
+      
+      if (monthYear) {
+        params.append('monthYear', monthYear)
+      }
+      
+      const response = await fetch(`/api/productivity-scores?${params}`)
+      
+      console.log('📊 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ API error:', errorText)
+        throw new Error(`Failed to fetch productivity scores: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Productivity scores data received:', data)
+      
+      setLeaderboardData(data.productivityScores)
+      setError(null) // Clear any previous errors
+    } catch (err: any) {
       console.error('❌ Reload error:', err)
+      setError(err?.message || 'Failed to reload productivity scores')
     } finally {
       setReloading(false)
     }
@@ -252,8 +287,8 @@ export default function LeaderboardPage() {
         bValue = `${b.first_name} ${b.last_name}`.toLowerCase()
         break
       case 'points':
-        aValue = a.total_active_seconds
-        bValue = b.total_active_seconds
+        aValue = a.productivity_score
+        bValue = b.productivity_score
         break
       case 'activeTime':
         aValue = a.total_active_seconds
@@ -429,13 +464,39 @@ export default function LeaderboardPage() {
 
                     {/* Right column skeletons */}
                     <div className="order-2 lg:order-2 lg:sticky lg:top-16 lg:self-start">
-                      {/* Month/Year selector skeleton */}
+                      {/* Month/Year selector skeleton with actual Select components */}
                       <div className="mb-4 min-h-[72px] flex w-full items-center justify-end gap-3 lg:justify-end">
                         <div className="flex items-center">
-                          <Skeleton className="h-5 w-5" />
+                          <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <Skeleton className="h-10 w-32" />
-                        <Skeleton className="h-10 w-24" />
+                        <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {monthOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value.toString()}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue placeholder="Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {yearOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value.toString()}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <ReloadButton 
+                          loading={reloading} 
+                          onReload={handleReload}
+                        />
                       </div>
                       
                       {/* Top Performers skeleton */}
@@ -630,7 +691,7 @@ export default function LeaderboardPage() {
                                   onClick={() => handleSort('activeTime')}
                                 >
                                   <div className="flex items-center justify-center gap-1">
-                                    Active Time
+                                    Total Active Time
                                     {sortField === 'activeTime' && getSortIcon('activeTime')}
                                   </div>
                                 </TableHead>
@@ -666,10 +727,10 @@ export default function LeaderboardPage() {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <span className="font-mono text-sm">{formatPoints(entry.total_active_seconds)}</span>
+                                    <span className="text-sm">{entry.productivity_score.toFixed(2)}</span>
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    <span className="font-mono text-sm">{formatActiveTime(entry.total_active_seconds)}</span>
+                                    <span className="text-sm">{formatActiveTime(entry.total_active_seconds)}</span>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -761,7 +822,7 @@ export default function LeaderboardPage() {
                                   <div className="font-semibold text-sm">
                                     {leaderboardData[1].first_name} {leaderboardData[1].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[1].total_active_seconds)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {leaderboardData[1].productivity_score.toFixed(2)}</div>
                                 </div>
                                 <div className="w-20 h-32 bg-gradient-to-t from-gray-400/20 to-gray-300/10 rounded-t-lg backdrop-blur-sm border border-gray-200/20"></div>
                               </div>
@@ -786,7 +847,7 @@ export default function LeaderboardPage() {
                                   <div className="font-bold text-sm">
                                     {leaderboardData[0].first_name} {leaderboardData[0].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[0].total_active_seconds)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {leaderboardData[0].productivity_score.toFixed(2)}</div>
                                 </div>
                                 <div className="w-24 h-40 bg-gradient-to-t from-yellow-400/20 to-yellow-300/10 rounded-t-lg backdrop-blur-sm border border-yellow-200/20"></div>
                               </div>
@@ -811,7 +872,7 @@ export default function LeaderboardPage() {
                                   <div className="font-semibold text-sm">
                                     {leaderboardData[2].first_name} {leaderboardData[2].last_name}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">Points: {formatPoints(leaderboardData[2].total_active_seconds)}</div>
+                                  <div className="text-xs text-muted-foreground">Points: {leaderboardData[2].productivity_score.toFixed(2)}</div>
                                 </div>
                                 <div className="w-20 h-32 bg-gradient-to-t from-amber-600/20 to-amber-500/10 rounded-t-lg backdrop-blur-sm border border-amber-400/20"></div>
                               </div>
@@ -912,7 +973,7 @@ export default function LeaderboardPage() {
                                                 <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-muted text-[10px]">{rank}</span>
                                                 {user ? `${user.first_name} ${user.last_name}` : '—'}
                                               </span>
-                                              <span className="font-mono">{user?.points?.toLocaleString?.() || '—'}</span>
+                                              <span>{user?.points?.toLocaleString?.() || '—'}</span>
                                             </div>
                                           )
                                         })}

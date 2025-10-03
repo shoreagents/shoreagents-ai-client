@@ -274,7 +274,41 @@ export default function BreaksPage() {
   const handleReload = async () => {
     setReloading(true)
     try {
-      await fetchBreakSessions()
+      // Don't call fetchBreakSessions() - it sets loading=true which triggers skeleton
+      // Instead, duplicate the fetch logic without setLoading(true)
+      if (!user?.memberId && user?.userType !== 'Internal') {
+        console.log('❌ No member ID found and user is not Internal')
+        console.log('❌ User data:', user)
+        setError('User member ID not found')
+        return
+      }
+
+      console.log('📡 Making API request to /api/breaks')
+      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      // Get today's date in Asia/Manila timezone to match database calculations
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) // YYYY-MM-DD format
+      const response = await fetch(`/api/breaks?memberId=${memberId}&date=${today}`)
+      
+      console.log('📊 Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log('❌ API error:', errorText)
+        throw new Error(`Failed to fetch break sessions: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Break sessions data received:', data)
+      
+      setBreakSessions(data.breakSessions)
+      setStats({
+        total: data.stats.total,
+        active: data.stats.active,
+        today: data.stats.today,
+        averageDuration: data.stats.averageDuration,
+        totalAgents: data.stats.totalAgents
+      })
+      setError(null) // Clear any previous errors
     } catch (err) {
       console.error('❌ Reload error:', err)
     } finally {
@@ -667,7 +701,7 @@ export default function BreaksPage() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {[...Array(8)].map((_, i) => (
+                              {[...Array(12)].map((_, i) => (
                                 <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">

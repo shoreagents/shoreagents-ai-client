@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
+import { NoData } from "@/components/ui/no-data"
 import {
   Tooltip,
   TooltipContent,
@@ -35,6 +36,7 @@ import {
 import { ActivityDataCard } from "@/components/activity-data-card"
 import { useRealtimeActivities, ActivityEntry as RealtimeActivityEntry } from "@/hooks/use-realtime-activities"
 import { ReloadButton } from "@/components/ui/reload-button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select"
 
 interface ActivityEntry {
   id: number
@@ -98,6 +100,11 @@ interface Employee {
   address?: string
   gender?: string
   shift?: string
+  user_id?: number
+  first_name?: string
+  last_name?: string
+  member_id?: number
+  member_company?: string
 }
 
 interface ActivityStats {
@@ -125,6 +132,10 @@ export default function ActivitiesPage() {
   const [monthActivities, setMonthActivities] = useState<ActivityEntry[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
   const [reloading, setReloading] = useState(false)
+  
+  // Member filter state
+  const [memberId, setMemberId] = useState<string>('all')
+  const [memberOptions, setMemberOptions] = useState<{ id: number; company: string }[]>([])
   
   // Realtime functionality
   const { isConnected: isRealtimeConnected, error: realtimeError } = useRealtimeActivities({
@@ -174,23 +185,83 @@ export default function ActivitiesPage() {
     return () => clearInterval(timer)
   }, [])
 
+  // Fetch member options - extract from employees data
+  useEffect(() => {
+    const extractMemberOptions = () => {
+      if (employees.length > 0) {
+        const uniqueMembers = employees
+          .filter(emp => emp.member_id && emp.member_company)
+          .reduce((acc, emp) => {
+            if (!acc.find(m => m.id === emp.member_id)) {
+              acc.push({
+                id: emp.member_id!,
+                company: emp.member_company!
+              })
+            }
+            return acc
+          }, [] as { id: number; company: string }[])
+        
+        // If no members found from employees, add the current user's member info
+        if (uniqueMembers.length === 0 && user?.memberId) {
+          uniqueMembers.push({
+            id: user.memberId,
+            company: 'Current Company'
+          })
+        }
+        
+        setMemberOptions(uniqueMembers)
+      }
+    }
+    
+    extractMemberOptions()
+  }, [employees, user])
+
   // Fetch employees data
   useEffect(() => {
     const fetchEmployees = async () => {
-      if (!user?.memberId && user?.userType !== 'Internal') {
+      if (!user?.id && user?.userType !== 'Internal') {
         return
       }
 
       try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
-        const response = await fetch(`/api/team/employees?memberId=${memberId}`)
+        const params = new URLSearchParams({
+          limit: '1000'
+        })
+        
+        // Determine the correct memberId based on user type and current filter
+        let actualMemberId = memberId
+        if (memberId === 'all' && user?.userType !== 'Internal') {
+          // For non-internal users, use their memberId instead of 'all'
+          actualMemberId = user.memberId?.toString() || 'all'
+        }
+        
+        params.append('memberId', actualMemberId)
+
+        const response = await fetch(`/api/team/employees?${params.toString()}`)
         
         if (!response.ok) {
           throw new Error(`Failed to fetch employees: ${response.status}`)
         }
 
         const data = await response.json()
-        setEmployees(data.employees)
+        console.log('🔍 fetchEmployees - API response:', data)
+        
+        // Map the API response to include both naming conventions and member info
+        const mappedEmployees = data.employees.map((emp: any) => ({
+          ...emp,
+          // Ensure both naming conventions are available
+          first_name: emp.first_name || emp.firstName,
+          last_name: emp.last_name || emp.lastName,
+          firstName: emp.firstName || emp.first_name,
+          lastName: emp.lastName || emp.last_name,
+          // Add member info (these might need to be fetched separately)
+          member_id: emp.member_id || user?.memberId,
+          member_company: emp.member_company || 'Unknown Company',
+          // Ensure user_id is available
+          user_id: emp.user_id || parseInt(emp.id)
+        }))
+        
+        setEmployees(mappedEmployees)
       } catch (err) {
         console.error('❌ Employees fetch error:', err)
         // Don't set error state for employees fetch failure, just log it
@@ -200,7 +271,7 @@ export default function ActivitiesPage() {
     if (user) {
       fetchEmployees()
     }
-  }, [user])
+  }, [user, memberId])
 
   // Fetch activities data
   const fetchActivities = async () => {
@@ -210,15 +281,20 @@ export default function ActivitiesPage() {
     setError(null)
     
     try {
-      const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+      // Determine the correct memberId based on user type
+      let actualMemberId = 'all'
+      if (user.userType !== 'Internal') {
+        actualMemberId = user.memberId?.toString() || 'all'
+      }
       
-      const response = await fetch(`/api/activities?memberId=${memberId}`)
+      const response = await fetch(`/api/activities?memberId=${actualMemberId}`)
       
       if (!response.ok) {
         throw new Error(`Failed to fetch activities: ${response.status}`)
       }
       
       const data = await response.json()
+      console.log('🔍 fetchActivities - API response:', data)
       setActivities(data.activities)
       setStats(data.stats)
     } catch (err) {
@@ -237,9 +313,61 @@ export default function ActivitiesPage() {
   const handleReload = async () => {
     setReloading(true)
     try {
-      await fetchActivities()
+      // Don't set loading to true during reload to keep the UI visible
+      setError(null)
+      
+      const params = new URLSearchParams({
+        limit: '1000'
+      })
+      
+      // Determine the correct memberId based on user type and current filter
+      let actualMemberId = memberId
+      if (memberId === 'all' && user?.userType !== 'Internal') {
+        // For non-internal users, use their memberId instead of 'all'
+        actualMemberId = user.memberId?.toString() || 'all'
+      }
+      
+      params.append('memberId', actualMemberId)
+
+      const response = await fetch(`/api/team/employees?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Map the API response to include both naming conventions and member info
+      const mappedEmployees = data.employees.map((emp: any) => ({
+        ...emp,
+        // Ensure both naming conventions are available
+        first_name: emp.first_name || emp.firstName,
+        last_name: emp.last_name || emp.lastName,
+        firstName: emp.firstName || emp.first_name,
+        lastName: emp.lastName || emp.last_name,
+        // Add member info (these might need to be fetched separately)
+        member_id: emp.member_id || user?.memberId,
+        member_company: emp.member_company || 'Unknown Company',
+        // Ensure user_id is available
+        user_id: emp.user_id || parseInt(emp.id)
+      }))
+      
+      setEmployees(mappedEmployees || [])
+      
+      // Fetch activities data
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+      const activitiesResponse = await fetch(`/api/activities?memberId=${actualMemberId}&date=${today}`)
+      
+      if (!activitiesResponse.ok) {
+        throw new Error(`HTTP error! status: ${activitiesResponse.status}`)
+      }
+      
+      const activitiesData = await activitiesResponse.json()
+      setActivities(activitiesData.activities || [])
+      setStats(activitiesData.stats || null)
+      
     } catch (err) {
       console.error('❌ Reload error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to reload data')
     } finally {
       setReloading(false)
     }
@@ -253,7 +381,7 @@ export default function ActivitiesPage() {
       setDetailLoading(true)
       
       try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.memberId
+        const memberId = user.userType === 'Internal' ? 'all' : user.memberId?.toString() || 'all'
         
         // Get date ranges
         const today = new Date()
@@ -721,10 +849,11 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
 
   // Get yesterday's activity data for selected employee
   const getYesterdayActivityData = (employee: Employee) => {
-    const yesterdayActivity = yesterdayActivities.find(a => a.user_id.toString() === employee.id)
+    const employeeId = employee.user_id || employee.id
+    const yesterdayActivity = yesterdayActivities.find(a => a.user_id.toString() === employeeId.toString())
     return yesterdayActivity || {
       id: 0,
-      user_id: parseInt(employee.id),
+      user_id: parseInt(employeeId.toString()),
       today_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }),
       today_active_seconds: 0,
       today_inactive_seconds: 0,
@@ -732,8 +861,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
       last_session_start: null,
       created_at: '',
       updated_at: '',
-      first_name: employee.firstName,
-      last_name: employee.lastName,
+      first_name: employee.first_name || employee.firstName,
+      last_name: employee.last_name || employee.lastName,
       email: employee.email,
       profile_picture: employee.avatar || null,
       department_name: employee.department,
@@ -770,7 +899,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
 
   // Get this week's total activity data for selected employee
   const getWeekActivityData = (employee: Employee) => {
-    const weekEmployeeActivities = weekActivities.filter(a => a.user_id.toString() === employee.id)
+    const employeeId = employee.user_id || employee.id
+    const weekEmployeeActivities = weekActivities.filter(a => a.user_id.toString() === employeeId.toString())
     
     const totalActive = weekEmployeeActivities.reduce((sum, activity) => sum + activity.today_active_seconds, 0)
     const totalInactive = weekEmployeeActivities.reduce((sum, activity) => sum + activity.today_inactive_seconds, 0)
@@ -783,7 +913,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
 
   // Get this month's total activity data for selected employee
   const getMonthActivityData = (employee: Employee) => {
-    const monthEmployeeActivities = monthActivities.filter(a => a.user_id.toString() === employee.id)
+    const employeeId = employee.user_id || employee.id
+    const monthEmployeeActivities = monthActivities.filter(a => a.user_id.toString() === employeeId.toString())
     
     const totalActive = monthEmployeeActivities.reduce((sum, activity) => sum + activity.today_active_seconds, 0)
     const totalInactive = monthEmployeeActivities.reduce((sum, activity) => sum + activity.today_inactive_seconds, 0)
@@ -794,17 +925,41 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     }
   }
 
+  // Calculate filtered stats based on member selection
+  const getFilteredStats = () => {
+    let filteredEmployees = employees
+    
+    if (memberId !== 'all') {
+      if (memberId === 'none') {
+        // Show only employees with no member assignment
+        filteredEmployees = employees.filter(emp => !emp.member_id)
+      } else {
+        // Show only employees from the selected member company
+        const selectedMemberId = parseInt(memberId)
+        filteredEmployees = employees.filter(emp => emp.member_id === selectedMemberId)
+      }
+    }
+    
+    return {
+      totalEmployees: filteredEmployees.length,
+      filteredEmployees
+    }
+  }
+
   // Merge employees with their activity data
   const getMergedData = () => {
-    return employees.map(employee => {
-      const activity = activities.find(a => a.user_id.toString() === employee.id)
+    const { filteredEmployees } = getFilteredStats()
+    return filteredEmployees.map(employee => {
+      // Try to match by user_id first, then by id
+      const employeeId = employee.user_id || employee.id
+      const activity = activities.find(a => a.user_id.toString() === employeeId.toString())
       const hasActivityData = !!activity
       return {
         ...employee,
         hasActivityData,
         activity: activity || {
           id: 0,
-          user_id: parseInt(employee.id),
+          user_id: parseInt(employeeId.toString()),
           today_date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }),
           today_active_seconds: 0,
           today_inactive_seconds: 0,
@@ -812,8 +967,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
           last_session_start: null,
           created_at: '',
           updated_at: '',
-          first_name: employee.firstName,
-          last_name: employee.lastName,
+          first_name: employee.first_name,
+          last_name: employee.last_name,
           email: employee.email,
           profile_picture: employee.avatar || null,
           department_name: employee.department,
@@ -869,15 +1024,18 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
   }
 
 
-  const sortedActivities = getMergedData().sort((a, b) => {
+  const mergedData = getMergedData()
+  
+  
+  const sortedActivities = mergedData.sort((a, b) => {
     // Sort only by the selected field
     let aValue: string | number
     let bValue: string | number
 
     switch (sortField) {
       case 'name':
-        aValue = `${a.firstName} ${a.lastName}`.toLowerCase()
-        bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
+        aValue = `${a.first_name} ${a.last_name}`.toLowerCase()
+        bValue = `${b.first_name} ${b.last_name}`.toLowerCase()
         break
       case 'status':
         // Sort by priority (lower number = higher priority)
@@ -1054,10 +1212,34 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                         Track user activities and productivity metrics by date.
                       </p>
                     </div>
-                    <ReloadButton 
-                      loading={reloading} 
-                      onReload={handleReload}
-                    />
+                    <div className="flex gap-2">
+                      <div className="w-56">
+                        <Select value={memberId} onValueChange={(v: string) => setMemberId(v)}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Filter by member">
+                              {memberId === 'all' ? 'All Employees' : 
+                               memberId === 'none' ? 'No Assigned Members' :
+                               memberOptions.find(m => String(m.id) === memberId)?.company || 'Filter by member'}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Employees</SelectItem>
+                            <SelectItem value="none">No Assigned Members</SelectItem>
+                            <SelectSeparator className="bg-border mx-2" />
+                            <SelectGroup>
+                              <SelectLabel className="text-muted-foreground">Members</SelectLabel>
+                              {memberOptions.map((m) => (
+                                <SelectItem key={m.id} value={String(m.id)}>{m.company}</SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <ReloadButton 
+                        loading={reloading} 
+                        onReload={handleReload}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1085,7 +1267,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {[...Array(8)].map((_, i) => (
+                              {[...Array(12)].map((_, i) => (
                                 <TableRow key={i} className="h-20">
                                   <TableCell>
                                     <div className="flex items-center gap-3">
@@ -1137,7 +1319,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                         </CardHeader>
                         <CardContent className="pt-0">
                           <div className="space-y-4">
-                            {[...Array(4)].map((_, i) => (
+                            {[...Array(6)].map((_, i) => (
                               <div key={i}>
                                 <Skeleton className="h-3 w-16 mb-2" />
                                 <div className="grid grid-cols-2 gap-3">
@@ -1214,10 +1396,30 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                       Track user activities and productivity metrics by date.
                     </p>
                   </div>
-                  <ReloadButton 
-                    loading={reloading} 
-                    onReload={handleReload}
-                  />
+                  <div className="flex gap-2 items-center">
+                    <div className="w-56">
+                      <Select value={memberId} onValueChange={(v: string) => setMemberId(v)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Filter by member" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Employees</SelectItem>
+                          <SelectItem value="none">No Assigned Members</SelectItem>
+                          <SelectSeparator className="bg-border mx-2" />
+                          <SelectGroup>
+                            <SelectLabel className="text-muted-foreground">Members</SelectLabel>
+                            {memberOptions.map((m) => (
+                              <SelectItem key={m.id} value={String(m.id)}>{m.company}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <ReloadButton
+                      loading={reloading}
+                      onReload={handleReload}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1228,93 +1430,98 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                   {/* Column 1: Activity Data Table */}
                   <div className="order-3 lg:order-1">
                     <Card className="overflow-hidden">
-                      <CardContent className="p-0">
-                        <div className="">
-                          <Table>
-                            <TableHeader>
-                              <TableRow variant="no-hover" className="h-12">
-                                <TableHead 
-                                  className={`w-48 cursor-pointer ${sortField === 'name' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                  onClick={() => handleSort('name')}
-                                >
-                                  <div className="flex items-center gap-1">
-                                    Name
-                                    {sortField === 'name' && getSortIcon('name')}
-                                  </div>
-                                </TableHead>
-                                <TableHead 
-                                  className={`text-center cursor-pointer w-24 ${sortField === 'status' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                  onClick={() => handleSort('status')}
-                                >
-                                  <div className="flex items-center justify-center gap-1">
-                                    Status
-                                    {sortField === 'status' && getSortIcon('status')}
-                                  </div>
-                                </TableHead>
+                       <CardContent className="p-0">
+                         <Table>
+                             <TableHeader>
+                               <TableRow variant="no-hover" className="h-12">
                                  <TableHead 
-                                   className={`text-center cursor-pointer w-40 ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                   onClick={() => handleSort('activeTime')}
+                                   className={`w-48 cursor-pointer ${sortField === 'name' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                   onClick={() => handleSort('name')}
                                  >
-                                   <div className="flex items-center justify-center gap-1">
-                                     Today's Total Active Time
-                                     {sortField === 'activeTime' && getSortIcon('activeTime')}
+                                   <div className="flex items-center gap-1">
+                                     Name
+                                     {sortField === 'name' && getSortIcon('name')}
                                    </div>
                                  </TableHead>
                                  <TableHead 
-                                   className={`text-center cursor-pointer w-40 ${sortField === 'inactiveTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
-                                   onClick={() => handleSort('inactiveTime')}
+                                   className={`text-center cursor-pointer w-24 ${sortField === 'status' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                   onClick={() => handleSort('status')}
                                  >
                                    <div className="flex items-center justify-center gap-1">
-                                     Today's Total Inactive Time
-                                     {sortField === 'inactiveTime' && getSortIcon('inactiveTime')}
+                                     Status
+                                     {sortField === 'status' && getSortIcon('status')}
                                    </div>
                                  </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {sortedActivities.map((employee) => (
-                                <TableRow 
-                                  key={employee.id} 
-                                  className="h-14 cursor-pointer hover:bg-accent/50"
-                                  onClick={() => setSelectedEmployee(employee)}
-                                >
-                                  <TableCell>
-                                    <div className="flex items-center gap-3">
-                                      <Avatar className="h-8 w-8">
-                                        <AvatarImage src={employee.activity.profile_picture || undefined} alt={`${employee.firstName} ${employee.lastName}`} />
-                                        <AvatarFallback>
-                                          {employee.firstName?.[0]}{employee.lastName?.[0]}
-                                        </AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                        <div className="font-medium">
-                                          {employee.firstName} {employee.lastName}
-                                        </div>
-                                      </div>
+                                  <TableHead 
+                                    className={`text-center cursor-pointer w-40 ${sortField === 'activeTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                    onClick={() => handleSort('activeTime')}
+                                  >
+                                    <div className="flex items-center justify-center gap-1">
+                                      Today's Total Active Time
+                                      {sortField === 'activeTime' && getSortIcon('activeTime')}
                                     </div>
-                                  </TableCell>
-            <TableCell className="text-center">
-              {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, (employee.activity as any).break_start_time, employee.activity.pause_time, employee.activity.resume_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time, employee.activity.is_in_event, employee.activity.event_title, employee.activity.event_location, employee.activity.event_start_time, employee.activity.event_end_time, employee.activity.is_going, employee.activity.is_back, employee.activity.going_at, employee.activity.back_at, employee.activity.is_in_restroom, employee.activity.restroom_count, employee.activity.daily_restroom_count, employee.activity.restroom_went_at, employee.activity.is_in_clinic, employee.activity.in_clinic_at, employee.activity.clinic_request_status, employee.activity.clinic_priority, employee.activity.clinic_complaint)}
-            </TableCell>
-                                  <TableCell className="text-center">
-                                    {employee.activity.today_active_seconds > 0 ? (
-                                      <span className="font-mono text-sm">{formatTime(employee.activity.today_active_seconds)}</span>
-                                    ) : (
-                                      <span className="text-muted-foreground text-sm">-</span>
-                                    )}
-                                  </TableCell>
+                                  </TableHead>
+                                  <TableHead 
+                                    className={`text-center cursor-pointer w-40 ${sortField === 'inactiveTime' ? 'text-primary font-medium bg-accent/50' : ''}`}
+                                    onClick={() => handleSort('inactiveTime')}
+                                  >
+                                    <div className="flex items-center justify-center gap-1">
+                                      Today's Total Inactive Time
+                                      {sortField === 'inactiveTime' && getSortIcon('inactiveTime')}
+                                    </div>
+                                  </TableHead>
+                               </TableRow>
+                             </TableHeader>
+                              <TableBody>
+                                 {sortedActivities.map((employee, index) => {
+                                   return (
+                                 <TableRow 
+                                   key={`employee-${employee.id || employee.user_id || index}`} 
+                                   className="h-14 cursor-pointer hover:bg-accent/50"
+                                   onClick={() => setSelectedEmployee(employee)}
+                                 >
+                                   <TableCell>
+                                     <div className="flex items-center gap-3">
+                                       <Avatar className="h-8 w-8">
+                                         <AvatarImage src={employee.activity.profile_picture || undefined} alt={`${employee.first_name} ${employee.last_name}`} />
+                                         <AvatarFallback>
+                                           {employee.first_name?.[0]}{employee.last_name?.[0]}
+                                         </AvatarFallback>
+                                       </Avatar>
+                                       <div>
+                                         <div className="font-medium">
+                                           {employee.first_name} {employee.last_name}
+                                         </div>
+                                       </div>
+                                     </div>
+                                   </TableCell>
+             <TableCell className="text-center">
+               {getActivityStatus(employee.activity.is_currently_active, employee.activity.last_session_start, employee.hasActivityData, employee.activity.updated_at, employee.activity.is_on_break, employee.activity.current_break_type, (employee.activity as any).break_start_time, employee.activity.pause_time, employee.activity.resume_time, employee.activity.is_in_meeting, employee.activity.meeting_title, employee.activity.meeting_type, employee.activity.meeting_start_time, employee.activity.is_in_event, employee.activity.event_title, employee.activity.event_location, employee.activity.event_start_time, employee.activity.event_end_time, employee.activity.is_going, employee.activity.is_back, employee.activity.going_at, employee.activity.back_at, employee.activity.is_in_restroom, employee.activity.restroom_count, employee.activity.daily_restroom_count, employee.activity.restroom_went_at, employee.activity.is_in_clinic, employee.activity.in_clinic_at, employee.activity.clinic_request_status, employee.activity.clinic_priority, employee.activity.clinic_complaint)}
+             </TableCell>
                                    <TableCell className="text-center">
-                                     {employee.activity.today_inactive_seconds > 0 ? (
-                                       <span className="font-mono text-sm">{formatTime(employee.activity.today_inactive_seconds)}</span>
+                                     {employee.activity.today_active_seconds > 0 ? (
+                                       <span className="text-sm">{formatTime(employee.activity.today_active_seconds)}</span>
                                      ) : (
                                        <span className="text-muted-foreground text-sm">-</span>
                                      )}
                                    </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
+                                    <TableCell className="text-center">
+                                      {employee.activity.today_inactive_seconds > 0 ? (
+                                        <span className="text-sm">{formatTime(employee.activity.today_inactive_seconds)}</span>
+                                      ) : (
+                                        <span className="text-muted-foreground text-sm">-</span>
+                                      )}
+                                    </TableCell>
+                                 </TableRow>
+                                   )
+                                 })}
+                             </TableBody>
+                           </Table>
+                           {sortedActivities.length === 0 && (
+                             <div className="p-6">
+                               <NoData message={employees.length === 0 ? 'No Employees Found' : 'No Activity Data'} />
+                             </div>
+                           )}
                       </CardContent>
                     </Card>
                   </div>
@@ -1444,9 +1651,12 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                      </div>
 
                      <ActivityDataCard 
-                       selectedEmployee={selectedEmployee}
+                       selectedEmployee={selectedEmployee ? {
+                         ...selectedEmployee,
+                         firstName: selectedEmployee.first_name || selectedEmployee.firstName || '',
+                         lastName: selectedEmployee.last_name || selectedEmployee.lastName || ''
+                       } : null}
                        formatTime={formatTime}
-                       getMergedData={getMergedData}
                        detailLoading={detailLoading}
                        getYesterdayActivityData={getYesterdayActivityData}
                        getWeekActivityData={getWeekActivityData}
