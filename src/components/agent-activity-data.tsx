@@ -162,13 +162,12 @@ export function AgentActivityData({
       
       // For IT users, fetch data for the specific employee
       // For Internal users, they can see all data but we need to filter by specific employee
-      const memberId = user.userType === 'Internal' ? 'all' : user.id
+      const memberId = user.userType === 'Internal' ? 'all' : (user.memberId || 'all')
       
       console.log('📊 Fetching chart data for date range:', startDate, 'to', endDate, 'memberId:', memberId, 'employeeId:', employeeId)
 
-      // Fetch activities - the API will return all activities for the memberId
-      // We'll filter by employeeId on the frontend since the API doesn't support userId parameter
-      const response = await fetch(`/api/activities?memberId=${memberId}&startDate=${startDate}&endDate=${endDate}`)
+      // Fetch activities - the API will return activities for the memberId filtered by userId
+      const response = await fetch(`/api/activities?memberId=${memberId}&userId=${employeeId}&startDate=${startDate}&endDate=${endDate}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch chart data: ${response.statusText}`)
@@ -184,21 +183,13 @@ export function AgentActivityData({
         stats: data.stats
       })
 
-      // Extract activities from API response and filter by specific employee
-      const allActivities = data.activities || []
+      // Extract activities from API response (already filtered by userId in API)
+      const activities = data.activities || []
       
-      // Filter activities by the specific employee ID
-      const activities = allActivities.filter((activity: any) => {
-        // Check if the activity belongs to the selected employee
-        // The activity should have a user_id or member_id field that matches our employeeId
-        const activityUserId = activity.user_id || activity.member_id || activity.id
-        return activityUserId === parseInt(employeeId) || activityUserId === employeeId
-      })
-      
-      console.log('📊 All activities:', allActivities.length, 'Filtered activities for employee:', activities.length)
-      console.log('📊 Employee ID being filtered:', employeeId, 'Type:', typeof employeeId)
-      if (allActivities.length > 0) {
-        console.log('📊 Sample activity structure:', allActivities[0])
+      console.log('📊 Activities received for employee:', activities.length)
+      console.log('📊 Employee ID:', employeeId, 'Type:', typeof employeeId)
+      if (activities.length > 0) {
+        console.log('📊 Sample activity structure:', activities[0])
       }
 
       // Check if there are any activities

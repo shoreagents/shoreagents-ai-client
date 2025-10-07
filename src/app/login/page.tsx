@@ -130,7 +130,7 @@ export default function LoginPage() {
     const result = await login(email, password)
     
     if (result.success) {
-      toast.success("Successfully signed in!")
+      toast.success("Successfully signed in")
       router.push('/dashboard')
     } else {
       const errorMessage = result.error || 'Login failed'

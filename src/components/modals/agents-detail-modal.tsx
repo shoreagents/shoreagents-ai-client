@@ -222,7 +222,7 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
     setActivityLoading(true)
     
     try {
-      const memberId = user.userType === 'Internal' ? 'all' : user.id
+        const memberId = user.userType === 'Internal' ? 'all' : (user.memberId || 'all')
       
       // Get date ranges
       const today = new Date()
@@ -251,13 +251,13 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
       // Today's date
       const todayStr = today.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
       
-      // Fetch activity data in parallel
-      const [todayResponse, yesterdayResponse, weekResponse, monthResponse] = await Promise.all([
-        fetch(`/api/activities?memberId=${memberId}&date=${todayStr}`),
-        fetch(`/api/activities?memberId=${memberId}&date=${yesterdayStr}`),
-        fetch(`/api/activities?memberId=${memberId}&startDate=${startDate}&endDate=${endDate}`),
-        fetch(`/api/activities?memberId=${memberId}&startDate=${monthStartDate}&endDate=${monthEndDate}`)
-      ])
+        // Fetch activity data in parallel
+        const [todayResponse, yesterdayResponse, weekResponse, monthResponse] = await Promise.all([
+          fetch(`/api/activities?memberId=${memberId}&userId=${agentData.user_id}&date=${todayStr}`),
+          fetch(`/api/activities?memberId=${memberId}&userId=${agentData.user_id}&date=${yesterdayStr}`),
+          fetch(`/api/activities?memberId=${memberId}&userId=${agentData.user_id}&startDate=${startDate}&endDate=${endDate}`),
+          fetch(`/api/activities?memberId=${memberId}&userId=${agentData.user_id}&startDate=${monthStartDate}&endDate=${monthEndDate}`)
+        ])
       
       // Process responses
       const [todayData, yesterdayData, weekData, monthData] = await Promise.all([
@@ -439,7 +439,6 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
     const clearLeaderboardCache = () => {
       setLeaderboardDataCache({})
       setLeaderboardChartCache({})
-      console.log('🗑️ Cleared leaderboard cache')
     }
 
     // Function to clear all caches
@@ -447,7 +446,6 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
       setChartDataCache({})
       setLeaderboardDataCache({})
       setLeaderboardChartCache({})
-      console.log('🗑️ Cleared all caches')
     }
 
     // Clear all caches when modal closes
@@ -539,7 +537,6 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
       // Check if data is already cached for this year
       const cacheKey = `${agentData.user_id}-${selectedYear}`
       if (leaderboardDataCache[cacheKey]) {
-        console.log('📊 Using cached productivity data for year:', selectedYear)
         setProductivityScores(leaderboardDataCache[cacheKey])
         setProductivityDataLoaded(true)
         return
@@ -549,10 +546,10 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
       setProductivityError(null)
       
       try {
-        const memberId = user.userType === 'Internal' ? 'all' : user.id
+        const memberId = user.userType === 'Internal' ? 'all' : (user.memberId || 'all')
         const allMonthsData: ProductivityScore[] = []
         
-        console.log('📊 Fetching productivity scores for user:', agentData.user_id, 'memberId:', memberId, 'year:', selectedYear)
+        console.log('📊 Fetching productivity scores for user:', agentData.user_id, 'year:', selectedYear)
         
         const currentYear = new Date().getFullYear()
         
@@ -623,10 +620,22 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
             userScore.month = month
             userScore.monthName = new Date(selectedYear, month - 1).toLocaleString('default', { month: 'long' })
             allMonthsData.push(userScore)
+            // Data found for this month
+          } else {
+            // No data for this month - this is normal for months with no activity
           }
         }
         
-        console.log('✅ All months productivity data received:', allMonthsData)
+        console.log('✅ Productivity data loaded successfully')
+        
+        // Check if we have any data at all
+        if (allMonthsData.length === 0) {
+          console.warn('⚠️ No productivity data found for user:', agentData.user_id, 'in year:', selectedYear)
+          setProductivityScores([])
+          setProductivityStats(null)
+          setProductivityDataLoaded(true) // Mark as loaded so it shows NoData component
+          return
+        }
         
         // Sort by month (December first, January last)
         // If viewing past years, prioritize current month at the top
@@ -645,13 +654,13 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
           [cacheKey]: allMonthsData
         }))
         
-        console.log('💾 Cached productivity data for year:', selectedYear)
+        // Data cached successfully
         
       } catch (err) {
         console.error('❌ Productivity scores fetch error:', err)
-        setProductivityError(err instanceof Error ? err.message : 'Failed to fetch productivity scores')
         setProductivityScores([])
         setProductivityStats(null)
+        setProductivityDataLoaded(true) // Mark as loaded so it shows NoData component
       } finally {
         setProductivityLoading(false)
       }
@@ -672,13 +681,11 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
       
       // Check if we have cached data for this year
       if (leaderboardDataCache[cacheKey]) {
-        console.log('📊 Using cached data for year change:', selectedYear)
         setProductivityScores(leaderboardDataCache[cacheKey])
         return
       }
       
       // If no cached data, fetch it
-      console.log('📊 No cached data found, fetching for year:', selectedYear)
       fetchProductivityScores()
     }
   }, [selectedYear])
@@ -2295,23 +2302,44 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
                              </div>
                            </div>
                          </div>
-                       ) : productivityError ? (
-                         <div className="p-6 text-center">
-                           <IconAlertCircle className="h-8 w-8 text-destructive mx-auto mb-4" />
-                           <p className="text-sm text-destructive">{productivityError}</p>
-                         </div>
                        ) : (
                          <div className="p-0">
                            {/* Current Month Section */}
                            {(() => {
                              if (!productivityScores || productivityScores.length === 0) {
-                                 return (
-                                   <div className="p-6">
-                                     <div className="space-y-4">
-                                       <NoData message="No Activity Data" />
+                               return (
+                                 <div className="p-6">
+                                   <div className="space-y-4">
+                                     <div className="flex items-center justify-between mb-4">
+                                       <span className="text-sm font-medium text-muted-foreground">Summary</span>
+                                       <div className="flex items-center gap-2">
+                                         <span className="text-sm text-muted-foreground">Year:</span>
+                                         <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                                           <SelectTrigger className="w-24">
+                                             <SelectValue placeholder="Year" />
+                                           </SelectTrigger>
+                                           <SelectContent>
+                                             {(() => {
+                                               const currentYear = new Date().getFullYear()
+                                               const startYear = 2025
+                                               const options = []
+                                               for (let year = currentYear; year >= startYear; year--) {
+                                                 options.push({ value: year, label: year.toString() })
+                                               }
+                                               return options
+                                             })().map((option) => (
+                                               <SelectItem key={option.value} value={option.value.toString()}>
+                                                 {option.label}
+                                               </SelectItem>
+                                             ))}
+                                           </SelectContent>
+                                         </Select>
+                                       </div>
                                      </div>
+                                     <NoData message="No Productivity Data" />
                                    </div>
-                                 )
+                                 </div>
+                               )
                              }
                              
                              const currentYear = new Date().getFullYear()
