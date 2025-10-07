@@ -14,15 +14,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ApplicantsDetailModal } from "@/components/modals/applicants-detail-modal"
 import { useRealtimeApplicants } from "@/hooks/use-realtime-applicants"
+import { ReloadButton } from "@/components/ui/reload-button"
 
 import { 
   Search, 
   Star, 
   Briefcase, 
-  Filter,
-  Users,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Users
 } from "lucide-react"
 
 // Use the same Applicant interface as BPOC applicants page
@@ -48,6 +48,7 @@ interface Applicant {
   station_id: string | null
   profile_picture: string | null
   first_name: string | null
+  last_name: string | null
   employee_id: string | null
   resolver_first_name?: string | null
   resolver_last_name?: string | null
@@ -97,14 +98,12 @@ interface Applicant {
   } | null
 }
 
-const categories = ["All", "Design", "Marketing", "Development", "Science", "Writing"]
-
 export default function TalentPoolPage() {
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [reloading, setReloading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
   const [sortBy, setSortBy] = useState("rating")
   const [selectedTalent, setSelectedTalent] = useState<Applicant | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -135,6 +134,7 @@ export default function TalentPoolPage() {
       station_id: rawData.station_id || null,
       profile_picture: rawData.profile_picture || null,
       first_name: rawData.first_name || null,
+      last_name: rawData.last_name || null,
       employee_id: rawData.employee_id || null,
       resolver_first_name: rawData.resolver_first_name || null,
       resolver_last_name: rawData.resolver_last_name || null,
@@ -340,7 +340,29 @@ export default function TalentPoolPage() {
     }
   }
 
-  // Filter and sort applicants based on search and category
+  // Reload function for reload button
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      setError(null)
+      const res = await fetch('/api/bpoc?status=passed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Failed to fetch applicants (${res.status})`)
+      }
+      const data: any[] = await res.json()
+      
+      // Map BPOC applications from main database into board items with proper status mapping
+      const mapped: Applicant[] = data.map((a) => mapApplicantData(a))
+      setApplicants(mapped)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to reload applicants')
+    } finally {
+      setReloading(false)
+    }
+  }
+
+  // Filter and sort applicants based on search
   const filteredApplicants = useMemo(() => {
     // First, ensure we only show applicants with 'passed' status
     let filtered = applicants.filter(applicant => applicant.status === 'passed')
@@ -354,13 +376,6 @@ export default function TalentPoolPage() {
         applicant.company_name?.toLowerCase().includes(query) ||
         applicant.skills?.some(skill => skill.toLowerCase().includes(query)) ||
         applicant.summary?.toLowerCase().includes(query)
-      )
-    }
-
-    // Apply category filter
-    if (selectedCategory !== "All") {
-      filtered = filtered.filter(applicant => 
-        applicant.category?.toLowerCase() === selectedCategory.toLowerCase()
       )
     }
 
@@ -381,7 +396,7 @@ export default function TalentPoolPage() {
     })
 
     return filtered
-  }, [applicants, searchQuery, selectedCategory, sortBy])
+  }, [applicants, searchQuery, sortBy])
 
   const handleTalentClick = (talent: Applicant) => {
     // Ensure we have the latest data from the applicants state
@@ -418,10 +433,10 @@ export default function TalentPoolPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className="flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {(applicants?.length ?? 0)} talents
-                    </Badge>
+                    <ReloadButton 
+                      loading={reloading} 
+                      onReload={handleReload}
+                    />
                   </div>
                 </div>
 
@@ -437,19 +452,6 @@ export default function TalentPoolPage() {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-[140px]">
-                        <Filter className="h-4 w-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-[140px]">
                         <SelectValue />

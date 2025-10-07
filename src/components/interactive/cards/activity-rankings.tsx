@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useRouter } from "next/navigation"
+import { NoData } from "@/components/ui/no-data"
 
 interface LeaderboardEntry {
   id: number
@@ -45,6 +46,7 @@ interface ActivityRankingsProps {
   maxRows?: number
   scrollable?: boolean
   visibleRows?: number
+  loading?: boolean
 }
 
 export function ActivityRankings({ 
@@ -55,6 +57,7 @@ export function ActivityRankings({
   maxRows,
   scrollable = false,
   visibleRows = 3,
+  loading = false,
 }: ActivityRankingsProps) {
   const router = useRouter()
   const { theme } = useTheme()
@@ -136,7 +139,27 @@ export function ActivityRankings({
           {/* Second Column - Item Containers */}
           <div className={`w-[65%] pr-4 pb-4 ${scrollable ? "overflow-y-auto" : ""}`} style={scrollable ? { maxHeight: maxHeight } : {}}>
             <div className="space-y-3">
-              {rows.length > 0 ? (
+              {loading ? (
+                // Skeleton loading states
+                Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-white/30 animate-pulse"></div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-24 bg-white/30 animate-pulse rounded"></div>
+                        <div className="flex items-center gap-1">
+                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
+                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-4 w-16 bg-white/30 animate-pulse rounded mb-1"></div>
+                      <div className="h-3 w-12 bg-white/30 animate-pulse rounded"></div>
+                    </div>
+                  </div>
+                ))
+              ) : rows.length > 0 ? (
                 rows.map((entry, index) => (
                   <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
                     <div className="flex items-center gap-3">
@@ -168,25 +191,9 @@ export function ActivityRankings({
                   </div>
                 ))
               ) : (
-                // Skeleton loading states
-                Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5 backdrop-blur-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-white/30 animate-pulse"></div>
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 w-24 bg-white/30 animate-pulse rounded"></div>
-                        <div className="flex items-center gap-1">
-                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
-                          <div className="h-4 w-4 bg-white/30 animate-pulse rounded"></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="h-4 w-16 bg-white/30 animate-pulse rounded mb-1"></div>
-                      <div className="h-3 w-12 bg-white/30 animate-pulse rounded"></div>
-                    </div>
-                  </div>
-                ))
+                <NoData 
+                  message="No Activity Data - No productivity scores available for this month"
+                />
               )}
             </div>
           </div>

@@ -112,7 +112,7 @@ export default function JobRequestPage() {
 
   useEffect(() => {
     fetchRequests()
-  }, [companyUuid, authLoading, openModal])
+  }, [companyUuid, authLoading])
 
   // Reload function
   const handleReload = async () => {

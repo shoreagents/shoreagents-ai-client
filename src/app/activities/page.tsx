@@ -36,7 +36,6 @@ import {
 import { ActivityDataCard } from "@/components/activity-data-card"
 import { useRealtimeActivities, ActivityEntry as RealtimeActivityEntry } from "@/hooks/use-realtime-activities"
 import { ReloadButton } from "@/components/ui/reload-button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select"
 
 interface ActivityEntry {
   id: number
@@ -133,10 +132,6 @@ export default function ActivitiesPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [reloading, setReloading] = useState(false)
   
-  // Member filter state
-  const [memberId, setMemberId] = useState<string>('all')
-  const [memberOptions, setMemberOptions] = useState<{ id: number; company: string }[]>([])
-  
   // Realtime functionality
   const { isConnected: isRealtimeConnected, error: realtimeError } = useRealtimeActivities({
     onActivityCreated: (newActivity: ActivityEntry) => {
@@ -185,37 +180,6 @@ export default function ActivitiesPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Fetch member options - extract from employees data
-  useEffect(() => {
-    const extractMemberOptions = () => {
-      if (employees.length > 0) {
-        const uniqueMembers = employees
-          .filter(emp => emp.member_id && emp.member_company)
-          .reduce((acc, emp) => {
-            if (!acc.find(m => m.id === emp.member_id)) {
-              acc.push({
-                id: emp.member_id!,
-                company: emp.member_company!
-              })
-            }
-            return acc
-          }, [] as { id: number; company: string }[])
-        
-        // If no members found from employees, add the current user's member info
-        if (uniqueMembers.length === 0 && user?.memberId) {
-          uniqueMembers.push({
-            id: user.memberId,
-            company: 'Current Company'
-          })
-        }
-        
-        setMemberOptions(uniqueMembers)
-      }
-    }
-    
-    extractMemberOptions()
-  }, [employees, user])
-
   // Fetch employees data
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -228,10 +192,9 @@ export default function ActivitiesPage() {
           limit: '1000'
         })
         
-        // Determine the correct memberId based on user type and current filter
-        let actualMemberId = memberId
-        if (memberId === 'all' && user?.userType !== 'Internal') {
-          // For non-internal users, use their memberId instead of 'all'
+        // Determine the correct memberId based on user type
+        let actualMemberId = 'all'
+        if (user?.userType !== 'Internal') {
           actualMemberId = user.memberId?.toString() || 'all'
         }
         
@@ -271,7 +234,7 @@ export default function ActivitiesPage() {
     if (user) {
       fetchEmployees()
     }
-  }, [user, memberId])
+  }, [user])
 
   // Fetch activities data
   const fetchActivities = async () => {
@@ -320,11 +283,10 @@ export default function ActivitiesPage() {
         limit: '1000'
       })
       
-      // Determine the correct memberId based on user type and current filter
-      let actualMemberId = memberId
-      if (memberId === 'all' && user?.userType !== 'Internal') {
-        // For non-internal users, use their memberId instead of 'all'
-        actualMemberId = user.memberId?.toString() || 'all'
+      // Determine the correct memberId based on user type
+      let actualMemberId = 'all'
+      if (user?.userType !== 'Internal') {
+        actualMemberId = user?.memberId?.toString() || 'all'
       }
       
       params.append('memberId', actualMemberId)
@@ -925,24 +887,11 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     }
   }
 
-  // Calculate filtered stats based on member selection
+  // Calculate stats for all employees
   const getFilteredStats = () => {
-    let filteredEmployees = employees
-    
-    if (memberId !== 'all') {
-      if (memberId === 'none') {
-        // Show only employees with no member assignment
-        filteredEmployees = employees.filter(emp => !emp.member_id)
-      } else {
-        // Show only employees from the selected member company
-        const selectedMemberId = parseInt(memberId)
-        filteredEmployees = employees.filter(emp => emp.member_id === selectedMemberId)
-      }
-    }
-    
     return {
-      totalEmployees: filteredEmployees.length,
-      filteredEmployees
+      totalEmployees: employees.length,
+      filteredEmployees: employees
     }
   }
 
@@ -1213,30 +1162,8 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <div className="w-56">
-                        <Select value={memberId} onValueChange={(v: string) => setMemberId(v)}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Filter by member">
-                              {memberId === 'all' ? 'All Employees' : 
-                               memberId === 'none' ? 'No Assigned Members' :
-                               memberOptions.find(m => String(m.id) === memberId)?.company || 'Filter by member'}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Employees</SelectItem>
-                            <SelectItem value="none">No Assigned Members</SelectItem>
-                            <SelectSeparator className="bg-border mx-2" />
-                            <SelectGroup>
-                              <SelectLabel className="text-muted-foreground">Members</SelectLabel>
-                              {memberOptions.map((m) => (
-                                <SelectItem key={m.id} value={String(m.id)}>{m.company}</SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <ReloadButton 
-                        loading={reloading} 
+                      <ReloadButton
+                        loading={reloading}
                         onReload={handleReload}
                       />
                     </div>
@@ -1397,24 +1324,6 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                     </p>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <div className="w-56">
-                      <Select value={memberId} onValueChange={(v: string) => setMemberId(v)}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Filter by member" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Employees</SelectItem>
-                          <SelectItem value="none">No Assigned Members</SelectItem>
-                          <SelectSeparator className="bg-border mx-2" />
-                          <SelectGroup>
-                            <SelectLabel className="text-muted-foreground">Members</SelectLabel>
-                            {memberOptions.map((m) => (
-                              <SelectItem key={m.id} value={String(m.id)}>{m.company}</SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <ReloadButton
                       loading={reloading}
                       onReload={handleReload}

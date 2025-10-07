@@ -4,9 +4,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconMessage, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconAlertCircle, IconInfoCircle, IconVideo, IconCash, IconExternalLink, IconAward, IconCode, IconSparkles, IconUsers, IconTarget, IconTrendingUp } from "@tabler/icons-react"
+import { IconCalendar, IconClock, IconUser, IconBuilding, IconMapPin, IconFile, IconEdit, IconTrash, IconShare, IconCopy, IconDownload, IconEye, IconTag, IconPhone, IconMail, IconId, IconBriefcase, IconCalendarTime, IconAlertCircle, IconInfoCircle, IconVideo, IconCash, IconExternalLink, IconAward, IconCode, IconSparkles, IconUsers, IconTarget, IconTrendingUp } from "@tabler/icons-react"
 import { Input } from "@/components/ui/input"
 import { DataFieldRow } from "@/components/ui/fields"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -62,17 +61,6 @@ interface JobRequest {
   } | null
 }
 
-interface Comment {
-  id: string;
-  comment: string;
-  created_at: string;
-  user: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    profile_picture: string;
-  };
-}
 
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
@@ -116,11 +104,6 @@ const formatDate = (dateString: string) => {
 export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext = 'job-requests' }: JobRequestDetailModalProps) {
   const { theme } = useTheme()
   const { user } = useAuth()
-  const [comment, setComment] = useState("")
-
-  const [comments, setComments] = useState<Comment[]>([])
-  const [isLoadingComments, setIsLoadingComments] = useState(false)
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
   
   // Local state for job request data to handle realtime updates
@@ -276,18 +259,6 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
   const createdDate = formatDate(localJobRequest.created_at)
   const updatedDate = localJobRequest.updated_at && localJobRequest.updated_at !== localJobRequest.created_at ? formatDate(localJobRequest.updated_at) : null
 
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!comment.trim() || !localJobRequest || isSubmittingComment) return
-    
-    // TODO: Implement comment submission when API is ready
-    setIsSubmittingComment(true)
-    setTimeout(() => {
-      setComment("")
-      setIsSubmittingComment(false)
-    }, 1000)
-  }
-
   // Simple close handler
   const handleClose = () => {
     console.log('🔒 handleClose called:', { 
@@ -301,7 +272,7 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent 
-          className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl" 
+          className="sm:max-w-[1100px] w-[95vw] max-h-[95vh] overflow-hidden p-0 rounded-xl" 
           style={{ 
           backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' 
           }}
@@ -309,7 +280,7 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <div className="flex h-[95vh]">
-            {/* Left Panel - Job Request Details */}
+            {/* Main Panel - Job Request Details */}
             <div className="flex-1 flex flex-col">
               {/* Top Navigation Bar */}
               <div className="flex items-center justify-between px-6 py-5 bg-sidebar h-16 border-b border-[#cecece99] dark:border-border">
@@ -564,81 +535,6 @@ export function JobRequestDetailModal({ jobRequest, isOpen, onClose, pageContext
 
 
 
-                </div>
-              </div>
-            </div>
-
-            {/* Right Panel - Activity Log */}
-            <div className="w-96 flex flex-col border-l border-[#cecece99] dark:border-border h-full bg-[#ececec] dark:bg-[#0a0a0a]">
-              {/* Activity Header */}
-              <div className="flex items-center justify-between px-6 py-5 bg-sidebar h-16 border-b border-[#cecece99] dark:border-border flex-shrink-0">
-                <h3 className="font-medium">Activity</h3>
-              </div>
-
-              {/* Activity Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0 bg-[#ececec] dark:bg-[#0a0a0a]">
-                <div className="space-y-4">
-                  {isLoadingComments ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="text-sm text-muted-foreground">Loading comments...</div>
-                    </div>
-                  ) : comments.length > 0 ? (
-                    comments.map((comment) => (
-                      <div key={comment.id} className="rounded-lg p-4 bg-sidebar border">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-medium text-primary">
-                                  CU
-                                </span>
-                              </div>
-                              <span className="text-sm font-medium truncate">Commenter Name</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap ml-3">Date • Time</span>
-                          </div>
-                          <div className="text-sm text-foreground leading-relaxed mt-1 whitespace-pre-wrap break-words">
-                            {comment.comment}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <IconMessage className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No Comments Yet</p>
-                      <p className="text-xs">Be the first to add a comment!</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Comment Input */}
-              <div className="px-3 pb-3 bg-[#ececec] dark:bg-[#0a0a0a]">
-                <div className="flex gap-3 bg-sidebar rounded-lg p-4 border border-[#cecece99] dark:border-border">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src="" alt="Current User" />
-                    <AvatarFallback className="text-xs">CU</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <form onSubmit={handleCommentSubmit}>
-                      <Input 
-                        placeholder="Write a comment..." 
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        className="text-sm"
-                        disabled={isSubmittingComment}
-                      />
-                    </form>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    className="rounded-lg" 
-                    onClick={handleCommentSubmit}
-                    disabled={!comment.trim() || isSubmittingComment}
-                  >
-                    {isSubmittingComment ? 'Sending...' : 'Send'}
-                  </Button>
                 </div>
               </div>
             </div>

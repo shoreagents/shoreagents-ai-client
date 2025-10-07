@@ -144,7 +144,7 @@ export function TalentsDetailModal({ talent, isOpen, onClose }: TalentsDetailMod
   return (
     <TooltipProvider>
       <Dialog open={isOpen} onOpenChange={onClose} key={talent?.id}>
-        <DialogContent className="sm:max-w-[1100px] w-[95vw] max-h-[95vh] overflow-hidden p-0 rounded-xl" style={{ 
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl" style={{ 
           backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' 
         }}>
           <DialogHeader className="sr-only">

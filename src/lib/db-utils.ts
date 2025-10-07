@@ -1377,7 +1377,8 @@ export async function getEmployees(
       pi.profile_picture,
       pi.phone,
       d.name as department_name,
-      ji.job_title
+      ji.job_title,
+      ji.start_date
     FROM users u
     LEFT JOIN personal_info pi ON u.id = pi.user_id
     LEFT JOIN agents a ON u.id = a.user_id
@@ -1414,6 +1415,7 @@ export async function getEmployees(
     phone: row.phone,
     department: row.department_name || 'Unassigned',
     position: row.job_title || 'Agent',
+    hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
     status: 'Active' as const,
     avatar: row.profile_picture,
   }))

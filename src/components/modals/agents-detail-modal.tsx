@@ -1328,7 +1328,7 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
               <DialogContent
-          className="max-w-7xl max-h-[95vh] overflow-hidden p-0 rounded-xl"
+          className="sm:max-w-[1100px] w-[95vw] max-h-[95vh] overflow-hidden p-0 rounded-xl"
           style={{ backgroundColor: theme === 'dark' ? '#111111' : '#f8f9fa' }}
         >
         <DialogTitle className="sr-only">Agent Details</DialogTitle>
@@ -1348,7 +1348,7 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
             {/* Agent Header */}
             <div className="px-6 py-5">
               {/* Avatar and Agent Name */}
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={agentData?.profile_picture || "/avatars/shadcn.svg"} alt="Agent Avatar" />
                   <AvatarFallback className="text-2xl">
@@ -1361,13 +1361,8 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
                   </div>
                 </div>
               </div>
-              
-              {/* Agent Metadata Grid */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-              </div>
             </div>
             
-
 
             {/* Scrollable Form Content */}
             <div className="flex-1 px-6 py-5 overflow-y-auto min-h-0">
