@@ -66,8 +66,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState({
-    total: 0,
-    departments: 0
+    total: 0
   })
   const [reloading, setReloading] = useState(false)
 
@@ -218,13 +217,13 @@ export default function EmployeesPage() {
         setEmployees(data.employees)
         setTotalCount(data.pagination.totalCount)
         setTotalPages(data.pagination.totalPages)
-        setStats({ total: data.stats.total, departments: data.stats.departments })
+        setStats({ total: data.stats.total })
       } else {
         // Fallback for non-paginated response
         setEmployees(data.employees || data)
         setTotalCount(data.employees?.length || data.length)
         setTotalPages(Math.ceil((data.employees?.length || data.length) / itemsPerPage))
-        setStats({ total: data.stats?.total || data.length, departments: data.stats?.departments || 0 })
+        setStats({ total: data.stats?.total || data.length })
       }
     } catch (err) {
       console.error('❌ Fetch error:', err)
@@ -296,13 +295,13 @@ export default function EmployeesPage() {
         setEmployees(data.employees)
         setTotalCount(data.pagination.totalCount)
         setTotalPages(data.pagination.totalPages)
-        setStats({ total: data.stats.total, departments: data.stats.departments })
+        setStats({ total: data.stats.total })
       } else {
         // Fallback for non-paginated response
         setEmployees(data.employees || data)
         setTotalCount(data.employees?.length || data.length)
         setTotalPages(Math.ceil((data.employees?.length || data.length) / itemsPerPage))
-        setStats({ total: data.stats?.total || data.length, departments: data.stats?.departments || 0 })
+        setStats({ total: data.stats?.total || data.length })
       }
       setError(null) // Clear any previous errors
     } catch (err: any) {
@@ -340,7 +339,7 @@ export default function EmployeesPage() {
                 </div>
 
                 {/* Stats Cards Skeleton */}
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 lg:px-6">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 px-4 lg:px-6">
                   <Card className="@container/card">
                     <CardHeader>
                       <div className="h-4 w-28 bg-muted animate-pulse rounded"></div>
@@ -495,7 +494,7 @@ export default function EmployeesPage() {
               </div>
 
                 {/* Stats Cards */}
-                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-4 lg:px-6">
+                <div className="*:data-[slot=card]:shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 px-4 lg:px-6">
                   <Card className="@container/card">
                     <CardHeader>
                       <CardDescription>Total Employees</CardDescription>
@@ -514,23 +513,6 @@ export default function EmployeesPage() {
                     </CardFooter>
                   </Card>
 
-                  <Card className="@container/card">
-                    <CardHeader>
-                      <CardDescription>Departments</CardDescription>
-                      <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-                        <div className="flex items-center gap-2">
-                          <BuildingIcon className="h-6 w-6 text-orange-600" />
-                          {stats.departments}
-                        </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardFooter className="flex-col items-start gap-1 text-sm">
-                      <div className="line-clamp-1 flex gap-2 font-medium">
-                        Different Teams
-                      </div>
-                      <div className="text-muted-foreground text-xs">Organizational structure.</div>
-                    </CardFooter>
-                  </Card>
 
                   <NewHires employees={employees} />
                 </div>

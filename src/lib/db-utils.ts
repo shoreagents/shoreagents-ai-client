@@ -1448,9 +1448,9 @@ export async function getEmployees(
   }
 }
 
-// Get employees with birthdays today
-export async function getEmployeesWithBirthdayToday(memberId: string) {
-  let whereClause = `WHERE u.user_type = 'Agent' AND pi.birthday IS NOT NULL AND EXTRACT(MONTH FROM pi.birthday) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM pi.birthday) = EXTRACT(DAY FROM CURRENT_DATE)`
+// Get employees with anniversaries today
+export async function getEmployeesWithAnniversaryToday(memberId: string) {
+  let whereClause = `WHERE u.user_type = 'Agent' AND ji.start_date IS NOT NULL AND EXTRACT(MONTH FROM ji.start_date) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM ji.start_date) = EXTRACT(DAY FROM CURRENT_DATE)`
   const params: any[] = []
 
   if (memberId !== 'all') {
@@ -1458,7 +1458,7 @@ export async function getEmployeesWithBirthdayToday(memberId: string) {
     whereClause += ` AND a.member_id = $${params.length}`
   }
 
-  const birthdayEmployeesQuery = `
+  const anniversaryEmployeesQuery = `
     SELECT 
       u.id,
       u.email,
@@ -1489,7 +1489,7 @@ export async function getEmployeesWithBirthdayToday(memberId: string) {
     ORDER BY pi.last_name, pi.first_name
   `
 
-  const result = await pool.query(birthdayEmployeesQuery, params)
+  const result = await pool.query(anniversaryEmployeesQuery, params)
 
   const employees = result.rows.map((row: any) => ({
     id: row.id.toString(),

@@ -7,9 +7,7 @@ import {
   LayoutDashboardIcon,
   SettingsIcon,
   UsersIcon,
-  BuildingIcon,
   TrophyIcon,
-  ClockIcon,
   CoffeeIcon,
   BriefcaseIcon,
   ShoppingCartIcon,
@@ -58,20 +56,8 @@ const data = {
       url: "/employees/",
       icon: UsersIcon,
     },
-    {
-      title: "Departments",
-      url: "/team/departments/",
-      icon: BuildingIcon,
-      disabled: true,
-    },
   ],
   navTrack: [
-    {
-      title: "Attendance",
-      url: "/track/attendance/",
-      icon: ClockIcon,
-      disabled: true,
-    },
     {
       title: "Breaks",
       url: "/breaks/",

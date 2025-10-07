@@ -18,13 +18,10 @@ import { useRealtimeApplicants } from "@/hooks/use-realtime-applicants"
 import { 
   Search, 
   Star, 
-  MapPin, 
   Briefcase, 
   Filter,
   Users,
   DollarSign,
-  Mail,
-  Phone,
   AlertCircle
 } from "lucide-react"
 
@@ -761,32 +758,15 @@ export default function TalentPoolPage() {
 
                               </div>
 
-                              {/* Separator */}
-                              <div className="border-t border-border/50 my-3"></div>
 
-                              {/* Contact Information - Always at bottom */}
-                              <div className="space-y-1 mt-auto">
-                                <div className="flex items-center gap-2 text-sm text-foreground">
-                                  <Mail className="h-4 w-4" />
-                                  <span className="truncate">{talent.email || <span className="text-muted-foreground">Not Specified</span>}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-foreground">
-                                  <Phone className="h-4 w-4" />
-                                  <span className="truncate">{talent.phone || <span className="text-muted-foreground">Not Specified</span>}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-foreground">
-                                  <MapPin className="h-4 w-4" />
-                                  <span className="truncate">{talent.address || <span className="text-muted-foreground">Not Specified</span>}</span>
-                                </div>
-                              </div>
 
                               {/* Action Button */}
                               <Button 
                                 variant="default" 
-                                className="w-full text-sm h-9 rounded-lg shadow-none mt-4"
+                                className="w-full text-sm h-9 rounded-lg shadow-none mt-8"
                                 onClick={() => handleTalentClick(talent)}
                               >
-                                See Profile
+                                View Profile
                               </Button>
                             </CardContent>
                           </Card>
