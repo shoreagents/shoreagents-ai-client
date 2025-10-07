@@ -197,8 +197,8 @@ export default function Dashboard() {
   const getInactiveEmployeesCount = () => {
     if (!activities.length) return 0
     
-    const inactiveEmployees = employees.filter(employee => {
-      const activity = activities.find(a => a.user_id.toString() === employee.id)
+    const inactiveEmployees = employees.filter((employee: any) => {
+      const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
       if (!activity) return false
       
       // Inactive if not currently active
@@ -219,8 +219,8 @@ export default function Dashboard() {
   const getInactiveEmployees = () => {
     if (!activities.length) return []
     
-    return employees.filter(employee => {
-      const activity = activities.find(a => a.user_id.toString() === employee.id)
+    return employees.filter((employee: any) => {
+      const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
       if (!activity) return false
       
       // Inactive if not currently active
@@ -309,8 +309,8 @@ export default function Dashboard() {
                           </div>
                         ) : getInactiveEmployees().length > 0 ? (
                           <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                            {getInactiveEmployees().map((employee) => {
-                              const activity = activities.find(a => a.user_id.toString() === employee.id)
+                            {getInactiveEmployees().map((employee: any) => {
+                              const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
                               const lastSessionStart = activity?.last_session_start
                               
                               return (
