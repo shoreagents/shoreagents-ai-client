@@ -1518,6 +1518,73 @@ export async function getEmployeesWithAnniversaryToday(memberId: string) {
   }
 }
 
+export async function getEmployeesWithBirthdayToday(memberId: string) {
+  let whereClause = `WHERE u.user_type = 'Agent' AND pi.birthday IS NOT NULL AND EXTRACT(MONTH FROM pi.birthday) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(DAY FROM pi.birthday) = EXTRACT(DAY FROM CURRENT_DATE)`
+  const params: any[] = []
+
+  if (memberId !== 'all') {
+    params.push(memberId)
+    whereClause += ` AND a.member_id = $${params.length}`
+  }
+
+  const birthdayEmployeesQuery = `
+    SELECT 
+      u.id,
+      u.email,
+      u.user_type,
+      pi.first_name,
+      pi.last_name,
+      pi.profile_picture,
+      pi.phone,
+      pi.birthday,
+      pi.city,
+      pi.address,
+      pi.gender,
+      a.department_id,
+      d.name as department_name,
+      d.description as department_description,
+      ji.job_title,
+      ji.employment_status,
+      ji.start_date,
+      ji.work_email,
+      m.shift
+    FROM users u
+    LEFT JOIN personal_info pi ON u.id = pi.user_id
+    LEFT JOIN agents a ON u.id = a.user_id
+    LEFT JOIN departments d ON a.department_id = d.id
+    LEFT JOIN job_info ji ON a.user_id = ji.agent_user_id
+    LEFT JOIN members m ON a.member_id = m.id
+    ${whereClause}
+    ORDER BY pi.last_name, pi.first_name
+  `
+
+  const result = await pool.query(birthdayEmployeesQuery, params)
+
+  const employees = result.rows.map((row: any) => ({
+    id: row.id.toString(),
+    firstName: row.first_name || '',
+    lastName: row.last_name || '',
+    email: row.email,
+    phone: row.phone,
+    department: row.department_name || 'Unassigned',
+    position: row.job_title || 'Agent',
+    hireDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+    avatar: row.profile_picture,
+    departmentId: row.department_id,
+    workEmail: row.work_email,
+    birthday: row.birthday,
+    city: row.city,
+    address: row.address,
+    gender: row.gender,
+    shift: row.shift,
+  }))
+
+  return {
+    employees,
+    count: employees.length,
+  }
+}
+
 // =============================
 // Productivity Scores & Trends
 // =============================
