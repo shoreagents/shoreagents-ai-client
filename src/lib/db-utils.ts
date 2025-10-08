@@ -2740,7 +2740,7 @@ export async function getActivitiesByDate(memberId: string, startDate: string, e
       END as is_in_restroom,
       COALESCE(ars.restroom_count, 0) as restroom_count,
       COALESCE(ars.daily_restroom_count, 0) as daily_restroom_count,
-      ars.created_at as restroom_went_at,
+      ars.updated_at as restroom_went_at,
       -- Clinic statistics
       COALESCE(hcr.in_clinic, false) as is_in_clinic,
       hcr.in_clinic_at,

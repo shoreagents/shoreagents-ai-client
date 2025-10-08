@@ -180,64 +180,8 @@ export default function ActivitiesPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Fetch employees data
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      if (!user?.id && user?.userType !== 'Internal') {
-        return
-      }
-
-      try {
-        const params = new URLSearchParams({
-          limit: '1000'
-        })
-        
-        // Determine the correct memberId based on user type
-        let actualMemberId = 'all'
-        if (user?.userType !== 'Internal') {
-          actualMemberId = user.memberId?.toString() || 'all'
-        }
-        
-        params.append('memberId', actualMemberId)
-
-        const response = await fetch(`/api/team/employees?${params.toString()}`)
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch employees: ${response.status}`)
-        }
-
-        const data = await response.json()
-        console.log('🔍 fetchEmployees - API response:', data)
-        
-        // Map the API response to include both naming conventions and member info
-        const mappedEmployees = data.employees.map((emp: any) => ({
-          ...emp,
-          // Ensure both naming conventions are available
-          first_name: emp.first_name || emp.firstName,
-          last_name: emp.last_name || emp.lastName,
-          firstName: emp.firstName || emp.first_name,
-          lastName: emp.lastName || emp.last_name,
-          // Add member info (these might need to be fetched separately)
-          member_id: emp.member_id || user?.memberId,
-          member_company: emp.member_company || 'Unknown Company',
-          // Ensure user_id is available
-          user_id: emp.user_id || parseInt(emp.id)
-        }))
-        
-        setEmployees(mappedEmployees)
-      } catch (err) {
-        console.error('❌ Employees fetch error:', err)
-        // Don't set error state for employees fetch failure, just log it
-      }
-    }
-
-    if (user) {
-      fetchEmployees()
-    }
-  }, [user])
-
-  // Fetch activities data
-  const fetchActivities = async () => {
+  // Fetch both employees and activities data together
+  const fetchAllData = async () => {
     if (!user) return
     
     setLoading(true)
@@ -249,81 +193,106 @@ export default function ActivitiesPage() {
       if (user.userType !== 'Internal') {
         actualMemberId = user.memberId?.toString() || 'all'
       }
+
+      // Fetch both employees and activities in parallel
+      const [employeesResponse, activitiesResponse] = await Promise.all([
+        fetch(`/api/team/employees?memberId=${actualMemberId}&limit=1000`),
+        fetch(`/api/activities?memberId=${actualMemberId}`)
+      ])
       
-      const response = await fetch(`/api/activities?memberId=${actualMemberId}`)
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch activities: ${response.status}`)
+      if (!employeesResponse.ok) {
+        throw new Error(`Failed to fetch employees: ${employeesResponse.status}`)
       }
       
-      const data = await response.json()
-      console.log('🔍 fetchActivities - API response:', data)
-      setActivities(data.activities)
-      setStats(data.stats)
-    } catch (err) {
-      console.error('❌ Fetch error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch activities')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchActivities()
-  }, [user])
-
-  // Reload function
-  const handleReload = async () => {
-    setReloading(true)
-    try {
-      // Don't set loading to true during reload to keep the UI visible
-      setError(null)
-      
-      const params = new URLSearchParams({
-        limit: '1000'
-      })
-      
-      // Determine the correct memberId based on user type
-      let actualMemberId = 'all'
-      if (user?.userType !== 'Internal') {
-        actualMemberId = user?.memberId?.toString() || 'all'
+      if (!activitiesResponse.ok) {
+        throw new Error(`Failed to fetch activities: ${activitiesResponse.status}`)
       }
-      
-      params.append('memberId', actualMemberId)
 
-      const response = await fetch(`/api/team/employees?${params.toString()}`)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      const [employeesData, activitiesData] = await Promise.all([
+        employeesResponse.json(),
+        activitiesResponse.json()
+      ])
       
-      const data = await response.json()
+      console.log('🔍 fetchAllData - Employees response:', employeesData)
+      console.log('🔍 fetchAllData - Activities response:', activitiesData)
       
-      // Map the API response to include both naming conventions and member info
-      const mappedEmployees = data.employees.map((emp: any) => ({
+      // Map the employees API response
+      const mappedEmployees = employeesData.employees.map((emp: any) => ({
         ...emp,
         // Ensure both naming conventions are available
         first_name: emp.first_name || emp.firstName,
         last_name: emp.last_name || emp.lastName,
         firstName: emp.firstName || emp.first_name,
         lastName: emp.lastName || emp.last_name,
-        // Add member info (these might need to be fetched separately)
+        // Add member info
         member_id: emp.member_id || user?.memberId,
         member_company: emp.member_company || 'Unknown Company',
         // Ensure user_id is available
         user_id: emp.user_id || parseInt(emp.id)
       }))
       
-      setEmployees(mappedEmployees || [])
+      setEmployees(mappedEmployees)
+      setActivities(activitiesData.activities)
+      setStats(activitiesData.stats)
+    } catch (err) {
+      console.error('❌ Fetch error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAllData()
+  }, [user])
+
+  // Reload function
+  const handleReload = async () => {
+    setReloading(true)
+    try {
+      setError(null)
       
-      // Fetch activities data
-      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
-      const activitiesResponse = await fetch(`/api/activities?memberId=${actualMemberId}&date=${today}`)
+      // Determine the correct memberId based on user type
+      let actualMemberId = 'all'
+      if (user?.userType !== 'Internal') {
+        actualMemberId = user?.memberId?.toString() || 'all'
+      }
+
+      // Fetch both employees and activities in parallel
+      const [employeesResponse, activitiesResponse] = await Promise.all([
+        fetch(`/api/team/employees?memberId=${actualMemberId}&limit=1000`),
+        fetch(`/api/activities?memberId=${actualMemberId}`)
+      ])
       
-      if (!activitiesResponse.ok) {
-        throw new Error(`HTTP error! status: ${activitiesResponse.status}`)
+      if (!employeesResponse.ok) {
+        throw new Error(`Failed to fetch employees: ${employeesResponse.status}`)
       }
       
-      const activitiesData = await activitiesResponse.json()
+      if (!activitiesResponse.ok) {
+        throw new Error(`Failed to fetch activities: ${activitiesResponse.status}`)
+      }
+
+      const [employeesData, activitiesData] = await Promise.all([
+        employeesResponse.json(),
+        activitiesResponse.json()
+      ])
+      
+      // Map the employees API response
+      const mappedEmployees = employeesData.employees.map((emp: any) => ({
+        ...emp,
+        // Ensure both naming conventions are available
+        first_name: emp.first_name || emp.firstName,
+        last_name: emp.last_name || emp.lastName,
+        firstName: emp.firstName || emp.first_name,
+        lastName: emp.lastName || emp.last_name,
+        // Add member info
+        member_id: emp.member_id || user?.memberId,
+        member_company: emp.member_company || 'Unknown Company',
+        // Ensure user_id is available
+        user_id: emp.user_id || parseInt(emp.id)
+      }))
+      
+      setEmployees(mappedEmployees)
       setActivities(activitiesData.activities || [])
       setStats(activitiesData.stats || null)
       
