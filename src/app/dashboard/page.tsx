@@ -18,6 +18,7 @@ import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
 import { NewHires } from "@/components/interactive/cards/new-hires"
 import { GrowthRateCard } from "@/components/interactive/cards/connect-globe"
 import { ActivityRankings } from "@/components/interactive/cards/activity-rankings"
+import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { NoData } from "@/components/ui/no-data"
 import {
@@ -102,6 +103,34 @@ export default function Dashboard() {
   }
 
   const ringColors = getRingColors()
+
+  // Get simplified activity status for dashboard
+  const getActivityStatus = (activity: any) => {
+    if (!activity) return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Unknown</Badge>
+    
+    // Check statuses in priority order
+    if (activity.is_in_meeting) {
+      return <Badge className="bg-purple-100 text-purple-800 border-purple-200">In Meeting</Badge>
+    }
+    if (activity.is_in_event) {
+      return <Badge className="bg-pink-200 text-pink-800 border-pink-200">In Event</Badge>
+    }
+    if (activity.is_in_restroom) {
+      return <Badge className="bg-amber-100 text-amber-800 border-amber-200">In Restroom</Badge>
+    }
+    if (activity.is_in_clinic) {
+      return <Badge className="bg-orange-100 text-orange-800 border-orange-200">In Clinic</Badge>
+    }
+    if (activity.is_on_break) {
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">On Break</Badge>
+    }
+    if (activity.is_currently_active) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>
+    }
+    
+    // Inactive (has last session start but not currently active)
+    return <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>
+  }
 
   // Update current time every second for timers
   useEffect(() => {
@@ -335,10 +364,10 @@ export default function Dashboard() {
                           <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
                             {getInactiveEmployees().map((employee: any) => {
                               const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
-                              const lastSessionStart = activity?.last_session_start
+                              const updatedAt = activity?.updated_at
                               
                               return (
-                                <div key={employee.id} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                                <div key={employee.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-b-0">
                                   <Avatar className="h-8 w-8">
                                     <AvatarImage src={employee.avatar} alt={`${employee.firstName} ${employee.lastName}`} />
                                     <AvatarFallback>
@@ -350,8 +379,11 @@ export default function Dashboard() {
                                       {employee.firstName} {employee.lastName}
                                     </p>
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {lastSessionStart ? getElapsedTime(lastSessionStart) : 'Never'}
+                                  <div className="flex flex-col items-end gap-1">
+                                    {getActivityStatus(activity)}
+                                    <div className="text-xs text-muted-foreground">
+                                      {updatedAt ? getElapsedTime(updatedAt) : 'Never'}
+                                    </div>
                                   </div>
                                 </div>
                               )
@@ -457,7 +489,7 @@ export default function Dashboard() {
                       ) : breaksData?.breakSessions?.length > 0 ? (
                         <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
                           {breaksData.breakSessions.map((breakSession: any) => (
-                            <div key={breakSession.id} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                            <div key={breakSession.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-b-0">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage src={breakSession.profile_picture} alt={`${breakSession.first_name} ${breakSession.last_name}`} />
                                 <AvatarFallback>

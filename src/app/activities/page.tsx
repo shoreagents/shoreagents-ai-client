@@ -123,6 +123,7 @@ export default function ActivitiesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [employeesLoading, setEmployeesLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -184,9 +185,11 @@ export default function ActivitiesPage() {
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!user?.id && user?.userType !== 'Internal') {
+        setEmployeesLoading(false)
         return
       }
 
+      setEmployeesLoading(true)
       try {
         const params = new URLSearchParams({
           limit: '1000'
@@ -228,11 +231,15 @@ export default function ActivitiesPage() {
       } catch (err) {
         console.error('❌ Employees fetch error:', err)
         // Don't set error state for employees fetch failure, just log it
+      } finally {
+        setEmployeesLoading(false)
       }
     }
 
     if (user) {
       fetchEmployees()
+    } else {
+      setEmployeesLoading(false)
     }
   }, [user])
 
@@ -975,6 +982,15 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
 
   const mergedData = getMergedData()
   
+  // Debug logging
+  console.log('🔍 Activities Page Debug:', {
+    loading,
+    employeesLoading,
+    employeesCount: employees.length,
+    activitiesCount: activities.length,
+    mergedDataCount: mergedData.length,
+    user: user?.id
+  })
   
   const sortedActivities = mergedData.sort((a, b) => {
     // Sort only by the selected field
@@ -1143,7 +1159,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     return counts
   }
 
-  if (loading) {
+  if (loading || employeesLoading) {
     return (
       <>
         <AppSidebar variant="inset" />
@@ -1426,7 +1442,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                  })}
                              </TableBody>
                            </Table>
-                           {sortedActivities.length === 0 && (
+                           {sortedActivities.length === 0 && !loading && !employeesLoading && (
                              <div className="p-6">
                                <NoData message={employees.length === 0 ? 'No Employees Found' : 'No Activity Data'} />
                              </div>
