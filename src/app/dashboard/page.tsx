@@ -374,7 +374,7 @@ export default function Dashboard() {
 
                   {/* 4. Pork (1x2) - Jobs */}
                   <Card 
-                    className="lg:col-span-1 lg:row-span-2 flex flex-col cursor-pointer hover:shadow-lg transition-shadow duration-200"
+                    className="lg:col-span-1 lg:row-span-2 flex flex-col cursor-pointer"
                     onClick={handleJobsClick}
                   >
                     <CardHeader>
