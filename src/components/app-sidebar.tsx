@@ -11,7 +11,8 @@ import {
   CoffeeIcon,
   BriefcaseIcon,
   ShoppingCartIcon,
-  ActivityIcon
+  ActivityIcon,
+  UserIcon
 } from "lucide-react"
 import { ScanTextIcon } from "@/components/icons/scan-text-icon"
 import { HistoryIcon } from "@/components/ui/history"
@@ -82,6 +83,11 @@ const data = {
     },
   ],
   navSecondary: [
+    {
+      title: "Profile",
+      url: "/profile/",
+      icon: UserIcon,
+    },
     {
       title: "Settings",
       url: "#",

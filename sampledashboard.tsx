@@ -1,31 +1,66 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { UsersIcon, CoffeeIcon } from "lucide-react"
+import { useState, useEffect, useMemo } from "react"
+import { TrendingDownIcon, TrendingUpIcon, TicketIcon, UsersIcon, CoffeeIcon } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import NumberFlow from '@number-flow/react'
 import { useRouter } from "next/navigation"
 
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 import { AppSidebar } from "@/components/app-sidebar"
 
 import { AppHeader } from "@/components/app-header"
 import { SidebarInset } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { InfiniteMovingCards } from "@/components/ui/infinite-moving-cards"
+import { AnimatedTabs } from "@/components/ui/animated-tabs"
 import { NewHires } from "@/components/interactive/cards/new-hires"
 import { GrowthRateCard } from "@/components/interactive/cards/connect-globe"
 import { ActivityRankings } from "@/components/interactive/cards/activity-rankings"
+import { OrbitingCircles } from "@/components/magicui/orbiting-circles"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { NoData } from "@/components/ui/no-data"
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 
+interface Ticket {
+  id: number
+  status: string
+  created_at: string
+  resolved_at: string | null
+  resolved_by: number | null
+}
+
+interface TicketStats {
+  daily: {
+    current: number
+    previous: number
+    change: number
+  }
+  weekly: {
+    current: number
+    previous: number
+    change: number
+  }
+  monthly: {
+    current: number
+    previous: number
+    change: number
+  }
+}
 
 interface EmployeeSummary {
   id: string
@@ -58,20 +93,23 @@ interface CountStats {
 }
 
 export default function Dashboard() {
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [stats, setStats] = useState<TicketStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+  const [prevDirection, setPrevDirection] = useState<'positive' | 'negative' | null>(null)
   const { user } = useAuth()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activities, setActivities] = useState<any[]>([])
-  const [activitiesLoading, setActivitiesLoading] = useState(true)
   const [newHireStats, setNewHireStats] = useState<CountStats | null>(null)
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
-  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
   const router = useRouter()
   const [isTalentPoolHovered, setIsTalentPoolHovered] = useState(false)
   const [jobRequests, setJobRequests] = useState<Array<{quote: string, name: string, title: string}>>([])
   const [jobRequestsLoading, setJobRequestsLoading] = useState(true)
   const [breaksData, setBreaksData] = useState<any>(null)
+  const [breaksLoading, setBreaksLoading] = useState(true)
   const [anniversaryEmployees, setAnniversaryEmployees] = useState<Employee[]>([])
   const [anniversaryLoading, setAnniversaryLoading] = useState(true)
 
@@ -95,6 +133,27 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch tickets
+        const ticketsResponse = await fetch('/api/tickets')
+        if (ticketsResponse.ok) {
+          const ticketsData = await ticketsResponse.json()
+          console.log('Fetched tickets:', ticketsData.length)
+          setTickets(ticketsData)
+        }
+
+        // Fetch stats if user is available
+        if (user?.id) {
+          console.log('Fetching stats for user:', user.id)
+          const statsResponse = await fetch(`/api/tickets/stats?userId=${user.id}`)
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json()
+            console.log('Fetched stats:', statsData)
+            setStats(statsData)
+          } else {
+            console.error('Stats response not ok:', statsResponse.status)
+          }
+        }
+
         // Fetch employees and activities for inactive employees
         if (user) {
           const memberId = (user as any).userType === 'Internal' ? 'all' : (user as any).memberId
@@ -122,7 +181,6 @@ export default function Dashboard() {
             } else {
               console.error('Dashboard - Activities fetch failed:', activitiesRes.status)
             }
-            setActivitiesLoading(false)
 
             // Fetch leaderboard data for activity rankings (only top 3)
             const now = new Date()
@@ -133,10 +191,7 @@ export default function Dashboard() {
             if (leaderboardRes.ok) {
               const leaderboardJson = await leaderboardRes.json()
               setLeaderboardData(leaderboardJson.productivityScores || [])
-            } else {
-              console.error('Dashboard - Leaderboard fetch failed:', leaderboardRes.status)
             }
-            setLeaderboardLoading(false)
 
             // Fetch job requests for dashboard (all jobs, not filtered by company)
             const jobRequestsRes = await fetch(`/api/dashboard/job-requests`)
@@ -190,6 +245,7 @@ export default function Dashboard() {
       } finally {
         setLoading(false)
         setJobRequestsLoading(false)
+        setBreaksLoading(false)
         setAnniversaryLoading(false)
       }
     }
@@ -197,12 +253,20 @@ export default function Dashboard() {
     fetchData()
   }, [user?.id])
 
+  // Calculate active tickets (all tickets except closed ones and For Approval)
+  const activeTickets = tickets.filter(ticket => ticket.status !== 'Closed' && ticket.status !== 'For Approval')
+  const activeTicketsCount = activeTickets.length
+  
+  // Calculate all closed tickets
+  const allClosedTickets = tickets.filter(ticket => ticket.status === 'Closed')
+  const allClosedTicketsCount = allClosedTickets.length
+
   // Calculate inactive employees count based on activity data
   const getInactiveEmployeesCount = () => {
     if (!activities.length) return 0
     
-    const inactiveEmployees = employees.filter((employee: any) => {
-      const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
+    const inactiveEmployees = employees.filter(employee => {
+      const activity = activities.find(a => a.user_id.toString() === employee.id)
       if (!activity) return false
       
       // Inactive if not currently active
@@ -223,8 +287,8 @@ export default function Dashboard() {
   const getInactiveEmployees = () => {
     if (!activities.length) return []
     
-    return employees.filter((employee: any) => {
-      const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
+    return employees.filter(employee => {
+      const activity = activities.find(a => a.user_id.toString() === employee.id)
       if (!activity) return false
       
       // Inactive if not currently active
@@ -257,6 +321,94 @@ export default function Dashboard() {
     }
   }
 
+  console.log('Ticket counts:', {
+    totalTickets: tickets.length,
+    allClosedTickets: allClosedTicketsCount,
+    activeTickets: activeTicketsCount,
+    userId: user?.id
+  })
+  
+  // Get the current closed tickets value based on viewMode
+  const getCurrentClosedTicketsValue = () => {
+    if (stats) {
+      switch (viewMode) {
+        case 'daily':
+          return stats.daily.current
+        case 'weekly':
+          return stats.weekly.current
+        case 'monthly':
+          return stats.monthly.current
+        default:
+          return stats.daily.current
+      }
+    }
+    // If no stats available, show 0 for all periods
+    return 0
+  }
+
+  // Memoize the closed tickets value to prevent unnecessary re-renders
+  const currentClosedTicketsValue = useMemo(() => getCurrentClosedTicketsValue(), [stats, viewMode, allClosedTicketsCount])
+
+
+
+  // Get current direction and check if it changed
+  const getCurrentDirection = () => {
+    if (!stats) return 'positive'
+    switch (viewMode) {
+      case 'daily':
+        return stats.daily.change >= 0 ? 'positive' : 'negative'
+      case 'weekly':
+        return stats.weekly.change >= 0 ? 'positive' : 'negative'
+      case 'monthly':
+        return stats.monthly.change >= 0 ? 'positive' : 'negative'
+      default:
+        return 'positive'
+    }
+  }
+
+  const currentDirection = getCurrentDirection()
+  const directionChanged = prevDirection !== null && prevDirection !== currentDirection
+
+  // Update previous direction when it changes
+  useEffect(() => {
+    if (prevDirection !== currentDirection) {
+      setPrevDirection(currentDirection)
+    }
+  }, [currentDirection, prevDirection])
+  
+  // Calculate tickets by status (excluding For Approval)
+  const getTicketsByStatus = (status: string) => {
+    return tickets.filter(ticket => ticket.status === status && ticket.status !== 'For Approval').length
+  }
+  
+  const statusCounts = {
+    approved: getTicketsByStatus('Approved'),
+    inProgress: getTicketsByStatus('In Progress'),
+    stuck: getTicketsByStatus('Stuck'),
+    actioned: getTicketsByStatus('Actioned'),
+    onHold: getTicketsByStatus('On Hold'),
+    closed: getTicketsByStatus('Closed')
+  }
+  
+  // Get status colors (same as tickets page)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return "text-blue-700 dark:text-white border-blue-600/20 bg-blue-50 dark:bg-blue-600/20"
+      case "In Progress":
+        return "text-orange-700 dark:text-white border-orange-600/20 bg-orange-50 dark:bg-orange-600/20"
+      case "Stuck":
+        return "text-red-700 dark:text-white border-red-600/20 bg-red-50 dark:bg-red-600/20"
+      case "Actioned":
+        return "text-purple-700 dark:text-white border-purple-600/20 bg-purple-50 dark:bg-purple-600/20"
+      case "On Hold":
+        return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
+      case "Closed":
+        return "text-green-700 dark:text-white border-green-600/20 bg-green-50 dark:bg-green-600/20"
+      default:
+        return "text-gray-700 dark:text-white border-gray-600/20 bg-gray-50 dark:bg-gray-600/20"
+    }
+  }
 
   return (
     <>
@@ -270,7 +422,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h1 className="text-2xl font-bold">Dashboard</h1>
-                    <p className="text-sm text-muted-foreground">Overview of your system and metrics.</p>
+                    <p className="text-sm text-muted-foreground">Overview of your IT support system and metrics.</p>
                   </div>
                 </div>
               </div>
@@ -287,7 +439,7 @@ export default function Dashboard() {
                           <div className="h-5 w-5 text-red-500">
                             <UsersIcon className="h-5 w-5" />
                           </div>
-                          {loading || activitiesLoading ? (
+                          {loading || employees.length === 0 || activities.length === 0 ? (
                             <Skeleton className="h-8 w-8" />
                           ) : (
                             getInactiveEmployeesCount()
@@ -296,25 +448,23 @@ export default function Dashboard() {
                       </div>
                     </CardHeader>
                       <CardContent className="px-6 pb-6">
-                        {loading || activitiesLoading ? (
-                          // Skeleton loading states
-                          <div className="space-y-2 pr-2">
-                            {Array.from({ length: 5 }).map((_, index) => (
-                              <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
-                                <Skeleton className="h-8 w-8 rounded-full" />
-                                <div className="flex-1 min-w-0">
-                                  <Skeleton className="h-4 w-24" />
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  <Skeleton className="h-3 w-12" />
-                                </div>
+                        <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                          {loading || employees.length === 0 || activities.length === 0 ? (
+                            // Skeleton loading states
+                            Array.from({ length: 9 }).map((_, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
+                              <Skeleton className="h-8 w-8 rounded-full" />
+                              <div className="flex-1 min-w-0">
+                                <Skeleton className="h-4 w-24" />
                               </div>
-                            ))}
-                          </div>
-                        ) : getInactiveEmployees().length > 0 ? (
-                          <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                            {getInactiveEmployees().map((employee: any) => {
-                              const activity = activities.find((a: any) => a.user_id.toString() === employee.id)
+                              <div className="text-xs text-muted-foreground">
+                                <Skeleton className="h-3 w-12" />
+                              </div>
+                            </div>
+                            ))
+                          ) : getInactiveEmployees().length > 0 ? (
+                            getInactiveEmployees().map((employee) => {
+                              const activity = activities.find(a => a.user_id.toString() === employee.id)
                               const lastSessionStart = activity?.last_session_start
                               
                               return (
@@ -335,13 +485,13 @@ export default function Dashboard() {
                                   </div>
                                 </div>
                               )
-                            })}
-                          </div>
-                        ) : (
-                          <NoData 
-                            message="All Employees Are Active"
-                          />
-                        )}
+                            })
+                          ) : (
+                            <div className="text-center text-muted-foreground text-sm py-4">
+                              No Inactive Employees
+                            </div>
+                          )}
+                        </div>
                       </CardContent>
                   </Card>
 
@@ -393,7 +543,6 @@ export default function Dashboard() {
                   <ActivityRankings 
                     leaderboardData={leaderboardData} 
                     className="lg:col-span-2 lg:row-span-3"
-                    loading={leaderboardLoading}
                   />
 
                   {/* 6. Tomato (2x2) - Breaks */}
@@ -408,7 +557,7 @@ export default function Dashboard() {
                           <div className="h-5 w-5 text-orange-500">
                             <CoffeeIcon className="h-5 w-5" />
                           </div>
-                          {loading || !breaksData ? (
+                          {breaksLoading ? (
                             <Skeleton className="h-8 w-8" />
                           ) : breaksData?.breakSessions ? (
                             breaksData.breakSessions.length
@@ -419,10 +568,10 @@ export default function Dashboard() {
                       </div>
                     </CardHeader>
                     <CardContent className="px-6 pb-6">
-                      {loading || !breaksData ? (
-                        // Skeleton loading states
-                        <div className="space-y-2 pr-2">
-                          {Array.from({ length: 5 }).map((_, index) => (
+                      <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
+                        {breaksLoading ? (
+                          // Skeleton loading states
+                          Array.from({ length: 9 }).map((_, index) => (
                             <div key={index} className="flex items-center gap-3 rounded-lg bg-muted/50">
                               <Skeleton className="h-8 w-8 rounded-full" />
                               <div className="flex-1 min-w-0">
@@ -432,11 +581,9 @@ export default function Dashboard() {
                                 <Skeleton className="h-3 w-12" />
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : breaksData?.breakSessions?.length > 0 ? (
-                        <div className="max-h-32 overflow-y-auto space-y-2 pr-2">
-                          {breaksData.breakSessions.map((breakSession: any) => (
+                          ))
+                        ) : breaksData?.breakSessions?.length > 0 ? (
+                          breaksData.breakSessions.map((breakSession: any) => (
                             <div key={breakSession.id} className="flex items-center gap-3 rounded-lg bg-muted/50">
                               <Avatar className="h-8 w-8">
                                 <AvatarImage src={breakSession.profile_picture} alt={`${breakSession.first_name} ${breakSession.last_name}`} />
@@ -453,13 +600,13 @@ export default function Dashboard() {
                                 {breakSession.break_type ? `${breakSession.break_type} Break` : 'Break'}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <NoData 
-                          message="All Employees Are Currently Working"
-                        />
-                      )}
+                          ))
+                        ) : (
+                          <div className="text-center text-muted-foreground text-sm py-4">
+                            No Breaks Taken Today
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -473,7 +620,7 @@ export default function Dashboard() {
                   >
                     <CardHeader>
                       <CardTitle>Talent Pool</CardTitle>
-                      <CardDescription>Discover skilled candidates for your team.</CardDescription>
+                      <CardDescription>Explore and discover skilled candidates available for your team.</CardDescription>
                     </CardHeader>
                     <div className="absolute bottom-0 left-0 right-0 h-[100px]">
                       <div className="relative flex h-full w-full items-center justify-center">
@@ -503,7 +650,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on inner ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 0, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Anne.jpg" alt="Anne" />
@@ -511,7 +658,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 120, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Arelle.jpg" alt="Arelle" />
@@ -519,7 +666,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 240, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 30, '--radius': 74, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Jineva.jpg" alt="Jineva" />
@@ -549,7 +696,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on middle ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 0, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Joshua.jpg" alt="Joshua" />
@@ -557,7 +704,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 120, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Kevin.jpg" alt="Kevin" />
@@ -565,7 +712,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 240, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': 60, '--radius': 104, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Klein.jpg" alt="Klein" />
@@ -595,7 +742,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on outer ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 0, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 0, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Lovell.jpg" alt="Lovell" />
@@ -603,7 +750,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 120, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 120, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Naomi.jpg" alt="Naomi" />
@@ -611,7 +758,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 240, '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': 60, '--radius': 134, '--angle': 240, '--icon-size': '24px'}}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Marc.jpg" alt="Marc" />
