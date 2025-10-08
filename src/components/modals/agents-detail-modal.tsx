@@ -1339,7 +1339,7 @@ export function AgentsDetailModal({ isOpen, onClose, agentId, agentData }: Agent
             <div className="flex items-center justify-between px-6 py-5 bg-sidebar h-16 border-b border-[#cecece99] dark:border-border">
               <div className="flex items-center gap-3">
                 <Badge className="text-xs h-6 flex items-center rounded-[6px]">
-                  Agent
+                  Employee
                 </Badge>
                 {/* Removed loader - skeleton loading in Personal Info and Job Info provides better feedback */}
               </div>

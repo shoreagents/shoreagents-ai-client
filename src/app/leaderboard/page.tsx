@@ -673,7 +673,7 @@ export default function LeaderboardPage() {
                                   onClick={() => handleSort('name')}
                                 >
                                   <div className="flex items-center gap-1">
-                                    Team Member
+                                    Employees
                                     {sortField === 'name' && getSortIcon('name')}
                                   </div>
                                 </TableHead>

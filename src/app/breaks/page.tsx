@@ -783,7 +783,7 @@ export default function BreaksPage() {
                                   onClick={() => handleSort('name')}
                                 >
                                   <div className="flex items-center gap-1">
-                                    Name
+                                    Employees
                                     {sortField === 'name' && getSortIcon('name')}
                                   </div>
                                 </TableHead>

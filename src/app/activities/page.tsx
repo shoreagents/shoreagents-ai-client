@@ -123,7 +123,6 @@ export default function ActivitiesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [employeesLoading, setEmployeesLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
@@ -185,11 +184,9 @@ export default function ActivitiesPage() {
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!user?.id && user?.userType !== 'Internal') {
-        setEmployeesLoading(false)
         return
       }
 
-      setEmployeesLoading(true)
       try {
         const params = new URLSearchParams({
           limit: '1000'
@@ -231,15 +228,11 @@ export default function ActivitiesPage() {
       } catch (err) {
         console.error('❌ Employees fetch error:', err)
         // Don't set error state for employees fetch failure, just log it
-      } finally {
-        setEmployeesLoading(false)
       }
     }
 
     if (user) {
       fetchEmployees()
-    } else {
-      setEmployeesLoading(false)
     }
   }, [user])
 
@@ -985,7 +978,6 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
   // Debug logging
   console.log('🔍 Activities Page Debug:', {
     loading,
-    employeesLoading,
     employeesCount: employees.length,
     activitiesCount: activities.length,
     mergedDataCount: mergedData.length,
@@ -1159,7 +1151,7 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
     return counts
   }
 
-  if (loading || employeesLoading) {
+  if (loading) {
     return (
       <>
         <AppSidebar variant="inset" />
@@ -1363,10 +1355,10 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                    className={`w-48 cursor-pointer ${sortField === 'name' ? 'text-primary font-medium bg-accent/50' : ''}`}
                                    onClick={() => handleSort('name')}
                                  >
-                                   <div className="flex items-center gap-1">
-                                     Name
-                                     {sortField === 'name' && getSortIcon('name')}
-                                   </div>
+                                  <div className="flex items-center gap-1">
+                                    Employees
+                                    {sortField === 'name' && getSortIcon('name')}
+                                  </div>
                                  </TableHead>
                                  <TableHead 
                                    className={`text-center cursor-pointer w-24 ${sortField === 'status' ? 'text-primary font-medium bg-accent/50' : ''}`}
@@ -1442,9 +1434,9 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                                  })}
                              </TableBody>
                            </Table>
-                           {sortedActivities.length === 0 && !loading && !employeesLoading && (
+                           {sortedActivities.length === 0 && !loading && (
                              <div className="p-6">
-                               <NoData message={employees.length === 0 ? 'No Employees Found' : 'No Activity Data'} />
+                               <NoData message="No Activity Data" />
                              </div>
                            )}
                       </CardContent>
