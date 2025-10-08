@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { UsersIcon, CoffeeIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+import { useTheme } from "next-themes"
+
 import { motion } from "framer-motion"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -60,6 +62,7 @@ interface CountStats {
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
+  const { theme } = useTheme()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [activities, setActivities] = useState<any[]>([])
   const [activitiesLoading, setActivitiesLoading] = useState(true)
@@ -82,6 +85,23 @@ export default function Dashboard() {
   const handleJobsClick = () => {
     router.push('/job-request')
   }
+
+  // Get theme-based colors for orbiting rings
+  const getRingColors = () => {
+    const isDark = theme === 'dark'
+    return {
+      border: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(30, 58, 138, 0.1)', // white/10 or blue-800/10
+      background: isDark 
+        ? 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)'
+        : 'radial-gradient(circle, rgba(30, 58, 138, 0.1) 0%, rgba(30, 58, 138, 0.05) 50%, transparent 100%)',
+      hoverBorder: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(30, 58, 138, 0.4)',
+      hoverBackground: isDark 
+        ? 'radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%)'
+        : 'radial-gradient(circle, rgba(30, 58, 138, 0.25) 0%, rgba(30, 58, 138, 0.15) 50%, transparent 100%)'
+    }
+  }
+
+  const ringColors = getRingColors()
 
   // Update current time every second for timers
   useEffect(() => {
@@ -481,13 +501,14 @@ export default function Dashboard() {
                         <div>
                           <div className="absolute inset-0" style={{width: '150px', height: '150px', left: 'calc(50% - 75px)', top: 'calc(50% - 75px)', opacity: 1, transform: 'none'}}>
                             <motion.div 
-                              className="size-full rounded-full border border-white/10 bg-gradient-radial from-white/10 via-white/5 to-transparent"
+                              className="size-full rounded-full border"
+                              style={{ borderColor: ringColors.border }}
                               animate={isTalentPoolHovered ? {
-                                borderColor: "rgba(255, 255, 255, 0.4)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%)"
+                                borderColor: ringColors.hoverBorder,
+                                background: ringColors.hoverBackground
                               } : {
-                                borderColor: "rgba(255, 255, 255, 0.1)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)"
+                                borderColor: ringColors.border,
+                                background: ringColors.background
                               }}
                               transition={isTalentPoolHovered ? 
                                 { duration: 0.6, delay: 0 } : 
@@ -532,13 +553,14 @@ export default function Dashboard() {
                         <div>
                           <div className="absolute inset-0" style={{width: '210px', height: '210px', left: 'calc(50% - 105px)', top: 'calc(50% - 105px)', opacity: 1, transform: 'none'}}>
                             <motion.div 
-                              className="size-full rounded-full border border-white/15 bg-gradient-radial from-white/15 via-white/8 to-transparent"
+                              className="size-full rounded-full border"
+                              style={{ borderColor: ringColors.border }}
                               animate={isTalentPoolHovered ? {
-                                borderColor: "rgba(255, 255, 255, 0.45)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)"
+                                borderColor: ringColors.hoverBorder,
+                                background: ringColors.hoverBackground
                               } : {
-                                borderColor: "rgba(255, 255, 255, 0.15)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%)"
+                                borderColor: ringColors.border,
+                                background: ringColors.background
                               }}
                               transition={isTalentPoolHovered ? 
                                 { duration: 0.6, delay: 0.2 } : 
@@ -578,13 +600,14 @@ export default function Dashboard() {
                         <div>
                           <div className="absolute inset-0" style={{width: '270px', height: '270px', left: 'calc(50% - 135px)', top: 'calc(50% - 135px)', opacity: 1, transform: 'none'}}>
                             <motion.div 
-                              className="size-full rounded-full border border-white/20 bg-gradient-radial from-white/20 via-white/10 to-transparent"
+                              className="size-full rounded-full border"
+                              style={{ borderColor: ringColors.border }}
                               animate={isTalentPoolHovered ? {
-                                borderColor: "rgba(255, 255, 255, 0.5)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.25) 50%, transparent 100%)"
+                                borderColor: ringColors.hoverBorder,
+                                background: ringColors.hoverBackground
                               } : {
-                                borderColor: "rgba(255, 255, 255, 0.2)",
-                                background: "radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%)"
+                                borderColor: ringColors.border,
+                                background: ringColors.background
                               }}
                               transition={isTalentPoolHovered ? 
                                 { duration: 0.6, delay: 0.4 } : 
