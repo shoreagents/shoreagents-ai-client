@@ -502,50 +502,74 @@ export default function LeaderboardPage() {
                       {/* Top Performers skeleton */}
                       <Card>
                         <CardHeader>
-                          <Skeleton className="h-6 w-36" />
-                          <Skeleton className="h-4 w-72 mt-2" />
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2">
+                              Top Performers
+                            </CardTitle>
+                            {/* Mobile month label (top-right) with same styling as old */}
+                            <CardTitle className="lg:hidden flex items-center gap-2">
+                              {selectedMonthName} {selectedYearValue}
+                            </CardTitle>
+                          </div>
+                          <CardDescription>
+                            Highlighting those who lead in activity and stay consistently engaged this month.
+                          </CardDescription>
                         </CardHeader>
                         <CardContent className="p-0">
                           <div className="relative">
-                            {/* Month label skeleton */}
-                            <Skeleton className="absolute left-6 bottom-4 h-5 w-24" />
-                            {/* Podium skeleton */}
+                            {/* Month label: desktop bottom-left */}
+                            <CardTitle className="hidden lg:flex absolute left-6 bottom-4 items-center gap-2">
+                              {selectedMonthName} {selectedYearValue}
+                            </CardTitle>
+                            
+                            {/* Podium Base */}
                             <div className="flex items-end justify-center gap-4 h-80">
-                              {/* 2nd Place */}
+                              {/* 2nd Place Pillar */}
                               <div className="flex flex-col items-center">
                                 <div className="relative mb-2">
                                   <Skeleton className="h-16 w-16 rounded-full border-4 border-gray-300" />
-                                  <Skeleton className="absolute -top-1 -right-1 h-6 w-6 rounded-full" />
+                                  <div className="absolute -top-1 -right-1 bg-gray-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                                    2
+                                  </div>
+                                  <MedalIcon className="absolute -bottom-1 -right-1 h-5 w-5 text-gray-500 bg-white rounded-full p-0.5" />
                                 </div>
                                 <div className="text-center mb-2">
-                                  <Skeleton className="h-4 w-20 mb-1" />
-                                  <Skeleton className="h-3 w-16" />
+                                  <Skeleton className="h-4 w-20 mb-1 mx-auto" />
+                                  <div className="text-xs text-muted-foreground">Points: <Skeleton className="h-3 w-12 inline-block" /></div>
                                 </div>
-                                <Skeleton className="w-20 h-32 rounded-t-lg" />
+                                <div className="w-20 h-32 bg-gradient-to-t from-gray-400/20 to-gray-300/10 rounded-t-lg backdrop-blur-sm border border-gray-200/20"></div>
                               </div>
-                              {/* 1st Place */}
+
+                              {/* 1st Place Pillar */}
                               <div className="flex flex-col items-center">
                                 <div className="relative mb-2">
                                   <Skeleton className="h-20 w-20 rounded-full border-4 border-yellow-400" />
-                                  <Skeleton className="absolute -top-1 -right-1 h-6 w-6 rounded-full" />
+                                  <div className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                                    1
+                                  </div>
+                                  <CrownIcon className="absolute -bottom-1 -right-1 h-5 w-5 text-yellow-500 bg-white rounded-full p-0.5" />
                                 </div>
                                 <div className="text-center mb-2">
-                                  <Skeleton className="h-4 w-24 mb-1" />
-                                  <Skeleton className="h-3 w-16" />
+                                  <Skeleton className="h-4 w-24 mb-1 mx-auto" />
+                                  <div className="text-xs text-muted-foreground">Points: <Skeleton className="h-3 w-12 inline-block" /></div>
                                 </div>
-                                <Skeleton className="w-24 h-40 rounded-t-lg" />
+                                <div className="w-24 h-40 bg-gradient-to-t from-yellow-400/20 to-yellow-300/10 rounded-t-lg backdrop-blur-sm border border-yellow-200/20"></div>
                               </div>
-                              {/* 3rd Place */}
+
+                              {/* 3rd Place Pillar */}
                               <div className="flex flex-col items-center">
                                 <div className="relative mb-2">
                                   <Skeleton className="h-16 w-16 rounded-full border-4 border-amber-600" />
-                                  <Skeleton className="absolute -top-1 -right-1 h-6 w-6 rounded-full" />
+                                  <div className="absolute -top-1 -right-1 bg-amber-700 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                                    3
+                                  </div>
+                                  <AwardIcon className="absolute -bottom-1 -right-1 h-5 w-5 text-amber-700 bg-white rounded-full p-0.5" />
                                 </div>
                                 <div className="text-center mb-2">
-                                  <Skeleton className="h-4 w-20 mb-1" />
-                                  <Skeleton className="h-3 w-16" />
+                                  <Skeleton className="h-4 w-20 mb-1 mx-auto" />
+                                  <div className="text-xs text-muted-foreground">Points: <Skeleton className="h-3 w-12 inline-block" /></div>
                                 </div>
-                                <Skeleton className="w-20 h-32 rounded-t-lg" />
+                                <div className="w-20 h-32 bg-gradient-to-t from-amber-600/20 to-amber-500/10 rounded-t-lg backdrop-blur-sm border border-amber-400/20"></div>
                               </div>
                             </div>
                           </div>
