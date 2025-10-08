@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [activitiesLoading, setActivitiesLoading] = useState(true)
   const [newHireStats, setNewHireStats] = useState<CountStats | null>(null)
   const [leaderboardData, setLeaderboardData] = useState<any[]>([])
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
   const router = useRouter()
   const [isTalentPoolHovered, setIsTalentPoolHovered] = useState(false)
@@ -132,7 +133,10 @@ export default function Dashboard() {
             if (leaderboardRes.ok) {
               const leaderboardJson = await leaderboardRes.json()
               setLeaderboardData(leaderboardJson.productivityScores || [])
+            } else {
+              console.error('Dashboard - Leaderboard fetch failed:', leaderboardRes.status)
             }
+            setLeaderboardLoading(false)
 
             // Fetch job requests for dashboard (all jobs, not filtered by company)
             const jobRequestsRes = await fetch(`/api/dashboard/job-requests`)
@@ -389,7 +393,7 @@ export default function Dashboard() {
                   <ActivityRankings 
                     leaderboardData={leaderboardData} 
                     className="lg:col-span-2 lg:row-span-3"
-                    loading={loading}
+                    loading={leaderboardLoading}
                   />
 
                   {/* 6. Tomato (2x2) - Breaks */}
@@ -499,7 +503,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on inner ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '74px', '--angle': '0deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '75px', '--angle': '0deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Anne.jpg" alt="Anne" />
@@ -507,7 +511,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '74px', '--angle': '120deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '75px', '--angle': '120deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Arelle.jpg" alt="Arelle" />
@@ -515,7 +519,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '74px', '--angle': '240deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '30s', '--radius': '75px', '--angle': '240deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Jineva.jpg" alt="Jineva" />
@@ -545,7 +549,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on middle ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '104px', '--angle': '0deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '105px', '--angle': '0deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Joshua.jpg" alt="Joshua" />
@@ -553,7 +557,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '104px', '--angle': '120deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '105px', '--angle': '120deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Kevin.jpg" alt="Kevin" />
@@ -561,7 +565,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '104px', '--angle': '240deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full" style={{'--duration': '60s', '--radius': '105px', '--angle': '240deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Klein.jpg" alt="Klein" />
@@ -591,7 +595,7 @@ export default function Dashboard() {
                         </div>
                         
                         {/* Orbiting elements on outer ring */}
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '134px', '--angle': '0deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '135px', '--angle': '0deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Lovell.jpg" alt="Lovell" />
@@ -599,7 +603,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '134px', '--angle': '120deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '135px', '--angle': '120deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Naomi.jpg" alt="Naomi" />
@@ -607,7 +611,7 @@ export default function Dashboard() {
                             </Avatar>
                           </div>
                         </div>
-                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '134px', '--angle': '240deg', '--icon-size': '24px'} as React.CSSProperties}>
+                        <div className="absolute flex size-[var(--icon-size)] z-20 p-1 transform-gpu animate-orbit items-center justify-center rounded-full [animation-direction:reverse]" style={{'--duration': '60s', '--radius': '135px', '--angle': '240deg', '--icon-size': '24px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'} as React.CSSProperties}>
                           <div style={{opacity: 1, transform: 'none'}}>
                             <Avatar className="w-6 h-6">
                               <AvatarImage src="https://sanljwkkoawwdpaxrper.supabase.co/storage/v1/object/public/designs/talent-pool/Marc.jpg" alt="Marc" />

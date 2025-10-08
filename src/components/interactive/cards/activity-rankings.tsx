@@ -185,7 +185,7 @@ export function ActivityRankings({
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono text-sm font-medium">{formatPoints(entry.total_active_seconds)}</span>
+                      <span className="font-mono text-sm font-medium">{entry.productivity_score.toFixed(2)}</span>
                       <div className="text-xs text-muted-foreground">Points</div>
                     </div>
                   </div>

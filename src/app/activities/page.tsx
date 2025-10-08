@@ -791,16 +791,16 @@ const getActivityStatus = (isActive: boolean, lastSessionStart: string | null, h
                 <span className="text-muted-foreground">Last Active</span>
                 <div className="flex flex-col items-start">
                   <span className="font-bold">
-                    Local: {lastSessionStart ? formatTimeOnlyLocal(lastSessionStart) : 'Never'}
+                    Local: {formatTimeOnlyLocal(updatedAt)}
                   </span>
                   <span className="font-bold text-muted-foreground text-xs">
-                    PH: {lastSessionStart ? formatTimeOnly(lastSessionStart) : 'Never'}
+                    PH: {formatTimeOnly(updatedAt)}
                   </span>
                 </div>
               </div>
               <div className="grid grid-cols-[1fr_2fr] gap-4 w-full">
                 <span className="text-muted-foreground">Elapse Time</span>
-                <span className="font-bold">{lastSessionStart ? getElapsedTime(lastSessionStart) : 'Unknown'}</span>
+                <span className="font-bold">{getElapsedTime(updatedAt)}</span>
               </div>
           </div>
         </TooltipContent>

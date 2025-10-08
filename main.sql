@@ -439,7 +439,24 @@ CREATE SEQUENCE public.weekly_activity_summary_id_seq
 
 -- DROP TABLE public.bpoc_recruits;
 
-CREATE TABLE public.bpoc_recruits ( id int4 DEFAULT nextval('recruits_id_seq'::regclass) NOT NULL, applicant_id uuid NOT NULL, resume_slug text NULL, status text NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, video_introduction_url text NULL, current_salary numeric NULL, expected_monthly_salary numeric NULL, shift text NULL, "position" numeric(10, 3) DEFAULT 0 NULL, job_ids _int4 DEFAULT '{}'::integer[] NOT NULL, bpoc_application_ids _uuid DEFAULT '{}'::uuid[] NOT NULL, interested_clients _int4 DEFAULT '{}'::integer[] NOT NULL, CONSTRAINT bpoc_recruits_applicant_id_unique UNIQUE (applicant_id), CONSTRAINT bpoc_recruits_pkey PRIMARY KEY (id));
+CREATE TABLE public.bpoc_recruits (
+	id int4 DEFAULT nextval('recruits_id_seq'::regclass) NOT NULL,
+	applicant_id uuid NOT NULL,
+	resume_slug text NULL,
+	status text NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	video_introduction_url text NULL,
+	current_salary numeric NULL,
+	expected_monthly_salary numeric NULL,
+	shift text NULL,
+	"position" numeric(10, 3) DEFAULT 0 NULL,
+	job_ids _int4 DEFAULT '{}'::integer[] NOT NULL,
+	bpoc_application_ids _uuid DEFAULT '{}'::uuid[] NOT NULL,
+	interested_clients _int4 DEFAULT '{}'::integer[] NOT NULL,
+	CONSTRAINT bpoc_recruits_applicant_id_unique UNIQUE (applicant_id),
+	CONSTRAINT bpoc_recruits_pkey PRIMARY KEY (id)
+);
 CREATE INDEX idx_bpoc_recruits_status_position ON public.bpoc_recruits USING btree (status, "position");
 CREATE INDEX idx_recruits_bpoc_app_ids_gin ON public.bpoc_recruits USING gin (bpoc_application_ids);
 CREATE INDEX idx_recruits_interested_clients_gin ON public.bpoc_recruits USING gin (interested_clients);
@@ -476,7 +493,23 @@ update
 
 -- DROP TABLE public.break_sessions;
 
-CREATE TABLE public.break_sessions ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, start_time timestamptz NOT NULL, end_time timestamptz NULL, break_date date NOT NULL, pause_time timestamptz NULL, resume_time timestamptz NULL, time_remaining_at_pause int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, break_type public."break_type_enum" NOT NULL, duration_minutes int4 NULL, pause_used bool DEFAULT false NULL, CONSTRAINT break_sessions_break_type_check CHECK ((break_type = ANY (ARRAY['Morning'::break_type_enum, 'Lunch'::break_type_enum, 'Afternoon'::break_type_enum, 'NightFirst'::break_type_enum, 'NightMeal'::break_type_enum, 'NightSecond'::break_type_enum]))), CONSTRAINT break_sessions_pkey PRIMARY KEY (id));
+CREATE TABLE public.break_sessions (
+	id serial4 NOT NULL,
+	agent_user_id int4 NOT NULL,
+	start_time timestamptz NOT NULL,
+	end_time timestamptz NULL,
+	break_date date NOT NULL,
+	pause_time timestamptz NULL,
+	resume_time timestamptz NULL,
+	time_remaining_at_pause int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	break_type public."break_type_enum" NOT NULL,
+	duration_minutes int4 NULL,
+	pause_used bool DEFAULT false NULL,
+	CONSTRAINT break_sessions_break_type_check CHECK ((break_type = ANY (ARRAY['Morning'::break_type_enum, 'Lunch'::break_type_enum, 'Afternoon'::break_type_enum, 'NightFirst'::break_type_enum, 'NightMeal'::break_type_enum, 'NightSecond'::break_type_enum]))),
+	CONSTRAINT break_sessions_pkey PRIMARY KEY (id)
+);
 CREATE INDEX idx_break_sessions_agent_user_id ON public.break_sessions USING btree (agent_user_id);
 CREATE INDEX idx_break_sessions_break_date ON public.break_sessions USING btree (break_date);
 CREATE INDEX idx_break_sessions_break_type ON public.break_sessions USING btree (break_type);
@@ -511,7 +544,16 @@ update
 
 -- DROP TABLE public.floor_plans;
 
-CREATE TABLE public.floor_plans ( id serial4 NOT NULL, "name" text NOT NULL, building text NULL, svg_url text NULL, svg_path text NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT floor_plans_pkey PRIMARY KEY (id));
+CREATE TABLE public.floor_plans (
+	id serial4 NOT NULL,
+	"name" text NOT NULL,
+	building text NULL,
+	svg_url text NULL,
+	svg_path text NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT floor_plans_pkey PRIMARY KEY (id)
+);
 
 -- Table Triggers
 
@@ -527,7 +569,15 @@ update
 
 -- DROP TABLE public.inventory_medical_categories;
 
-CREATE TABLE public.inventory_medical_categories ( id serial4 NOT NULL, item_type public."item_type_medical" NOT NULL, "name" varchar(100) NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT inventory_medical_categories_item_type_name_key UNIQUE (item_type, name), CONSTRAINT inventory_medical_categories_pkey PRIMARY KEY (id));
+CREATE TABLE public.inventory_medical_categories (
+	id serial4 NOT NULL,
+	item_type public."item_type_medical" NOT NULL,
+	"name" varchar(100) NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT inventory_medical_categories_item_type_name_key UNIQUE (item_type, name),
+	CONSTRAINT inventory_medical_categories_pkey PRIMARY KEY (id)
+);
 
 -- Table Triggers
 
@@ -543,7 +593,14 @@ update
 
 -- DROP TABLE public.inventory_medical_suppliers;
 
-CREATE TABLE public.inventory_medical_suppliers ( id serial4 NOT NULL, "name" varchar(255) NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT inventory_medical_suppliers_name_key UNIQUE (name), CONSTRAINT inventory_medical_suppliers_pkey PRIMARY KEY (id));
+CREATE TABLE public.inventory_medical_suppliers (
+	id serial4 NOT NULL,
+	"name" varchar(255) NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT inventory_medical_suppliers_name_key UNIQUE (name),
+	CONSTRAINT inventory_medical_suppliers_pkey PRIMARY KEY (id)
+);
 
 -- Table Triggers
 
@@ -559,7 +616,15 @@ update
 
 -- DROP TABLE public.roles;
 
-CREATE TABLE public.roles ( id serial4 NOT NULL, "name" text NOT NULL, description text NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT roles_name_key UNIQUE (name), CONSTRAINT roles_pkey PRIMARY KEY (id));
+CREATE TABLE public.roles (
+	id serial4 NOT NULL,
+	"name" text NOT NULL,
+	description text NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT roles_name_key UNIQUE (name),
+	CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
 
 -- Table Triggers
 
@@ -575,7 +640,14 @@ update
 
 -- DROP TABLE public.ticket_categories;
 
-CREATE TABLE public.ticket_categories ( id serial4 NOT NULL, "name" varchar(100) NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT ticket_categories_name_key UNIQUE (name), CONSTRAINT ticket_categories_pkey PRIMARY KEY (id));
+CREATE TABLE public.ticket_categories (
+	id serial4 NOT NULL,
+	"name" varchar(100) NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT ticket_categories_name_key UNIQUE (name),
+	CONSTRAINT ticket_categories_pkey PRIMARY KEY (id)
+);
 
 -- Table Triggers
 
@@ -591,7 +663,15 @@ update
 
 -- DROP TABLE public.users;
 
-CREATE TABLE public.users ( id serial4 NOT NULL, email text NOT NULL, user_type public."user_type_enum" NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT users_email_key UNIQUE (email), CONSTRAINT users_pkey PRIMARY KEY (id));
+CREATE TABLE public.users (
+	id serial4 NOT NULL,
+	email text NOT NULL,
+	user_type public."user_type_enum" NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT users_email_key UNIQUE (email),
+	CONSTRAINT users_pkey PRIMARY KEY (id)
+);
 CREATE INDEX idx_users_email ON public.users USING btree (email);
 CREATE INDEX idx_users_user_type ON public.users USING btree (user_type);
 
@@ -609,7 +689,20 @@ update
 
 -- DROP TABLE public.activity_data;
 
-CREATE TABLE public.activity_data ( id serial4 NOT NULL, user_id int4 NOT NULL, is_currently_active bool DEFAULT false NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, today_active_seconds int4 DEFAULT 0 NULL, today_inactive_seconds int4 DEFAULT 0 NULL, last_session_start timestamptz NULL, today_date date DEFAULT CURRENT_DATE NOT NULL, CONSTRAINT activity_data_pkey PRIMARY KEY (id), CONSTRAINT activity_data_user_date_unique UNIQUE (user_id, today_date), CONSTRAINT activity_data_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.activity_data (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	is_currently_active bool DEFAULT false NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	today_active_seconds int4 DEFAULT 0 NULL,
+	today_inactive_seconds int4 DEFAULT 0 NULL,
+	last_session_start timestamptz NULL,
+	today_date date DEFAULT CURRENT_DATE NOT NULL,
+	CONSTRAINT activity_data_pkey PRIMARY KEY (id),
+	CONSTRAINT activity_data_user_date_unique UNIQUE (user_id, today_date),
+	CONSTRAINT activity_data_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_activity_data_today_date ON public.activity_data USING btree (today_date);
 CREATE INDEX idx_activity_data_user_date ON public.activity_data USING btree (user_id, today_date);
 
@@ -647,7 +740,18 @@ update
 
 -- DROP TABLE public.agent_restroom_status;
 
-CREATE TABLE public.agent_restroom_status ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, is_in_restroom bool DEFAULT false NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, restroom_count int4 DEFAULT 0 NOT NULL, daily_restroom_count int4 DEFAULT 0 NOT NULL, last_daily_reset date DEFAULT CURRENT_DATE NULL, CONSTRAINT agent_restroom_status_pkey PRIMARY KEY (id), CONSTRAINT agent_restroom_status_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.agent_restroom_status (
+	id serial4 NOT NULL,
+	agent_user_id int4 NOT NULL,
+	is_in_restroom bool DEFAULT false NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	restroom_count int4 DEFAULT 0 NOT NULL,
+	daily_restroom_count int4 DEFAULT 0 NOT NULL,
+	last_daily_reset date DEFAULT CURRENT_DATE NULL,
+	CONSTRAINT agent_restroom_status_pkey PRIMARY KEY (id),
+	CONSTRAINT agent_restroom_status_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_agent_restroom_status_agent_user_id ON public.agent_restroom_status USING btree (agent_user_id);
 CREATE INDEX idx_agent_restroom_status_is_in_restroom ON public.agent_restroom_status USING btree (is_in_restroom);
 CREATE INDEX idx_agent_restroom_status_last_daily_reset ON public.agent_restroom_status USING btree (last_daily_reset);
@@ -675,7 +779,26 @@ update
 
 -- DROP TABLE public.announcements;
 
-CREATE TABLE public.announcements ( id serial4 NOT NULL, title varchar(255) NOT NULL, message text NOT NULL, priority public."announcement_priority_enum" DEFAULT 'medium'::announcement_priority_enum NOT NULL, status public."announcement_status_enum" DEFAULT 'draft'::announcement_status_enum NOT NULL, scheduled_at timestamptz NULL, expires_at timestamptz NULL, sent_at timestamptz NULL, assigned_user_ids _int4 NOT NULL, allow_dismiss bool DEFAULT true NULL, created_by int4 NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT announcements_assigned_users_check CHECK (((assigned_user_ids IS NOT NULL) AND (array_length(assigned_user_ids, 1) > 0))), CONSTRAINT announcements_expires_at_check CHECK (((expires_at IS NULL) OR (expires_at > scheduled_at))), CONSTRAINT announcements_pkey PRIMARY KEY (id), CONSTRAINT announcements_scheduled_at_check CHECK (((scheduled_at IS NULL) OR (scheduled_at > created_at))), CONSTRAINT announcements_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.announcements (
+	id serial4 NOT NULL,
+	title varchar(255) NOT NULL,
+	message text NOT NULL,
+	priority public."announcement_priority_enum" DEFAULT 'medium'::announcement_priority_enum NOT NULL,
+	status public."announcement_status_enum" DEFAULT 'draft'::announcement_status_enum NOT NULL,
+	scheduled_at timestamptz NULL,
+	expires_at timestamptz NULL,
+	sent_at timestamptz NULL,
+	assigned_user_ids _int4 NOT NULL,
+	allow_dismiss bool DEFAULT true NULL,
+	created_by int4 NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT announcements_assigned_users_check CHECK (((assigned_user_ids IS NOT NULL) AND (array_length(assigned_user_ids, 1) > 0))),
+	CONSTRAINT announcements_expires_at_check CHECK (((expires_at IS NULL) OR (expires_at > scheduled_at))),
+	CONSTRAINT announcements_pkey PRIMARY KEY (id),
+	CONSTRAINT announcements_scheduled_at_check CHECK (((scheduled_at IS NULL) OR (scheduled_at > created_at))),
+	CONSTRAINT announcements_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_announcements_assigned_user_ids ON public.announcements USING gin (assigned_user_ids);
 CREATE INDEX idx_announcements_created_by ON public.announcements USING btree (created_by);
 CREATE INDEX idx_announcements_expires_at ON public.announcements USING btree (expires_at);
@@ -705,7 +828,17 @@ update
 
 -- DROP TABLE public.clinic_logs;
 
-CREATE TABLE public.clinic_logs ( id serial4 NOT NULL, patient_id int4 NOT NULL, additional_notes text NULL, issued_by varchar(255) NOT NULL, created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, patient_diagnose text NOT NULL, CONSTRAINT clinic_logs_pkey PRIMARY KEY (id), CONSTRAINT clinic_logs_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.clinic_logs (
+	id serial4 NOT NULL,
+	patient_id int4 NOT NULL,
+	additional_notes text NULL,
+	issued_by varchar(255) NOT NULL,
+	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	patient_diagnose text NOT NULL,
+	CONSTRAINT clinic_logs_pkey PRIMARY KEY (id),
+	CONSTRAINT clinic_logs_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 
 
 -- public.events definition
@@ -714,7 +847,26 @@ CREATE TABLE public.clinic_logs ( id serial4 NOT NULL, patient_id int4 NOT NULL,
 
 -- DROP TABLE public.events;
 
-CREATE TABLE public.events ( id serial4 NOT NULL, title varchar(255) NOT NULL, description text NULL, event_date date NOT NULL, start_time time NOT NULL, end_time time NOT NULL, "location" varchar(255) NULL, status varchar(20) DEFAULT 'upcoming'::character varying NULL, created_by int4 NOT NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, event_type varchar(20) DEFAULT 'event'::character varying NOT NULL, assigned_user_ids _int4 NULL, CONSTRAINT events_assigned_user_ids_check CHECK (((assigned_user_ids IS NULL) OR (array_length(assigned_user_ids, 1) > 0))), CONSTRAINT events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('event'::character varying)::text, ('activity'::character varying)::text]))), CONSTRAINT events_pkey PRIMARY KEY (id), CONSTRAINT events_status_check CHECK (((status)::text = ANY (ARRAY[('upcoming'::character varying)::text, ('today'::character varying)::text, ('cancelled'::character varying)::text, ('ended'::character varying)::text]))), CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.events (
+	id serial4 NOT NULL,
+	title varchar(255) NOT NULL,
+	description text NULL,
+	event_date date NOT NULL,
+	start_time time NOT NULL,
+	end_time time NOT NULL,
+	"location" varchar(255) NULL,
+	status varchar(20) DEFAULT 'upcoming'::character varying NULL,
+	created_by int4 NOT NULL,
+	created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL,
+	event_type varchar(20) DEFAULT 'event'::character varying NOT NULL,
+	assigned_user_ids _int4 NULL,
+	CONSTRAINT events_assigned_user_ids_check CHECK (((assigned_user_ids IS NULL) OR (array_length(assigned_user_ids, 1) > 0))),
+	CONSTRAINT events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('event'::character varying)::text, ('activity'::character varying)::text]))),
+	CONSTRAINT events_pkey PRIMARY KEY (id),
+	CONSTRAINT events_status_check CHECK (((status)::text = ANY (ARRAY[('upcoming'::character varying)::text, ('today'::character varying)::text, ('cancelled'::character varying)::text, ('ended'::character varying)::text]))),
+	CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_events_assigned_user_ids ON public.events USING gin (assigned_user_ids);
 CREATE INDEX idx_events_created_by ON public.events USING btree (created_by);
 CREATE INDEX idx_events_date ON public.events USING btree (event_date);
@@ -728,6 +880,14 @@ create trigger update_events_updated_at before
 update
     on
     public.events for each row execute function update_updated_at_column();
+create trigger events_notify_trigger after
+insert
+    or
+delete
+    or
+update
+    on
+    public.events for each row execute function notify_event_change();
 
 
 -- public.health_check_availability definition
@@ -736,7 +896,21 @@ update
 
 -- DROP TABLE public.health_check_availability;
 
-CREATE TABLE public.health_check_availability ( id serial4 NOT NULL, nurse_id int4 NOT NULL, day_of_week int4 NOT NULL, shift_start time NOT NULL, shift_end time NOT NULL, is_available bool DEFAULT true NULL, break_start time NULL, break_end time NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT health_check_availability_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6))), CONSTRAINT health_check_availability_pkey PRIMARY KEY (id), CONSTRAINT health_check_availability_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.health_check_availability (
+	id serial4 NOT NULL,
+	nurse_id int4 NOT NULL,
+	day_of_week int4 NOT NULL,
+	shift_start time NOT NULL,
+	shift_end time NOT NULL,
+	is_available bool DEFAULT true NULL,
+	break_start time NULL,
+	break_end time NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT health_check_availability_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6))),
+	CONSTRAINT health_check_availability_pkey PRIMARY KEY (id),
+	CONSTRAINT health_check_availability_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_health_check_availability_day_of_week ON public.health_check_availability USING btree (day_of_week);
 CREATE INDEX idx_health_check_availability_nurse_id ON public.health_check_availability USING btree (nurse_id);
 CREATE UNIQUE INDEX idx_health_check_availability_unique ON public.health_check_availability USING btree (nurse_id, day_of_week);
@@ -755,7 +929,31 @@ update
 
 -- DROP TABLE public.health_check_requests;
 
-CREATE TABLE public.health_check_requests ( id serial4 NOT NULL, user_id int4 NOT NULL, nurse_id int4 NULL, status varchar(50) DEFAULT 'pending'::character varying NOT NULL, priority varchar(20) DEFAULT 'normal'::character varying NOT NULL, complaint text NULL, symptoms text NULL, request_time timestamptz DEFAULT now() NULL, approved_time timestamptz NULL, completed_time timestamptz NULL, notes text NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, done bool DEFAULT false NOT NULL, going_to_clinic bool DEFAULT false NOT NULL, in_clinic bool DEFAULT false NOT NULL, going_to_clinic_at timestamptz NULL, in_clinic_at timestamptz NULL, CONSTRAINT health_check_requests_pkey PRIMARY KEY (id), CONSTRAINT health_check_requests_priority_check CHECK (((priority)::text = ANY (ARRAY[('low'::character varying)::text, ('normal'::character varying)::text, ('high'::character varying)::text, ('urgent'::character varying)::text]))), CONSTRAINT health_check_requests_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))), CONSTRAINT health_check_requests_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE SET NULL, CONSTRAINT health_check_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.health_check_requests (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	nurse_id int4 NULL,
+	status varchar(50) DEFAULT 'pending'::character varying NOT NULL,
+	priority varchar(20) DEFAULT 'normal'::character varying NOT NULL,
+	complaint text NULL,
+	symptoms text NULL,
+	request_time timestamptz DEFAULT now() NULL,
+	approved_time timestamptz NULL,
+	completed_time timestamptz NULL,
+	notes text NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	done bool DEFAULT false NOT NULL,
+	going_to_clinic bool DEFAULT false NOT NULL,
+	in_clinic bool DEFAULT false NOT NULL,
+	going_to_clinic_at timestamptz NULL,
+	in_clinic_at timestamptz NULL,
+	CONSTRAINT health_check_requests_pkey PRIMARY KEY (id),
+	CONSTRAINT health_check_requests_priority_check CHECK (((priority)::text = ANY (ARRAY[('low'::character varying)::text, ('normal'::character varying)::text, ('high'::character varying)::text, ('urgent'::character varying)::text]))),
+	CONSTRAINT health_check_requests_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))),
+	CONSTRAINT health_check_requests_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE SET NULL,
+	CONSTRAINT health_check_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_health_check_requests_done ON public.health_check_requests USING btree (done);
 CREATE INDEX idx_health_check_requests_going_to_clinic ON public.health_check_requests USING btree (going_to_clinic);
 CREATE INDEX idx_health_check_requests_going_to_clinic_at ON public.health_check_requests USING btree (going_to_clinic_at);
@@ -790,7 +988,13 @@ update
 
 -- DROP TABLE public.internal;
 
-CREATE TABLE public.internal ( user_id int4 NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT internal_pkey PRIMARY KEY (user_id), CONSTRAINT internal_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.internal (
+	user_id int4 NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT internal_pkey PRIMARY KEY (user_id),
+	CONSTRAINT internal_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 
 -- Table Triggers
 
@@ -806,7 +1010,17 @@ update
 
 -- DROP TABLE public.internal_roles;
 
-CREATE TABLE public.internal_roles ( id serial4 NOT NULL, internal_user_id int4 NOT NULL, role_id int4 NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT internal_roles_pkey PRIMARY KEY (id), CONSTRAINT unique_internal_role_assignment UNIQUE (internal_user_id, role_id), CONSTRAINT internal_roles_internal_user_id_fkey FOREIGN KEY (internal_user_id) REFERENCES public.internal(user_id) ON DELETE CASCADE, CONSTRAINT internal_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE CASCADE);
+CREATE TABLE public.internal_roles (
+	id serial4 NOT NULL,
+	internal_user_id int4 NOT NULL,
+	role_id int4 NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT internal_roles_pkey PRIMARY KEY (id),
+	CONSTRAINT unique_internal_role_assignment UNIQUE (internal_user_id, role_id),
+	CONSTRAINT internal_roles_internal_user_id_fkey FOREIGN KEY (internal_user_id) REFERENCES public.internal(user_id) ON DELETE CASCADE,
+	CONSTRAINT internal_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE CASCADE
+);
 
 -- Table Triggers
 
@@ -822,7 +1036,24 @@ update
 
 -- DROP TABLE public.inventory_medical;
 
-CREATE TABLE public.inventory_medical ( id serial4 NOT NULL, item_type public."item_type_medical" NOT NULL, "name" varchar(255) NOT NULL, description text NULL, category_id int4 NULL, stock int4 DEFAULT 0 NOT NULL, reorder_level int4 DEFAULT 10 NOT NULL, price numeric(10, 2) NULL, supplier_id int4 NULL, created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT inventory_medical_pkey PRIMARY KEY (id), CONSTRAINT inventory_medical_reorder_level_check CHECK ((reorder_level >= 0)), CONSTRAINT inventory_medical_stock_check CHECK ((stock >= 0)), CONSTRAINT inventory_medical_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.inventory_medical_categories(id) ON DELETE RESTRICT, CONSTRAINT inventory_medical_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.inventory_medical_suppliers(id) ON DELETE SET NULL);
+CREATE TABLE public.inventory_medical (
+	id serial4 NOT NULL,
+	item_type public."item_type_medical" NOT NULL,
+	"name" varchar(255) NOT NULL,
+	description text NULL,
+	category_id int4 NULL,
+	stock int4 DEFAULT 0 NOT NULL,
+	reorder_level int4 DEFAULT 10 NOT NULL,
+	price numeric(10, 2) NULL,
+	supplier_id int4 NULL,
+	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	CONSTRAINT inventory_medical_pkey PRIMARY KEY (id),
+	CONSTRAINT inventory_medical_reorder_level_check CHECK ((reorder_level >= 0)),
+	CONSTRAINT inventory_medical_stock_check CHECK ((stock >= 0)),
+	CONSTRAINT inventory_medical_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.inventory_medical_categories(id) ON DELETE RESTRICT,
+	CONSTRAINT inventory_medical_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.inventory_medical_suppliers(id) ON DELETE SET NULL
+);
 
 -- Table Triggers
 
@@ -838,7 +1069,26 @@ update
 
 -- DROP TABLE public.meetings;
 
-CREATE TABLE public.meetings ( id serial4 NOT NULL, agent_user_id int4 NOT NULL, title varchar(255) NOT NULL, description text NULL, start_time timestamptz DEFAULT now() NULL, end_time timestamptz DEFAULT now() NULL, duration_minutes int4 NOT NULL, meeting_type varchar(50) NOT NULL, status varchar(50) DEFAULT 'scheduled'::character varying NOT NULL, is_in_meeting bool DEFAULT false NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, started_automatically bool DEFAULT false NULL, CONSTRAINT check_meeting_status_consistency CHECK ((((is_in_meeting = true) AND ((status)::text = 'in-progress'::text)) OR (is_in_meeting = false))), CONSTRAINT meetings_meeting_type_check CHECK (((meeting_type)::text = ANY (ARRAY[('video'::character varying)::text, ('audio'::character varying)::text, ('in-person'::character varying)::text]))), CONSTRAINT meetings_pkey PRIMARY KEY (id), CONSTRAINT meetings_status_check CHECK (((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))), CONSTRAINT meetings_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.meetings (
+	id serial4 NOT NULL,
+	agent_user_id int4 NOT NULL,
+	title varchar(255) NOT NULL,
+	description text NULL,
+	start_time timestamptz DEFAULT now() NULL,
+	end_time timestamptz DEFAULT now() NULL,
+	duration_minutes int4 NOT NULL,
+	meeting_type varchar(50) NOT NULL,
+	status varchar(50) DEFAULT 'scheduled'::character varying NOT NULL,
+	is_in_meeting bool DEFAULT false NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	started_automatically bool DEFAULT false NULL,
+	CONSTRAINT check_meeting_status_consistency CHECK ((((is_in_meeting = true) AND ((status)::text = 'in-progress'::text)) OR (is_in_meeting = false))),
+	CONSTRAINT meetings_meeting_type_check CHECK (((meeting_type)::text = ANY (ARRAY[('video'::character varying)::text, ('audio'::character varying)::text, ('in-person'::character varying)::text]))),
+	CONSTRAINT meetings_pkey PRIMARY KEY (id),
+	CONSTRAINT meetings_status_check CHECK (((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text, ('completed'::character varying)::text, ('cancelled'::character varying)::text]))),
+	CONSTRAINT meetings_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_meetings_agent_user_id ON public.meetings USING btree (agent_user_id);
 CREATE INDEX idx_meetings_created_at ON public.meetings USING btree (created_at);
 CREATE INDEX idx_meetings_notification_queries ON public.meetings USING btree (status, start_time, started_automatically) WHERE ((status)::text = ANY (ARRAY[('scheduled'::character varying)::text, ('in-progress'::character varying)::text]));
@@ -870,7 +1120,28 @@ update
 
 -- DROP TABLE public.members;
 
-CREATE TABLE public.members ( id serial4 NOT NULL, company text NOT NULL, address text NULL, phone text NULL, logo text NULL, service public."member_service_enum" NULL, status public."member_status_enum" NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, badge_color text NULL, country text NULL, website _text NULL, company_id uuid NOT NULL, created_by int4 NULL, updated_by int4 NULL, shift text NULL, CONSTRAINT members_company_id_key UNIQUE (company_id), CONSTRAINT members_pkey PRIMARY KEY (id), CONSTRAINT members_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL, CONSTRAINT members_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL);
+CREATE TABLE public.members (
+	id serial4 NOT NULL,
+	company text NOT NULL,
+	address text NULL,
+	phone text NULL,
+	logo text NULL,
+	service public."member_service_enum" NULL,
+	status public."member_status_enum" NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	badge_color text NULL,
+	country text NULL,
+	website _text NULL,
+	company_id uuid NOT NULL,
+	created_by int4 NULL,
+	updated_by int4 NULL,
+	shift text NULL,
+	CONSTRAINT members_company_id_key UNIQUE (company_id),
+	CONSTRAINT members_pkey PRIMARY KEY (id),
+	CONSTRAINT members_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL,
+	CONSTRAINT members_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL
+);
 CREATE INDEX idx_members_company ON public.members USING btree (company);
 CREATE INDEX idx_members_country ON public.members USING btree (country);
 CREATE INDEX idx_members_listing ON public.members USING btree (status, country) INCLUDE (id, company, service, badge_color);
@@ -898,7 +1169,20 @@ update
 
 -- DROP TABLE public.members_activity_log;
 
-CREATE TABLE public.members_activity_log ( id serial4 NOT NULL, member_id int4 NOT NULL, field_name text NOT NULL, "action" text NOT NULL, old_value text NULL, new_value text NULL, user_id int4 NULL, created_at timestamptz DEFAULT now() NULL, CONSTRAINT members_activity_log_action_check CHECK ((action = ANY (ARRAY['created'::text, 'set'::text, 'updated'::text, 'removed'::text, 'selected'::text, 'deselected'::text]))), CONSTRAINT members_activity_log_pkey PRIMARY KEY (id), CONSTRAINT fk_members_activity_log_member FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE, CONSTRAINT fk_members_activity_log_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL);
+CREATE TABLE public.members_activity_log (
+	id serial4 NOT NULL,
+	member_id int4 NOT NULL,
+	field_name text NOT NULL,
+	"action" text NOT NULL,
+	old_value text NULL,
+	new_value text NULL,
+	user_id int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT members_activity_log_action_check CHECK ((action = ANY (ARRAY['created'::text, 'set'::text, 'updated'::text, 'removed'::text, 'selected'::text, 'deselected'::text]))),
+	CONSTRAINT members_activity_log_pkey PRIMARY KEY (id),
+	CONSTRAINT fk_members_activity_log_member FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE,
+	CONSTRAINT fk_members_activity_log_user FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL
+);
 CREATE INDEX idx_members_activity_log_action ON public.members_activity_log USING btree (action);
 CREATE INDEX idx_members_activity_log_created_at ON public.members_activity_log USING btree (created_at);
 CREATE INDEX idx_members_activity_log_member_id ON public.members_activity_log USING btree (member_id);
@@ -922,7 +1206,20 @@ update
 
 -- DROP TABLE public.monthly_activity_summary;
 
-CREATE TABLE public.monthly_activity_summary ( id serial4 NOT NULL, user_id int4 NOT NULL, month_start_date date NOT NULL, month_end_date date NOT NULL, total_active_seconds int4 DEFAULT 0 NULL, total_inactive_seconds int4 DEFAULT 0 NULL, total_days_active int4 DEFAULT 0 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT monthly_activity_summary_pkey PRIMARY KEY (id), CONSTRAINT monthly_activity_summary_user_id_month_start_date_key UNIQUE (user_id, month_start_date), CONSTRAINT monthly_activity_summary_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.monthly_activity_summary (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	month_start_date date NOT NULL,
+	month_end_date date NOT NULL,
+	total_active_seconds int4 DEFAULT 0 NULL,
+	total_inactive_seconds int4 DEFAULT 0 NULL,
+	total_days_active int4 DEFAULT 0 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT monthly_activity_summary_pkey PRIMARY KEY (id),
+	CONSTRAINT monthly_activity_summary_user_id_month_start_date_key UNIQUE (user_id, month_start_date),
+	CONSTRAINT monthly_activity_summary_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_monthly_activity_created_at ON public.monthly_activity_summary USING btree (created_at);
 CREATE INDEX idx_monthly_activity_month_dates ON public.monthly_activity_summary USING btree (month_start_date, month_end_date);
 CREATE INDEX idx_monthly_activity_user_id ON public.monthly_activity_summary USING btree (user_id);
@@ -941,7 +1238,19 @@ update
 
 -- DROP TABLE public.notifications;
 
-CREATE TABLE public.notifications ( id serial4 NOT NULL, user_id int4 NOT NULL, category text NOT NULL, "type" text NOT NULL, title text NOT NULL, message text NOT NULL, payload jsonb NULL, is_read bool DEFAULT false NULL, created_at timestamptz DEFAULT now() NULL, CONSTRAINT notifications_pkey PRIMARY KEY (id), CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.notifications (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	category text NOT NULL,
+	"type" text NOT NULL,
+	title text NOT NULL,
+	message text NOT NULL,
+	payload jsonb NULL,
+	is_read bool DEFAULT false NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT notifications_pkey PRIMARY KEY (id),
+	CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_notifications_user_created ON public.notifications USING btree (user_id, created_at DESC);
 
 -- Table Triggers
@@ -958,7 +1267,25 @@ insert
 
 -- DROP TABLE public.personal_info;
 
-CREATE TABLE public.personal_info ( id serial4 NOT NULL, user_id int4 NOT NULL, first_name text NOT NULL, middle_name text NULL, last_name text NOT NULL, nickname text NULL, profile_picture text NULL, phone text NULL, birthday date NULL, city text NULL, address text NULL, gender public."gender_enum" NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT personal_info_pkey PRIMARY KEY (id), CONSTRAINT personal_info_user_id_key UNIQUE (user_id), CONSTRAINT personal_info_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.personal_info (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	first_name text NOT NULL,
+	middle_name text NULL,
+	last_name text NOT NULL,
+	nickname text NULL,
+	profile_picture text NULL,
+	phone text NULL,
+	birthday date NULL,
+	city text NULL,
+	address text NULL,
+	gender public."gender_enum" NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT personal_info_pkey PRIMARY KEY (id),
+	CONSTRAINT personal_info_user_id_key UNIQUE (user_id),
+	CONSTRAINT personal_info_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_personal_info_user_id ON public.personal_info USING btree (user_id);
 
 -- Table Triggers
@@ -983,7 +1310,21 @@ update
 
 -- DROP TABLE public.productivity_scores;
 
-CREATE TABLE public.productivity_scores ( id serial4 NOT NULL, user_id int4 NOT NULL, month_year varchar(7) NOT NULL, productivity_score numeric(5, 2) NOT NULL, total_active_seconds int4 DEFAULT 0 NULL, total_inactive_seconds int4 DEFAULT 0 NULL, total_seconds int4 DEFAULT 0 NULL, active_percentage numeric(5, 2) DEFAULT 0.00 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT productivity_scores_pkey PRIMARY KEY (id), CONSTRAINT productivity_scores_user_id_month_year_key UNIQUE (user_id, month_year), CONSTRAINT productivity_scores_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.productivity_scores (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	month_year varchar(7) NOT NULL,
+	productivity_score numeric(5, 2) NOT NULL,
+	total_active_seconds int4 DEFAULT 0 NULL,
+	total_inactive_seconds int4 DEFAULT 0 NULL,
+	total_seconds int4 DEFAULT 0 NULL,
+	active_percentage numeric(5, 2) DEFAULT 0.00 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT productivity_scores_pkey PRIMARY KEY (id),
+	CONSTRAINT productivity_scores_user_id_month_year_key UNIQUE (user_id, month_year),
+	CONSTRAINT productivity_scores_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_productivity_scores_month_top ON public.productivity_scores USING btree (month_year, total_active_seconds DESC) INCLUDE (user_id, active_percentage, total_seconds, total_inactive_seconds, productivity_score);
 
 -- Table Triggers
@@ -1000,7 +1341,20 @@ update
 
 -- DROP TABLE public.stations;
 
-CREATE TABLE public.stations ( id serial4 NOT NULL, station_id varchar(50) NOT NULL, assigned_user_id int4 NULL, asset_id varchar(50) NULL, floor_plan_id int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT stations_pkey PRIMARY KEY (id), CONSTRAINT stations_station_id_key UNIQUE (station_id), CONSTRAINT unique_user_per_station UNIQUE (assigned_user_id), CONSTRAINT stations_assigned_user_id_fkey FOREIGN KEY (assigned_user_id) REFERENCES public.users(id) ON DELETE SET NULL, CONSTRAINT stations_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE);
+CREATE TABLE public.stations (
+	id serial4 NOT NULL,
+	station_id varchar(50) NOT NULL,
+	assigned_user_id int4 NULL,
+	asset_id varchar(50) NULL,
+	floor_plan_id int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT stations_pkey PRIMARY KEY (id),
+	CONSTRAINT stations_station_id_key UNIQUE (station_id),
+	CONSTRAINT unique_user_per_station UNIQUE (assigned_user_id),
+	CONSTRAINT stations_assigned_user_id_fkey FOREIGN KEY (assigned_user_id) REFERENCES public.users(id) ON DELETE SET NULL,
+	CONSTRAINT stations_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE
+);
 
 -- Table Triggers
 
@@ -1016,7 +1370,16 @@ update
 
 -- DROP TABLE public.talent_pool;
 
-CREATE TABLE public.talent_pool ( id serial4 NOT NULL, applicant_id uuid NOT NULL, interested_clients _int4 NULL, last_contact_date timestamptz NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT talent_pool_pkey PRIMARY KEY (id), CONSTRAINT talent_pool_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.bpoc_recruits(applicant_id));
+CREATE TABLE public.talent_pool (
+	id serial4 NOT NULL,
+	applicant_id uuid NOT NULL,
+	interested_clients _int4 NULL,
+	last_contact_date timestamptz NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT talent_pool_pkey PRIMARY KEY (id),
+	CONSTRAINT talent_pool_applicant_id_fkey FOREIGN KEY (applicant_id) REFERENCES public.bpoc_recruits(applicant_id)
+);
 CREATE INDEX idx_talent_pool_applicant_id ON public.talent_pool USING btree (applicant_id);
 CREATE INDEX idx_talent_pool_interested_clients ON public.talent_pool USING gin (interested_clients);
 
@@ -1027,7 +1390,31 @@ CREATE INDEX idx_talent_pool_interested_clients ON public.talent_pool USING gin 
 
 -- DROP TABLE public.tickets;
 
-CREATE TABLE public.tickets ( id serial4 NOT NULL, ticket_id varchar(50) NOT NULL, user_id int4 NOT NULL, concern text NOT NULL, details text NULL, status public."ticket_status_enum" DEFAULT 'For Approval'::ticket_status_enum NOT NULL, resolved_by int4 NULL, resolved_at timestamptz DEFAULT now() NULL, created_at timestamptz DEFAULT now() NOT NULL, updated_at timestamptz DEFAULT now() NOT NULL, "position" int4 DEFAULT 0 NOT NULL, category_id int4 NULL, supporting_files _text DEFAULT '{}'::text[] NULL, file_count int4 DEFAULT 0 NULL, role_id int4 NULL, clear bool DEFAULT false NOT NULL, CONSTRAINT check_file_count CHECK (((file_count = array_length(supporting_files, 1)) OR ((file_count = 0) AND (supporting_files = '{}'::text[])))), CONSTRAINT tickets_pkey PRIMARY KEY (id), CONSTRAINT tickets_ticket_id_key UNIQUE (ticket_id), CONSTRAINT tickets_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ticket_categories(id) ON DELETE SET NULL, CONSTRAINT tickets_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(id) ON DELETE SET NULL, CONSTRAINT tickets_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE SET NULL, CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.tickets (
+	id serial4 NOT NULL,
+	ticket_id varchar(50) NOT NULL,
+	user_id int4 NOT NULL,
+	concern text NOT NULL,
+	details text NULL,
+	status public."ticket_status_enum" DEFAULT 'For Approval'::ticket_status_enum NOT NULL,
+	resolved_by int4 NULL,
+	resolved_at timestamptz DEFAULT now() NULL,
+	created_at timestamptz DEFAULT now() NOT NULL,
+	updated_at timestamptz DEFAULT now() NOT NULL,
+	"position" int4 DEFAULT 0 NOT NULL,
+	category_id int4 NULL,
+	supporting_files _text DEFAULT '{}'::text[] NULL,
+	file_count int4 DEFAULT 0 NULL,
+	role_id int4 NULL,
+	clear bool DEFAULT false NOT NULL,
+	CONSTRAINT check_file_count CHECK (((file_count = array_length(supporting_files, 1)) OR ((file_count = 0) AND (supporting_files = '{}'::text[])))),
+	CONSTRAINT tickets_pkey PRIMARY KEY (id),
+	CONSTRAINT tickets_ticket_id_key UNIQUE (ticket_id),
+	CONSTRAINT tickets_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.ticket_categories(id) ON DELETE SET NULL,
+	CONSTRAINT tickets_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(id) ON DELETE SET NULL,
+	CONSTRAINT tickets_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE SET NULL,
+	CONSTRAINT tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_tickets_active ON public.tickets USING btree (status, "position") WHERE (status <> 'Closed'::ticket_status_enum);
 CREATE INDEX idx_tickets_category_id ON public.tickets USING btree (category_id);
 CREATE INDEX idx_tickets_clear_status ON public.tickets USING btree (clear, status);
@@ -1071,6 +1458,26 @@ insert
     public.tickets for each row
     when (((new.ticket_id is null)
         or ((new.ticket_id)::text = ''::text))) execute function generate_ticket_id();
+create trigger ticket_changes_notify_insert after
+insert
+    on
+    public.tickets for each row execute function notify_ticket_change();
+
+COMMENT ON TRIGGER ticket_changes_notify_insert ON public.tickets IS 'Triggers real-time notification when a new ticket is created';
+create trigger ticket_changes_notify_update after
+update
+    on
+    public.tickets for each row execute function notify_ticket_change();
+
+COMMENT ON TRIGGER ticket_changes_notify_update ON public.tickets IS 'Triggers real-time notification when a ticket is updated';
+create trigger trg_ticket_status_notification after
+update
+    on
+    public.tickets for each row execute function create_ticket_status_notification();
+create trigger ticket_changes_notify_delete after
+delete
+    on
+    public.tickets for each row execute function notify_ticket_change();
 
 
 -- public.weekly_activity_summary definition
@@ -1079,7 +1486,20 @@ insert
 
 -- DROP TABLE public.weekly_activity_summary;
 
-CREATE TABLE public.weekly_activity_summary ( id serial4 NOT NULL, user_id int4 NOT NULL, week_start_date date NOT NULL, week_end_date date NOT NULL, total_active_seconds int4 DEFAULT 0 NULL, total_inactive_seconds int4 DEFAULT 0 NULL, total_days_active int4 DEFAULT 0 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT weekly_activity_summary_pkey PRIMARY KEY (id), CONSTRAINT weekly_activity_summary_user_id_week_start_date_key UNIQUE (user_id, week_start_date), CONSTRAINT weekly_activity_summary_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.weekly_activity_summary (
+	id serial4 NOT NULL,
+	user_id int4 NOT NULL,
+	week_start_date date NOT NULL,
+	week_end_date date NOT NULL,
+	total_active_seconds int4 DEFAULT 0 NULL,
+	total_inactive_seconds int4 DEFAULT 0 NULL,
+	total_days_active int4 DEFAULT 0 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT weekly_activity_summary_pkey PRIMARY KEY (id),
+	CONSTRAINT weekly_activity_summary_user_id_week_start_date_key UNIQUE (user_id, week_start_date),
+	CONSTRAINT weekly_activity_summary_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 
 -- Table Triggers
 
@@ -1095,7 +1515,16 @@ update
 
 -- DROP TABLE public.announcement_assignments;
 
-CREATE TABLE public.announcement_assignments ( id serial4 NOT NULL, announcement_id int4 NOT NULL, user_id int4 NOT NULL, dismissed_at timestamptz NULL, CONSTRAINT announcement_assignments_pkey PRIMARY KEY (id), CONSTRAINT announcement_assignments_unique UNIQUE (announcement_id, user_id), CONSTRAINT announcement_assignments_announcement_id_fkey FOREIGN KEY (announcement_id) REFERENCES public.announcements(id) ON DELETE CASCADE, CONSTRAINT announcement_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.announcement_assignments (
+	id serial4 NOT NULL,
+	announcement_id int4 NOT NULL,
+	user_id int4 NOT NULL,
+	dismissed_at timestamptz NULL,
+	CONSTRAINT announcement_assignments_pkey PRIMARY KEY (id),
+	CONSTRAINT announcement_assignments_unique UNIQUE (announcement_id, user_id),
+	CONSTRAINT announcement_assignments_announcement_id_fkey FOREIGN KEY (announcement_id) REFERENCES public.announcements(id) ON DELETE CASCADE,
+	CONSTRAINT announcement_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_announcement_assignments_announcement_id ON public.announcement_assignments USING btree (announcement_id);
 CREATE INDEX idx_announcement_assignments_user_id ON public.announcement_assignments USING btree (user_id);
 
@@ -1106,7 +1535,19 @@ CREATE INDEX idx_announcement_assignments_user_id ON public.announcement_assignm
 
 -- DROP TABLE public.clinic_log_medicines;
 
-CREATE TABLE public.clinic_log_medicines ( id serial4 NOT NULL, clinic_log_id int4 NOT NULL, "name" varchar(255) NOT NULL, quantity int4 NOT NULL, created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, inventory_item_id int4 NULL, CONSTRAINT clinic_log_medicines_pkey PRIMARY KEY (id), CONSTRAINT clinic_log_medicines_quantity_check CHECK ((quantity > 0)), CONSTRAINT clinic_log_medicines_clinic_log_id_fkey FOREIGN KEY (clinic_log_id) REFERENCES public.clinic_logs(id) ON DELETE CASCADE, CONSTRAINT clinic_log_medicines_inventory_item_id_fkey FOREIGN KEY (inventory_item_id) REFERENCES public.inventory_medical(id) ON DELETE RESTRICT);
+CREATE TABLE public.clinic_log_medicines (
+	id serial4 NOT NULL,
+	clinic_log_id int4 NOT NULL,
+	"name" varchar(255) NOT NULL,
+	quantity int4 NOT NULL,
+	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	inventory_item_id int4 NULL,
+	CONSTRAINT clinic_log_medicines_pkey PRIMARY KEY (id),
+	CONSTRAINT clinic_log_medicines_quantity_check CHECK ((quantity > 0)),
+	CONSTRAINT clinic_log_medicines_clinic_log_id_fkey FOREIGN KEY (clinic_log_id) REFERENCES public.clinic_logs(id) ON DELETE CASCADE,
+	CONSTRAINT clinic_log_medicines_inventory_item_id_fkey FOREIGN KEY (inventory_item_id) REFERENCES public.inventory_medical(id) ON DELETE RESTRICT
+);
 
 -- Table Triggers
 
@@ -1126,7 +1567,19 @@ insert
 
 -- DROP TABLE public.clinic_log_supplies;
 
-CREATE TABLE public.clinic_log_supplies ( id serial4 NOT NULL, clinic_log_id int4 NOT NULL, "name" varchar(255) NOT NULL, quantity int4 NOT NULL, created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL, inventory_item_id int4 NULL, CONSTRAINT clinic_log_supplies_pkey PRIMARY KEY (id), CONSTRAINT clinic_log_supplies_quantity_check CHECK ((quantity > 0)), CONSTRAINT clinic_log_supplies_clinic_log_id_fkey FOREIGN KEY (clinic_log_id) REFERENCES public.clinic_logs(id) ON DELETE CASCADE, CONSTRAINT clinic_log_supplies_inventory_item_id_fkey FOREIGN KEY (inventory_item_id) REFERENCES public.inventory_medical(id) ON DELETE RESTRICT);
+CREATE TABLE public.clinic_log_supplies (
+	id serial4 NOT NULL,
+	clinic_log_id int4 NOT NULL,
+	"name" varchar(255) NOT NULL,
+	quantity int4 NOT NULL,
+	created_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NULL,
+	inventory_item_id int4 NULL,
+	CONSTRAINT clinic_log_supplies_pkey PRIMARY KEY (id),
+	CONSTRAINT clinic_log_supplies_quantity_check CHECK ((quantity > 0)),
+	CONSTRAINT clinic_log_supplies_clinic_log_id_fkey FOREIGN KEY (clinic_log_id) REFERENCES public.clinic_logs(id) ON DELETE CASCADE,
+	CONSTRAINT clinic_log_supplies_inventory_item_id_fkey FOREIGN KEY (inventory_item_id) REFERENCES public.inventory_medical(id) ON DELETE RESTRICT
+);
 
 -- Table Triggers
 
@@ -1146,7 +1599,18 @@ insert
 
 -- DROP TABLE public.departments;
 
-CREATE TABLE public.departments ( id serial4 NOT NULL, "name" text NOT NULL, description text NULL, member_id int4 NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT departments_pkey PRIMARY KEY (id), CONSTRAINT unique_department_id_member UNIQUE (id, member_id), CONSTRAINT unique_department_per_member UNIQUE (name, member_id), CONSTRAINT departments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL);
+CREATE TABLE public.departments (
+	id serial4 NOT NULL,
+	"name" text NOT NULL,
+	description text NULL,
+	member_id int4 NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT departments_pkey PRIMARY KEY (id),
+	CONSTRAINT unique_department_id_member UNIQUE (id, member_id),
+	CONSTRAINT unique_department_per_member UNIQUE (name, member_id),
+	CONSTRAINT departments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL
+);
 
 -- Table Triggers
 
@@ -1162,7 +1626,21 @@ update
 
 -- DROP TABLE public.event_attendance;
 
-CREATE TABLE public.event_attendance ( id serial4 NOT NULL, event_id int4 NOT NULL, user_id int4 NOT NULL, is_going bool DEFAULT false NULL, is_back bool DEFAULT false NULL, going_at timestamp NULL, back_at timestamp NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL, CONSTRAINT event_attendance_event_id_user_id_key UNIQUE (event_id, user_id), CONSTRAINT event_attendance_pkey PRIMARY KEY (id), CONSTRAINT event_attendance_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE, CONSTRAINT event_attendance_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.event_attendance (
+	id serial4 NOT NULL,
+	event_id int4 NOT NULL,
+	user_id int4 NOT NULL,
+	is_going bool DEFAULT false NULL,
+	is_back bool DEFAULT false NULL,
+	going_at timestamp NULL,
+	back_at timestamp NULL,
+	created_at timestamp DEFAULT CURRENT_TIMESTAMP NULL,
+	updated_at timestamp DEFAULT CURRENT_TIMESTAMP NULL,
+	CONSTRAINT event_attendance_event_id_user_id_key UNIQUE (event_id, user_id),
+	CONSTRAINT event_attendance_pkey PRIMARY KEY (id),
+	CONSTRAINT event_attendance_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE,
+	CONSTRAINT event_attendance_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_event_attendance_event_id ON public.event_attendance USING btree (event_id);
 CREATE INDEX idx_event_attendance_going ON public.event_attendance USING btree (is_going, is_back) WHERE (is_going = true);
 CREATE INDEX idx_event_attendance_user_event ON public.event_attendance USING btree (user_id, event_id);
@@ -1190,7 +1668,17 @@ update
 
 -- DROP TABLE public.floor_plan_members;
 
-CREATE TABLE public.floor_plan_members ( id serial4 NOT NULL, floor_plan_id int4 NOT NULL, member_id int4 NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT floor_plan_members_floor_plan_id_member_id_key UNIQUE (floor_plan_id, member_id), CONSTRAINT floor_plan_members_pkey PRIMARY KEY (id), CONSTRAINT floor_plan_members_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE, CONSTRAINT floor_plan_members_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL);
+CREATE TABLE public.floor_plan_members (
+	id serial4 NOT NULL,
+	floor_plan_id int4 NOT NULL,
+	member_id int4 NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT floor_plan_members_floor_plan_id_member_id_key UNIQUE (floor_plan_id, member_id),
+	CONSTRAINT floor_plan_members_pkey PRIMARY KEY (id),
+	CONSTRAINT floor_plan_members_floor_plan_id_fkey FOREIGN KEY (floor_plan_id) REFERENCES public.floor_plans(id) ON DELETE CASCADE,
+	CONSTRAINT floor_plan_members_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL
+);
 
 
 -- public.health_check_records definition
@@ -1199,12 +1687,40 @@ CREATE TABLE public.floor_plan_members ( id serial4 NOT NULL, floor_plan_id int4
 
 -- DROP TABLE public.health_check_records;
 
-CREATE TABLE public.health_check_records ( id serial4 NOT NULL, request_id int4 NULL, user_id int4 NOT NULL, nurse_id int4 NOT NULL, visit_date date NOT NULL, visit_time time NOT NULL, chief_complaint text NOT NULL, diagnosis text NULL, treatment_plan text NULL, medicines_issued text NULL, supplies_issued text NULL, follow_up_required bool DEFAULT false NULL, follow_up_date date NULL, follow_up_notes text NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT health_check_records_pkey PRIMARY KEY (id), CONSTRAINT health_check_records_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE CASCADE, CONSTRAINT health_check_records_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.health_check_requests(id) ON DELETE SET NULL, CONSTRAINT health_check_records_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.health_check_records (
+	id serial4 NOT NULL,
+	request_id int4 NULL,
+	user_id int4 NOT NULL,
+	nurse_id int4 NOT NULL,
+	visit_date date NOT NULL,
+	visit_time time NOT NULL,
+	chief_complaint text NOT NULL,
+	diagnosis text NULL,
+	treatment_plan text NULL,
+	medicines_issued text NULL,
+	supplies_issued text NULL,
+	follow_up_required bool DEFAULT false NULL,
+	follow_up_date date NULL,
+	follow_up_notes text NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT health_check_records_pkey PRIMARY KEY (id),
+	CONSTRAINT health_check_records_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.users(id) ON DELETE CASCADE,
+	CONSTRAINT health_check_records_request_id_fkey FOREIGN KEY (request_id) REFERENCES public.health_check_requests(id) ON DELETE SET NULL,
+	CONSTRAINT health_check_records_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_health_check_records_nurse_id ON public.health_check_records USING btree (nurse_id);
 CREATE INDEX idx_health_check_records_request_id ON public.health_check_records USING btree (request_id);
 CREATE UNIQUE INDEX idx_health_check_records_unique ON public.health_check_records USING btree (user_id, nurse_id, visit_date, visit_time);
 CREATE INDEX idx_health_check_records_user_id ON public.health_check_records USING btree (user_id);
 CREATE INDEX idx_health_check_records_visit_date ON public.health_check_records USING btree (visit_date);
+
+-- Table Triggers
+
+create trigger update_health_check_records_updated_at before
+update
+    on
+    public.health_check_records for each row execute function update_updated_at_column();
 
 
 -- public.member_comments definition
@@ -1213,7 +1729,17 @@ CREATE INDEX idx_health_check_records_visit_date ON public.health_check_records 
 
 -- DROP TABLE public.member_comments;
 
-CREATE TABLE public.member_comments ( id serial4 NOT NULL, member_id int4 NOT NULL, user_id int4 NOT NULL, "comment" text NOT NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT member_comments_pkey PRIMARY KEY (id), CONSTRAINT member_comments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE, CONSTRAINT member_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.member_comments (
+	id serial4 NOT NULL,
+	member_id int4 NOT NULL,
+	user_id int4 NOT NULL,
+	"comment" text NOT NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT member_comments_pkey PRIMARY KEY (id),
+	CONSTRAINT member_comments_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE CASCADE,
+	CONSTRAINT member_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_member_comments_created_at ON public.member_comments USING btree (created_at);
 CREATE INDEX idx_member_comments_member_id ON public.member_comments USING btree (member_id);
 CREATE INDEX idx_member_comments_member_id_created_at ON public.member_comments USING btree (member_id, created_at DESC);
@@ -1245,7 +1771,18 @@ update
 
 -- DROP TABLE public.recruits_comments;
 
-CREATE TABLE public.recruits_comments ( id serial4 NOT NULL, "comment" text NOT NULL, created_by int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, comment_type varchar(50) DEFAULT 'general'::character varying NULL, talent_pool_id int4 NULL, CONSTRAINT recruits_comments_pkey PRIMARY KEY (id), CONSTRAINT recruits_comments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id), CONSTRAINT recruits_comments_talent_pool_id_fkey FOREIGN KEY (talent_pool_id) REFERENCES public.talent_pool(id) ON DELETE CASCADE);
+CREATE TABLE public.recruits_comments (
+	id serial4 NOT NULL,
+	"comment" text NOT NULL,
+	created_by int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	comment_type varchar(50) DEFAULT 'general'::character varying NULL,
+	talent_pool_id int4 NULL,
+	CONSTRAINT recruits_comments_pkey PRIMARY KEY (id),
+	CONSTRAINT recruits_comments_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+	CONSTRAINT recruits_comments_talent_pool_id_fkey FOREIGN KEY (talent_pool_id) REFERENCES public.talent_pool(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_recruits_comments_created_by ON public.recruits_comments USING btree (created_by);
 CREATE INDEX idx_recruits_comments_talent_pool_id ON public.recruits_comments USING btree (talent_pool_id);
 CREATE INDEX idx_recruits_comments_type ON public.recruits_comments USING btree (comment_type);
@@ -1257,7 +1794,17 @@ CREATE INDEX idx_recruits_comments_type ON public.recruits_comments USING btree 
 
 -- DROP TABLE public.ticket_comments;
 
-CREATE TABLE public.ticket_comments ( id serial4 NOT NULL, ticket_id int4 NOT NULL, user_id int4 NOT NULL, "comment" text NOT NULL, created_at timestamptz DEFAULT now() NOT NULL, updated_at timestamptz DEFAULT now() NOT NULL, CONSTRAINT ticket_comments_pkey PRIMARY KEY (id), CONSTRAINT ticket_comments_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE CASCADE, CONSTRAINT ticket_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.ticket_comments (
+	id serial4 NOT NULL,
+	ticket_id int4 NOT NULL,
+	user_id int4 NOT NULL,
+	"comment" text NOT NULL,
+	created_at timestamptz DEFAULT now() NOT NULL,
+	updated_at timestamptz DEFAULT now() NOT NULL,
+	CONSTRAINT ticket_comments_pkey PRIMARY KEY (id),
+	CONSTRAINT ticket_comments_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.tickets(id) ON DELETE CASCADE,
+	CONSTRAINT ticket_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 
 
 -- public.agents definition
@@ -1266,7 +1813,18 @@ CREATE TABLE public.ticket_comments ( id serial4 NOT NULL, ticket_id int4 NOT NU
 
 -- DROP TABLE public.agents;
 
-CREATE TABLE public.agents ( user_id int4 NOT NULL, member_id int4 NULL, department_id int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, exp_points int4 DEFAULT 0 NULL, CONSTRAINT agents_pkey PRIMARY KEY (user_id), CONSTRAINT agents_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT agents_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL, CONSTRAINT agents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.agents (
+	user_id int4 NOT NULL,
+	member_id int4 NULL,
+	department_id int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	exp_points int4 DEFAULT 0 NULL,
+	CONSTRAINT agents_pkey PRIMARY KEY (user_id),
+	CONSTRAINT agents_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL,
+	CONSTRAINT agents_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL,
+	CONSTRAINT agents_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_agents_department_member ON public.agents USING btree (department_id, member_id);
 CREATE INDEX idx_agents_listing ON public.agents USING btree (department_id, member_id) INCLUDE (user_id, created_at);
 CREATE INDEX idx_agents_member_department ON public.agents USING btree (member_id, department_id);
@@ -1291,7 +1849,17 @@ update
 
 -- DROP TABLE public.clients;
 
-CREATE TABLE public.clients ( user_id int4 NOT NULL, member_id int4 NULL, department_id int4 NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, CONSTRAINT clients_pkey PRIMARY KEY (user_id), CONSTRAINT clients_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL, CONSTRAINT clients_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL, CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE);
+CREATE TABLE public.clients (
+	user_id int4 NOT NULL,
+	member_id int4 NULL,
+	department_id int4 NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	CONSTRAINT clients_pkey PRIMARY KEY (user_id),
+	CONSTRAINT clients_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id) ON DELETE SET NULL,
+	CONSTRAINT clients_member_id_fkey FOREIGN KEY (member_id) REFERENCES public.members(id) ON DELETE SET NULL,
+	CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 CREATE INDEX idx_clients_member_department ON public.clients USING btree (member_id, department_id);
 
 -- Table Triggers
@@ -1320,7 +1888,30 @@ update
 
 -- DROP TABLE public.job_info;
 
-CREATE TABLE public.job_info ( id serial4 NOT NULL, employee_id varchar(20) NOT NULL, agent_user_id int4 NULL, internal_user_id int4 NULL, job_title text NULL, shift_period text NULL, shift_schedule text NULL, shift_time text NULL, work_setup text NULL, employment_status text NULL, hire_type text NULL, staff_source text NULL, start_date date NULL, exit_date date NULL, created_at timestamptz DEFAULT now() NULL, updated_at timestamptz DEFAULT now() NULL, work_email text NULL, CONSTRAINT chk_job_info_employee_type CHECK ((((agent_user_id IS NOT NULL) AND (internal_user_id IS NULL)) OR ((agent_user_id IS NULL) AND (internal_user_id IS NOT NULL)))), CONSTRAINT job_info_employee_id_key UNIQUE (employee_id), CONSTRAINT job_info_pkey PRIMARY KEY (id), CONSTRAINT job_info_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.agents(user_id) ON DELETE CASCADE, CONSTRAINT job_info_internal_user_id_fkey FOREIGN KEY (internal_user_id) REFERENCES public.internal(user_id) ON DELETE CASCADE);
+CREATE TABLE public.job_info (
+	id serial4 NOT NULL,
+	employee_id varchar(20) NOT NULL,
+	agent_user_id int4 NULL,
+	internal_user_id int4 NULL,
+	job_title text NULL,
+	shift_period text NULL,
+	shift_schedule text NULL,
+	shift_time text NULL,
+	work_setup text NULL,
+	employment_status text NULL,
+	hire_type text NULL,
+	staff_source text NULL,
+	start_date date NULL,
+	exit_date date NULL,
+	created_at timestamptz DEFAULT now() NULL,
+	updated_at timestamptz DEFAULT now() NULL,
+	work_email text NULL,
+	CONSTRAINT chk_job_info_employee_type CHECK ((((agent_user_id IS NOT NULL) AND (internal_user_id IS NULL)) OR ((agent_user_id IS NULL) AND (internal_user_id IS NOT NULL)))),
+	CONSTRAINT job_info_employee_id_key UNIQUE (employee_id),
+	CONSTRAINT job_info_pkey PRIMARY KEY (id),
+	CONSTRAINT job_info_agent_user_id_fkey FOREIGN KEY (agent_user_id) REFERENCES public.agents(user_id) ON DELETE CASCADE,
+	CONSTRAINT job_info_internal_user_id_fkey FOREIGN KEY (internal_user_id) REFERENCES public.internal(user_id) ON DELETE CASCADE
+);
 CREATE INDEX idx_job_info_agent_user ON public.job_info USING btree (agent_user_id);
 
 -- Table Triggers
@@ -2608,6 +3199,34 @@ END;
 $function$
 ;
 
+-- DROP FUNCTION public.create_ticket_status_notification();
+
+CREATE OR REPLACE FUNCTION public.create_ticket_status_notification()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  title_text text;
+  message_text text;
+BEGIN
+  IF TG_OP = 'UPDATE' AND (OLD.status IS DISTINCT FROM NEW.status) THEN
+    title_text := 'Ticket status updated';
+    message_text := format('Ticket %s is now %s', NEW.ticket_id, NEW.status);
+    INSERT INTO public.notifications (user_id, category, type, title, message, payload)
+    VALUES (
+      NEW.user_id,
+      'ticket',
+      CASE WHEN NEW.status = 'Closed' THEN 'success' ELSE 'info' END,
+      title_text,
+      message_text,
+      json_build_object('ticket_id', NEW.ticket_id, 'status', NEW.status, 'ticket_row_id', NEW.id, 'action_url', concat('/forms/', NEW.ticket_id))
+    );
+  END IF;
+  RETURN NEW;
+END;
+$function$
+;
+
 -- DROP FUNCTION public.crypt(text, text);
 
 CREATE OR REPLACE FUNCTION public.crypt(text, text)
@@ -2644,18 +3263,18 @@ CREATE OR REPLACE FUNCTION public.decrypt_iv(bytea, bytea, bytea, text)
 AS '$libdir/pgcrypto', $function$pg_decrypt_iv$function$
 ;
 
--- DROP FUNCTION public.digest(bytea, text);
+-- DROP FUNCTION public.digest(text, text);
 
-CREATE OR REPLACE FUNCTION public.digest(bytea, text)
+CREATE OR REPLACE FUNCTION public.digest(text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pg_digest$function$
 ;
 
--- DROP FUNCTION public.digest(text, text);
+-- DROP FUNCTION public.digest(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.digest(text, text)
+CREATE OR REPLACE FUNCTION public.digest(bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -3138,34 +3757,6 @@ AS $function$
       $function$
 ;
 
--- DROP FUNCTION public.get_user_meetings(int4, int4);
-
-CREATE OR REPLACE FUNCTION public.get_user_meetings(p_user_id integer, p_days integer DEFAULT 7)
- RETURNS TABLE(id integer, title character varying, description text, start_time timestamp with time zone, end_time timestamp with time zone, duration_minutes integer, meeting_type character varying, status character varying, is_in_meeting boolean, actual_start_time timestamp with time zone, created_at timestamp with time zone)
- LANGUAGE plpgsql
-AS $function$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        m.id,
-        m.title,
-        m.description,
-        m.start_time,
-        m.end_time,
-        m.duration_minutes,
-        m.meeting_type,
-        m.status,
-        m.is_in_meeting,
-        m.actual_start_time,
-        m.created_at
-    FROM meetings m
-    WHERE m.agent_user_id = p_user_id
-    AND m.created_at >= now()::date - INTERVAL '1 day' * p_days
-    ORDER BY m.created_at DESC;
-END;
-$function$
-;
-
 -- DROP FUNCTION public.get_user_meetings(int4, int4, int4, int4);
 
 CREATE OR REPLACE FUNCTION public.get_user_meetings(p_user_id integer, p_days integer DEFAULT 7, p_limit integer DEFAULT 10, p_offset integer DEFAULT 0)
@@ -3196,6 +3787,34 @@ BEGIN
     ORDER BY m.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;
+END;
+$function$
+;
+
+-- DROP FUNCTION public.get_user_meetings(int4, int4);
+
+CREATE OR REPLACE FUNCTION public.get_user_meetings(p_user_id integer, p_days integer DEFAULT 7)
+ RETURNS TABLE(id integer, title character varying, description text, start_time timestamp with time zone, end_time timestamp with time zone, duration_minutes integer, meeting_type character varying, status character varying, is_in_meeting boolean, actual_start_time timestamp with time zone, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        m.id,
+        m.title,
+        m.description,
+        m.start_time,
+        m.end_time,
+        m.duration_minutes,
+        m.meeting_type,
+        m.status,
+        m.is_in_meeting,
+        m.actual_start_time,
+        m.created_at
+    FROM meetings m
+    WHERE m.agent_user_id = p_user_id
+    AND m.created_at >= now()::date - INTERVAL '1 day' * p_days
+    ORDER BY m.created_at DESC;
 END;
 $function$
 ;
@@ -3286,18 +3905,18 @@ END;
 $function$
 ;
 
--- DROP FUNCTION public.hmac(bytea, bytea, text);
+-- DROP FUNCTION public.hmac(text, text, text);
 
-CREATE OR REPLACE FUNCTION public.hmac(bytea, bytea, text)
+CREATE OR REPLACE FUNCTION public.hmac(text, text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pg_hmac$function$
 ;
 
--- DROP FUNCTION public.hmac(text, text, text);
+-- DROP FUNCTION public.hmac(bytea, bytea, text);
 
-CREATE OR REPLACE FUNCTION public.hmac(text, text, text)
+CREATE OR REPLACE FUNCTION public.hmac(bytea, bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -3831,13 +4450,21 @@ BEGIN
         notification_payload := notification_payload || jsonb_build_object(
             'message', NEW.message,
             'priority', NEW.priority,
-            'scheduled_at', NEW.scheduled_at
+            'scheduled_at', NEW.scheduled_at,
+            'expires_at', NEW.expires_at,
+            'assigned_user_ids', NEW.assigned_user_ids
         );
     ELSIF TG_OP = 'UPDATE' THEN
         notification_payload := notification_payload || jsonb_build_object(
             'old_status', OLD.status,
             'new_status', NEW.status,
-            'status_changed', OLD.status != NEW.status
+            'status_changed', OLD.status != NEW.status,
+            'assigned_user_ids', NEW.assigned_user_ids
+        );
+    ELSIF TG_OP = 'DELETE' THEN
+        notification_payload := notification_payload || jsonb_build_object(
+            'status', OLD.status,
+            'assigned_user_ids', OLD.assigned_user_ids
         );
     END IF;
     
@@ -4217,6 +4844,447 @@ BEGIN
     -- Send the notification
     PERFORM pg_notify('event_attendance_changes', notification_payload::text);
     
+    -- Return the appropriate record
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$function$
+;
+
+-- DROP FUNCTION public.notify_event_change();
+
+CREATE OR REPLACE FUNCTION public.notify_event_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    notification_payload JSONB;
+    event_data JSONB;
+    created_by_name TEXT;
+    action_url TEXT;
+    current_time_ph TIME;
+    event_start_time TIME;
+BEGIN
+    -- Get current time in Philippines timezone
+    current_time_ph := (NOW() AT TIME ZONE 'Asia/Manila')::TIME;
+    
+    -- Get the name of the user who created the event
+    SELECT email INTO created_by_name
+    FROM users
+    WHERE id = COALESCE(NEW.created_by, OLD.created_by);
+
+    -- Determine the operation type
+    IF TG_OP = 'INSERT' THEN
+        event_data := to_jsonb(NEW);
+        notification_payload := jsonb_build_object(
+            'type', 'event_created',
+            'event_id', NEW.id,
+            'event_title', NEW.title,
+            'event_date', NEW.event_date,
+            'start_time', NEW.start_time,
+            'end_time', NEW.end_time,
+            'location', NEW.location,
+            'status', NEW.status,
+            'created_by', NEW.created_by,
+            'created_at', NEW.created_at,
+            'data', event_data
+        );
+
+        -- Create notifications for assigned users about the new event (only if status is upcoming)
+        IF NEW.status = 'upcoming' THEN
+            -- Set action URL based on event status
+            action_url := '/status/events?tab=upcoming&eventId=' || NEW.id;
+
+            INSERT INTO notifications (user_id, category, type, title, message, payload)
+            SELECT
+                u.id,
+                'event',
+                'info',
+                format('New %s Scheduled',
+                       CASE
+                           WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                           ELSE 'Event'
+                       END),
+                format('A new %s "%s" has been scheduled for %s at %s',
+                       CASE
+                           WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'activity'
+                           ELSE 'event'
+                       END,
+                       NEW.title,
+                       to_char(NEW.event_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD'),
+                       NEW.start_time),
+                jsonb_build_object(
+                    'event_id', NEW.id,
+                    'event_title', NEW.title,
+                    'event_date', NEW.event_date,
+                    'start_time', NEW.start_time,
+                    'end_time', NEW.end_time,
+                    'location', NEW.location,
+                    'status', NEW.status,
+                    'event_type', COALESCE(NEW.event_type, 'event'),
+                    'created_by', NEW.created_by,
+                    'created_by_name', created_by_name,
+                    'notification_type', 'event_created',
+                    'action_url', action_url
+                )
+            FROM users u
+            WHERE (NEW.assigned_user_ids IS NOT NULL AND array_length(NEW.assigned_user_ids, 1) > 0 AND u.id = ANY(NEW.assigned_user_ids)) -- Only notify assigned users if there are any
+              AND u.id != NEW.created_by; -- Don't notify the creator
+        END IF;
+
+    ELSIF TG_OP = 'UPDATE' THEN
+        event_data := to_jsonb(NEW);
+        notification_payload := jsonb_build_object(
+            'type', 'event_updated',
+            'event_id', NEW.id,
+            'event_title', NEW.title,
+            'event_date', NEW.event_date,
+            'start_time', NEW.start_time,
+            'end_time', NEW.end_time,
+            'location', NEW.location,
+            'status', NEW.status,
+            'created_by', NEW.created_by,
+            'updated_at', NEW.updated_at,
+            'old_data', to_jsonb(OLD),
+            'new_data', event_data
+        );
+
+        -- Create notifications for all users about the event update (only for specific status changes)
+        IF OLD.status IS DISTINCT FROM NEW.status THEN
+            -- Event scheduled for today (status changed to 'today') - Notify assigned users
+            IF NEW.status = 'today' THEN
+                action_url := '/status/events?tab=today&eventId=' || NEW.id;
+
+                -- Send "Today's Event" notification to inform assigned users about the event
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'info',
+                    format('Today''s %s - %s',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title),
+                    format('%s "%s" is scheduled for today at %s (%s)',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title,
+                           to_char(NEW.start_time::TIME, 'HH12:MI AM'),
+                           NEW.location),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'old_status', OLD.status,
+                        'new_status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_scheduled_today',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE (NEW.assigned_user_ids IS NOT NULL AND array_length(NEW.assigned_user_ids, 1) > 0 AND u.id = ANY(NEW.assigned_user_ids)); -- Only notify assigned users if there are any
+
+                -- Parse the event start time
+                event_start_time := NEW.start_time::TIME;
+                
+                -- Also send "Event Started" notification if the actual start time has been reached
+                IF current_time_ph >= event_start_time THEN
+                    INSERT INTO notifications (user_id, category, type, title, message, payload)
+                    SELECT
+                        u.id,
+                        'event',
+                        'info',
+                        format('%s Started - Please Join',
+                               CASE
+                                   WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                                   ELSE 'Event'
+                               END),
+                        format('%s "%s" has started at %s (%s)',
+                               CASE
+                                   WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                                   ELSE 'Event'
+                               END,
+                               NEW.title,
+                               to_char(NEW.start_time::TIME, 'HH12:MI AM'),
+                               NEW.location),
+                        jsonb_build_object(
+                            'event_id', NEW.id,
+                            'event_title', NEW.title,
+                            'event_date', NEW.event_date,
+                            'start_time', NEW.start_time,
+                            'end_time', NEW.end_time,
+                            'location', NEW.location,
+                            'event_type', COALESCE(NEW.event_type, 'event'),
+                            'old_status', OLD.status,
+                            'new_status', NEW.status,
+                            'created_by', NEW.created_by,
+                            'created_by_name', created_by_name,
+                            'notification_type', 'event_started',
+                            'action_url', action_url
+                        )
+                    FROM users u
+                    WHERE (NEW.assigned_user_ids IS NOT NULL AND array_length(NEW.assigned_user_ids, 1) > 0 AND u.id = ANY(NEW.assigned_user_ids)); -- Only notify assigned users if there are any
+                END IF;
+            END IF;
+
+            -- Event cancelled
+            IF NEW.status = 'cancelled' THEN
+                action_url := '/status/events?tab=cancelled&eventId=' || NEW.id;
+
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'warning',
+                    format('%s Cancelled',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END),
+                    format('%s "%s" scheduled for %s has been cancelled',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title,
+                           to_char(NEW.event_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD')),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'old_status', OLD.status,
+                        'new_status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_cancelled',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE (NEW.assigned_user_ids IS NOT NULL AND array_length(NEW.assigned_user_ids, 1) > 0 AND u.id = ANY(NEW.assigned_user_ids)); -- Only notify assigned users if there are any
+            END IF;
+
+            -- Event ended
+            IF NEW.status = 'ended' THEN
+                action_url := '/status/events?tab=ended&eventId=' || NEW.id;
+
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'info',
+                    format('%s Ended',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END),
+                    format('%s "%s" has ended',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'old_status', OLD.status,
+                        'new_status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_ended',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE (NEW.assigned_user_ids IS NOT NULL AND array_length(NEW.assigned_user_ids, 1) > 0 AND u.id = ANY(NEW.assigned_user_ids)); -- Only notify assigned users if there are any
+            END IF;
+        END IF;
+
+        -- Handle assigned users changes - notify newly assigned users about current event status
+        IF (OLD.assigned_user_ids IS DISTINCT FROM NEW.assigned_user_ids) 
+           AND NEW.assigned_user_ids IS NOT NULL 
+           AND array_length(NEW.assigned_user_ids, 1) > 0 THEN
+            
+            -- If event is currently 'today', notify newly assigned users
+            IF NEW.status = 'today' THEN
+                action_url := '/status/events?tab=today&eventId=' || NEW.id;
+
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'info',
+                    format('Today''s %s - %s',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title),
+                    format('%s "%s" is scheduled for today at %s (%s)',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title,
+                           to_char(NEW.start_time::TIME, 'HH12:MI AM'),
+                           NEW.location),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_assigned_today',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE u.id = ANY(NEW.assigned_user_ids)
+                  AND (OLD.assigned_user_ids IS NULL OR u.id != ALL(COALESCE(OLD.assigned_user_ids, ARRAY[]::int4[]))); -- Only notify newly assigned users
+            END IF;
+
+            -- If event is currently 'cancelled', notify newly assigned users
+            IF NEW.status = 'cancelled' THEN
+                action_url := '/status/events?tab=cancelled&eventId=' || NEW.id;
+
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'warning',
+                    format('%s Cancelled',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END),
+                    format('%s "%s" scheduled for %s has been cancelled',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title,
+                           to_char(NEW.event_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD')),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_assigned_cancelled',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE u.id = ANY(NEW.assigned_user_ids)
+                  AND (OLD.assigned_user_ids IS NULL OR u.id != ALL(COALESCE(OLD.assigned_user_ids, ARRAY[]::int4[]))); -- Only notify newly assigned users
+            END IF;
+
+            -- If event is currently 'ended', notify newly assigned users
+            IF NEW.status = 'ended' THEN
+                action_url := '/status/events?tab=ended&eventId=' || NEW.id;
+
+                INSERT INTO notifications (user_id, category, type, title, message, payload)
+                SELECT
+                    u.id,
+                    'event',
+                    'info',
+                    format('%s Ended',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END),
+                    format('%s "%s" has ended',
+                           CASE
+                               WHEN COALESCE(NEW.event_type, 'event') = 'activity' THEN 'Activity'
+                               ELSE 'Event'
+                           END,
+                           NEW.title),
+                    jsonb_build_object(
+                        'event_id', NEW.id,
+                        'event_title', NEW.title,
+                        'event_date', NEW.event_date,
+                        'start_time', NEW.start_time,
+                        'end_time', NEW.end_time,
+                        'location', NEW.location,
+                        'event_type', COALESCE(NEW.event_type, 'event'),
+                        'status', NEW.status,
+                        'created_by', NEW.created_by,
+                        'created_by_name', created_by_name,
+                        'notification_type', 'event_assigned_ended',
+                        'action_url', action_url
+                    )
+                FROM users u
+                WHERE u.id = ANY(NEW.assigned_user_ids)
+                  AND (OLD.assigned_user_ids IS NULL OR u.id != ALL(COALESCE(OLD.assigned_user_ids, ARRAY[]::int4[]))); -- Only notify newly assigned users
+            END IF;
+        END IF;
+
+    ELSIF TG_OP = 'DELETE' THEN
+        event_data := to_jsonb(OLD);
+        notification_payload := jsonb_build_object(
+            'type', 'event_deleted',
+            'event_id', OLD.id,
+            'event_title', OLD.title,
+            'event_date', OLD.event_date,
+            'data', event_data
+        );
+
+        -- Create notifications for assigned users about the event deletion
+        action_url := '/status/events?tab=ended&eventId=' || OLD.id;
+
+        INSERT INTO notifications (user_id, category, type, title, message, payload)
+        SELECT
+            u.id,
+            'event',
+            'warning',
+            'Event Deleted',
+            format('Event "%s" scheduled for %s has been deleted',
+                   OLD.title,
+                   to_char(OLD.event_date AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD')),
+            jsonb_build_object(
+                'event_id', OLD.id,
+                'event_title', OLD.title,
+                'event_date', OLD.event_date,
+                'start_time', OLD.start_time,
+                'end_time', OLD.end_time,
+                'location', OLD.location,
+                'notification_type', 'event_deleted',
+                'action_url', action_url
+            )
+        FROM users u
+        WHERE (OLD.assigned_user_ids IS NOT NULL AND array_length(OLD.assigned_user_ids, 1) > 0 AND u.id = ANY(OLD.assigned_user_ids)); -- Only notify assigned users if there are any
+    END IF;
+
+    -- Send the notification for real-time updates
+    PERFORM pg_notify('event_changes', notification_payload::text);
+
     -- Return the appropriate record
     IF TG_OP = 'DELETE' THEN
         RETURN OLD;
@@ -5037,18 +6105,18 @@ CREATE OR REPLACE FUNCTION public.pgp_key_id(bytea)
 AS '$libdir/pgcrypto', $function$pgp_key_id_w$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text);
+-- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea)
  RETURNS text
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea);
+-- DROP FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text)
  RETURNS text
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -5064,15 +6132,6 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt(bytea, bytea, text)
 AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
-
-CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
- RETURNS bytea
- LANGUAGE c
- IMMUTABLE PARALLEL SAFE STRICT
-AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
-;
-
 -- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text);
 
 CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text)
@@ -5085,6 +6144,15 @@ AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
 -- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text);
 
 CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text)
+ RETURNS bytea
+ LANGUAGE c
+ IMMUTABLE PARALLEL SAFE STRICT
+AS '$libdir/pgcrypto', $function$pgp_pub_decrypt_bytea$function$
+;
+
+-- DROP FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea);
+
+CREATE OR REPLACE FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -5109,18 +6177,18 @@ CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt(text, bytea)
 AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea);
+-- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea)
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_pub_encrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text);
+-- DROP FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea);
 
-CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
@@ -5145,18 +6213,18 @@ CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt(bytea, text)
 AS '$libdir/pgcrypto', $function$pgp_sym_decrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text);
+-- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_sym_decrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text);
+-- DROP FUNCTION public.pgp_sym_decrypt_bytea(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_decrypt_bytea(bytea, text)
  RETURNS bytea
  LANGUAGE c
  IMMUTABLE PARALLEL SAFE STRICT
@@ -5181,18 +6249,18 @@ CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt(text, text)
 AS '$libdir/pgcrypto', $function$pgp_sym_encrypt_text$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text);
+-- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
 AS '$libdir/pgcrypto', $function$pgp_sym_encrypt_bytea$function$
 ;
 
--- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text);
+-- DROP FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text);
 
-CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text)
+CREATE OR REPLACE FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text)
  RETURNS bytea
  LANGUAGE c
  PARALLEL SAFE STRICT
